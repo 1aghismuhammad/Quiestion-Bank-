@@ -1,6 +1,6 @@
 # Database Reference
 
-Core Entities:
+Total Entity: 16
 
 1. users
 2. roles
@@ -19,16 +19,16 @@ Core Entities:
 15. broadcast_campaigns
 16. broadcast_logs
 
-Core Flow:
+Core Pipeline:
 
 USERS
- |
+|
 MATERIALS
- |
+|
 AI_GENERATIONS
- |
+|
 QUESTION_SETS
- |
+|
 QUESTIONS
- |
+|
 QUESTION_OPTIONS

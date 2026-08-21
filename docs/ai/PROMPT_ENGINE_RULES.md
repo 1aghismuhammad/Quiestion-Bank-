@@ -1,40 +1,37 @@
-# Prompt Engine Design
+# Prompt Engine Rules
 
-Prompt Engine stores reusable AI instruction templates.
+Prompt Engine adalah kumpulan aturan prompt yang dikelola developer.
 
-Components:
+## Components
 
 ## Material Rule
-Defines how AI reads source material.
+Mengatur cara AI membaca materi.
 
 ## Assessment Rule
-Controls assessment style.
+Mengatur tipe assessment.
 
-Example:
+Contoh:
 - Formative
 - Summative
 - Diagnostic
 
 ## Difficulty Rule
-
-Controls:
+Mengatur tingkat kesulitan:
 - Easy
 - Medium
 - Hard
 - HOTS
 
 ## Question Rule
-
-Controls:
+Mengatur format soal:
 - Multiple Choice
 - Essay
 - True False
 
 ## Output Rule
 
-AI output must contain:
-
-Question
-Options
-Correct Answer
-Explanation
+Output AI wajib:
+- Question
+- Options
+- Answer
+- Explanation

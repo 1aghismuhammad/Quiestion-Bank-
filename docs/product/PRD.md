@@ -1,66 +1,32 @@
 # Product Requirement Document (PRD)
-# AI Question Bank SaaS
 
-## 1. Product Vision
+## Product
+AI Question Bank SaaS
 
-AI Question Bank adalah platform SaaS yang membantu guru, institusi pendidikan,
-dan pengguna akademik membuat soal otomatis dari materi pembelajaran menggunakan AI.
+## Vision
+Platform AI yang membantu pengguna membuat soal otomatis dari materi pembelajaran dengan konfigurasi assessment dan tingkat kesulitan.
 
-## 2. Problem
-
-- Pembuatan soal manual membutuhkan waktu lama.
+## Problem
+- Pembuatan soal manual membutuhkan waktu.
 - Kualitas soal tidak selalu konsisten.
-- Guru membutuhkan assessment dengan tingkat kesulitan dan jenis soal yang fleksibel.
+- Sulit membuat variasi assessment.
 
-## 3. Solution
+## Solution
+User dapat:
+- upload materi
+- menulis materi manual
+- memilih bab/topik/fokus
+- memilih assessment
+- memilih tingkat kesulitan
+- generate soal menggunakan AI
 
-User memasukkan sumber materi:
-- Upload PDF/DOCX/TXT
-- Input materi manual
+Output:
+- Question
+- Answer Option
+- Correct Answer
+- Explanation
 
-Kemudian memilih:
-- Bab
-- Topik
-- Fokus materi
-- Assessment type
-- Difficulty level
-- Question type
-- Jumlah soal
-
-AI menghasilkan:
-- Pertanyaan
-- Pilihan jawaban
-- Jawaban benar
-- Pembahasan
-
-## 4. User Journey
-
-Landing Page
--> Google Login
--> Dashboard
--> Create Question Bank
--> Input Material
--> Configure Assessment
--> Generate AI
--> Review
--> Save Question Bank
-
-## 5. Monetization
-
-Free:
-- Limited generation quota
-
-Pro:
-- Higher quota
-- More features
-
-Institution:
-- Multi user management
-- Admin monitoring
-
-## 6. Success Metrics
-
-- Number of generated questions
-- Active users
-- Subscription conversion
-- Question quality rating
+## Monetization
+- Free Plan
+- Pro Plan
+- Institution Plan

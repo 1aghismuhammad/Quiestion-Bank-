@@ -1,26 +1,26 @@
-# Application Flow
+# System Flow
 
 ## User Flow
 
-User
--> Login Google
+Landing Page
+-> Google Login
 -> Dashboard
 -> Create Question Bank
--> Select Material Source
+-> Material Input
 -> Select Chapter/Focus
--> Select Assessment
--> Check Quota
+-> Assessment Configuration
+-> Quota Check
 -> AI Generate
--> Review Question
--> Save
+-> Review
+-> Save Question Bank
 
 
 ## Admin Flow
 
-Admin
+Admin Login
 -> Dashboard
 -> User Monitoring
--> AI Generation Monitoring
+-> AI Monitoring
 -> Question Review
 -> Subscription Monitoring
 -> Broadcast Management

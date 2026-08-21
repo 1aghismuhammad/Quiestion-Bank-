@@ -1,10 +1,10 @@
 # System Design
 
-## Architecture Overview
+## Architecture
 
 Frontend
 |
-Backend Laravel API
+Backend Laravel
 |
 Database
 |
@@ -12,49 +12,29 @@ AI Provider
 |
 Storage
 
+## Core Module
 
-## Main Modules
+### Authentication
+- Google Login
+- User Profile
+- Role Management
 
-1. Authentication
-- Google OAuth
-- User profile
-- Role management
+### Material Management
+- Upload File
+- Text Input
+- Topic Management
 
-2. Material Management
-- Upload material
-- Text input
-- Topic extraction
+### AI Engine
+- Prompt Version
+- AI Generation
+- Output Validation
 
-3. AI Generation Engine
-- Prompt versioning
-- AI model integration
-- Output validation
-
-4. Question Bank
-- Question sets
-- Questions
+### Question Bank
+- Question Set
+- Question
 - Options
 
-5. Subscription
-- Plans
-- Quota tracking
-
-6. CRM
-- WhatsApp contact
-- Broadcast campaign
-
-
-## Design Principle
-
-Simple user experience with complex backend orchestration.
-
-User only configures:
-- Material
-- Assessment
-- Difficulty
-
-System handles:
-- Prompt construction
-- AI request
-- Storage
-- Logging
+### Business Layer
+- Subscription
+- Quota
+- Broadcast CRM
