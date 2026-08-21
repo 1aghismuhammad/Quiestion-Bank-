@@ -1,0 +1,545 @@
+//////////////////////////////////////////////////////
+// AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
+// Version: 0.4
+// Target: Laravel 13 / MySQL 8+
+//////////////////////////////////////////////////////
+
+Enum user_status {
+  active
+  suspended
+  inactive
+}
+
+Enum billing_period {
+  monthly
+  yearly
+  lifetime
+}
+
+Enum plan_status {
+  active
+  inactive
+  archived
+}
+
+Enum subscription_status {
+  pending
+  active
+  expired
+  cancelled
+  rejected
+}
+
+Enum payment_status {
+  unpaid
+  pending_verification
+  paid
+  failed
+  refunded
+}
+
+Enum source_type {
+  upload
+  text
+}
+
+Enum extraction_status {
+  pending
+  processing
+  completed
+  failed
+  not_required
+}
+
+Enum material_status {
+  draft
+  ready
+  archived
+}
+
+Enum prompt_status {
+  draft
+  active
+  inactive
+}
+
+Enum assessment_type {
+  formative
+  summative
+  diagnostic
+}
+
+Enum difficulty_level {
+  easy
+  medium
+  hard
+  hots
+}
+
+Enum question_type {
+  multiple_choice
+  true_false
+  essay
+}
+
+Enum generation_status {
+  queued
+  processing
+  completed
+  failed
+  cancelled
+}
+
+Enum question_set_status {
+  draft
+  generating
+  review
+  published
+  archived
+}
+
+Enum review_status {
+  not_submitted
+  pending
+  approved
+  rejected
+}
+
+Enum visibility {
+  private
+  public
+}
+
+Enum usage_action {
+  generate
+  retry
+}
+
+Enum usage_status {
+  reserved
+  charged
+  released
+}
+
+Enum campaign_status {
+  draft
+  scheduled
+  processing
+  completed
+  failed
+  cancelled
+}
+
+Enum delivery_status {
+  queued
+  sent
+  delivered
+  read
+  failed
+}
+
+//////////////////////////////////////////////////////
+// USER MANAGEMENT
+//////////////////////////////////////////////////////
+
+Table users {
+  user_id bigint [pk, increment]
+  google_id varchar(255) [not null, unique]
+  name varchar(255) [not null]
+  email varchar(255) [not null, unique]
+  email_verified_at timestamp
+  avatar_url varchar(2048)
+  phone_number varchar(32)
+  phone_verified_at timestamp
+  marketing_consent boolean [not null, default: false]
+  status user_status [not null, default: 'active']
+  last_login_at timestamp
+  remember_token varchar(100)
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  indexes {
+    status
+    phone_number
+  }
+
+  Note: 'Google OAuth only. Tidak menyimpan password lokal.'
+}
+
+Table roles {
+  role_id bigint [pk, increment]
+  role_name varchar(64) [not null, unique]
+  description text
+  created_at timestamp
+  updated_at timestamp
+
+  Note: 'Seed minimum: user dan admin.'
+}
+
+Table role_user {
+  user_id bigint [not null]
+  role_id bigint [not null]
+  created_at timestamp
+
+  indexes {
+    (user_id, role_id) [pk]
+    role_id
+  }
+}
+
+//////////////////////////////////////////////////////
+// SUBSCRIPTION
+//////////////////////////////////////////////////////
+
+Table plans {
+  plan_id bigint [pk, increment]
+  plan_name varchar(100) [not null, unique]
+  description text
+  price decimal(12,2) [not null, default: 0]
+  currency char(3) [not null, default: 'IDR']
+  billing_period billing_period [not null]
+  generation_limit int [not null, note: 'Jumlah credit generation per billing period']
+  storage_limit_mb int [not null, note: 'Batas penyimpanan aktif dalam megabyte']
+  status plan_status [not null, default: 'active']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table subscriptions {
+  subscription_id bigint [pk, increment]
+  user_id bigint [not null]
+  plan_id bigint [not null]
+  subscription_code varchar(100) [not null, unique]
+  start_date timestamp [not null]
+  end_date timestamp
+  status subscription_status [not null, default: 'pending']
+  payment_status payment_status [not null, default: 'unpaid']
+  approved_by bigint
+  approved_at timestamp
+  cancelled_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, status)
+    (end_date, status)
+    approved_by
+  }
+
+  Note: 'Aplikasi memastikan maksimal satu subscription aktif per user.'
+}
+
+//////////////////////////////////////////////////////
+// MATERIAL MANAGEMENT
+//////////////////////////////////////////////////////
+
+Table materials {
+  material_id bigint [pk, increment]
+  user_id bigint [not null]
+  title varchar(255) [not null]
+  source_type source_type [not null]
+  file_name varchar(255)
+  file_path varchar(2048)
+  file_size bigint
+  file_hash varchar(64)
+  mime_type varchar(127)
+  content text
+  extraction_status extraction_status [not null, default: 'pending']
+  status material_status [not null, default: 'draft']
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  indexes {
+    (user_id, status)
+    (user_id, extraction_status)
+    file_hash
+  }
+
+  Note: 'Upload mewajibkan file_path dan default extraction pending; text mewajibkan content dan diubah ke not_required oleh aplikasi.'
+}
+
+Table material_topics {
+  topic_id bigint [pk, increment]
+  material_id bigint [not null]
+  topic_name varchar(255) [not null]
+  focus_area varchar(255)
+  chapter varchar(255)
+  sub_chapter varchar(255)
+  page_start int
+  page_end int
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    material_id
+    (material_id, chapter, sub_chapter, topic_name) [unique]
+  }
+}
+
+//////////////////////////////////////////////////////
+// AI ENGINE
+//////////////////////////////////////////////////////
+
+Table prompt_versions {
+  prompt_version_id bigint [pk, increment]
+  version_number varchar(32) [not null, unique]
+  prompt_name varchar(255) [not null]
+  base_prompt text [not null]
+  material_rule text [not null]
+  assessment_rule text [not null]
+  difficulty_rule text [not null]
+  question_rule text [not null]
+  answer_rule text [not null]
+  explanation_rule text
+  quality_rule text
+  output_schema json [not null]
+  status prompt_status [not null, default: 'draft']
+  created_by bigint [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    status
+    created_by
+  }
+
+  Note: 'Aplikasi memastikan hanya satu prompt version aktif.'
+}
+
+Table ai_generations {
+  generation_id bigint [pk, increment]
+  user_id bigint [not null]
+  material_id bigint [not null]
+  topic_id bigint
+  prompt_version_id bigint [not null]
+  assessment_type assessment_type [not null]
+  difficulty_level difficulty_level [not null]
+  question_type question_type [not null]
+  question_count int [not null]
+  provider_name varchar(64) [not null, default: 'google_gemini']
+  model_name varchar(100) [not null]
+  temperature decimal(3,2)
+  input_token int [not null, default: 0]
+  output_token int [not null, default: 0]
+  estimated_cost decimal(14,6) [not null, default: 0]
+  raw_response text
+  parsed_output json
+  generation_status generation_status [not null, default: 'queued']
+  error_message text
+  attempt_number int [not null, default: 1]
+  parent_generation_id bigint
+  queued_at timestamp
+  started_at timestamp
+  completed_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, created_at)
+    material_id
+    topic_id
+    generation_status
+    parent_generation_id
+  }
+}
+
+Table ai_usage_logs {
+  usage_id bigint [pk, increment]
+  user_id bigint [not null]
+  subscription_id bigint [not null]
+  generation_id bigint [not null]
+  action_type usage_action [not null]
+  credit_used int [not null, default: 0]
+  token_used int [not null, default: 0]
+  estimated_cost decimal(14,6) [not null, default: 0]
+  status usage_status [not null]
+  reservation_expires_at timestamp
+  created_at timestamp
+
+  indexes {
+    (user_id, created_at)
+    (subscription_id, created_at)
+    generation_id
+  }
+
+  Note: 'Sumber perhitungan quota generation per periode subscription.'
+}
+
+//////////////////////////////////////////////////////
+// QUESTION BANK
+//////////////////////////////////////////////////////
+
+Table question_sets {
+  question_set_id bigint [pk, increment]
+  user_id bigint [not null]
+  generation_id bigint [unique]
+  title varchar(255) [not null]
+  description text
+  subject varchar(255)
+  grade_level varchar(100)
+  total_question int [not null, default: 0]
+  visibility visibility [not null, default: 'private']
+  status question_set_status [not null, default: 'draft']
+  review_status review_status [not null, default: 'not_submitted']
+  reviewed_by bigint
+  reviewed_at timestamp
+  review_notes text
+  created_at timestamp
+  updated_at timestamp
+  deleted_at timestamp
+
+  indexes {
+    (user_id, status)
+    (user_id, review_status)
+    reviewed_by
+  }
+
+  Note: 'Dibuat draft sebelum generation. generation_id nullable untuk set manual atau sebelum job diantrekan.'
+}
+
+Table questions {
+  question_id bigint [pk, increment]
+  question_set_id bigint [not null]
+  question_number int [not null]
+  question_text text [not null]
+  question_type question_type [not null]
+  difficulty_level difficulty_level [not null]
+  correct_answer text
+  explanation text
+  rubric text
+  points decimal(6,2) [not null, default: 1]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    question_set_id
+    (question_set_id, question_number) [unique]
+  }
+
+  Note: 'Essay memakai correct_answer/rubric tanpa options. MCQ dan true-false memakai question_options.'
+}
+
+Table question_options {
+  option_id bigint [pk, increment]
+  question_id bigint [not null]
+  option_label varchar(8) [not null]
+  option_text text [not null]
+  is_correct boolean [not null, default: false]
+  sort_order int [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    question_id
+    (question_id, option_label) [unique]
+    (question_id, sort_order) [unique]
+  }
+}
+
+//////////////////////////////////////////////////////
+// WHATSAPP CRM
+//////////////////////////////////////////////////////
+
+Table whatsapp_contacts {
+  contact_id bigint [pk, increment]
+  user_id bigint [not null, unique]
+  phone_number varchar(32) [not null, unique]
+  country_code varchar(8) [not null, default: '+62']
+  provider_wa_id varchar(255)
+  is_verified boolean [not null, default: false]
+  marketing_consent boolean [not null, default: false]
+  opt_out_at timestamp
+  last_message_sent_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    provider_wa_id
+    marketing_consent
+  }
+
+  Note: 'Nomor disimpan dalam format E.164 dan menjadi sumber utama kontak WhatsApp.'
+}
+
+Table broadcast_campaigns {
+  campaign_id bigint [pk, increment]
+  admin_id bigint [not null]
+  campaign_name varchar(255) [not null]
+  message_template text [not null]
+  target_segment json [not null]
+  total_target int [not null, default: 0]
+  success_count int [not null, default: 0]
+  failed_count int [not null, default: 0]
+  scheduled_at timestamp
+  sent_at timestamp
+  status campaign_status [not null, default: 'draft']
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    admin_id
+    (status, scheduled_at)
+  }
+}
+
+Table broadcast_logs {
+  broadcast_log_id bigint [pk, increment]
+  campaign_id bigint [not null]
+  user_id bigint [not null]
+  phone_number varchar(32) [not null]
+  message_content text [not null]
+  provider_message_id varchar(255)
+  delivery_status delivery_status [not null, default: 'queued']
+  provider_response text
+  sent_at timestamp
+  delivered_at timestamp
+  read_at timestamp
+  failed_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (campaign_id, user_id) [unique]
+    (campaign_id, delivery_status)
+    user_id
+    provider_message_id
+  }
+}
+
+//////////////////////////////////////////////////////
+// RELATIONSHIPS
+//////////////////////////////////////////////////////
+
+Ref: users.user_id < role_user.user_id [delete: cascade]
+Ref: roles.role_id < role_user.role_id [delete: cascade]
+
+Ref: users.user_id < subscriptions.user_id
+Ref: plans.plan_id < subscriptions.plan_id
+Ref: users.user_id < subscriptions.approved_by
+
+Ref: users.user_id < materials.user_id
+Ref: materials.material_id < material_topics.material_id [delete: cascade]
+
+Ref: users.user_id < prompt_versions.created_by
+Ref: users.user_id < ai_generations.user_id
+Ref: materials.material_id < ai_generations.material_id
+Ref: material_topics.topic_id < ai_generations.topic_id
+Ref: prompt_versions.prompt_version_id < ai_generations.prompt_version_id
+Ref: ai_generations.generation_id < ai_generations.parent_generation_id
+
+Ref: users.user_id < ai_usage_logs.user_id
+Ref: subscriptions.subscription_id < ai_usage_logs.subscription_id
+Ref: ai_generations.generation_id < ai_usage_logs.generation_id
+
+Ref: users.user_id < question_sets.user_id
+Ref: ai_generations.generation_id - question_sets.generation_id
+Ref: users.user_id < question_sets.reviewed_by
+Ref: question_sets.question_set_id < questions.question_set_id [delete: cascade]
+Ref: questions.question_id < question_options.question_id [delete: cascade]
+
+Ref: users.user_id - whatsapp_contacts.user_id [delete: cascade]
+Ref: users.user_id < broadcast_campaigns.admin_id
+Ref: broadcast_campaigns.campaign_id < broadcast_logs.campaign_id [delete: cascade]
+Ref: users.user_id < broadcast_logs.user_id
