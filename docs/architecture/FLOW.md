@@ -7,6 +7,7 @@ Dokumen ini menerjemahkan rancangan flowchart user dan admin ke alur implementas
 - Google OAuth only.
 - Admin dan user menggunakan login yang sama serta dibedakan role.
 - Blade + Livewire untuk UI.
+- Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Google Gemini melalui queue untuk generation.
 - Database canonical: `docs/database/AI_QUESTION_BANK.dbml`.
 
@@ -22,9 +23,9 @@ flowchart LR
     OAuth -- Yes --> Account{Account active?}
     Account -- No --> Blocked[Show account blocked]
     Account -- Yes --> Dashboard[User Dashboard]
-    Dashboard --> Create[Create draft Question Set]
-    Create --> MaterialChoice{Material source?}
-    MaterialChoice -- Existing --> Existing[Select existing material]
+    Dashboard --> Materials[Material Management]
+    Materials --> MaterialChoice{Material source?}
+    MaterialChoice -- Existing --> Existing[Open existing material]
     MaterialChoice -- Upload --> Upload[Upload material]
     MaterialChoice -- Text --> Text[Enter material text and mark ready]
     Upload --> ValidateMaterial{File valid?}
@@ -35,10 +36,17 @@ flowchart LR
     Existing --> Topic
     Extract --> Extraction{Extraction successful?}
     Extraction -- No --> ExtractionError[Show extraction error or retry]
-    ExtractionError --> MaterialChoice
+    ExtractionError --> Materials
     Extraction -- Yes --> Ready[Mark material ready]
     Ready --> Topic
-    Topic --> Config[Configure assessment, difficulty, type, and count]
+    Topic --> Materials
+    Materials --> Archive[Archive draft or ready material]
+    Archive --> Archived[Material archived]
+    Archived --> Restore[Owner restores material]
+    Restore --> Ready
+    Dashboard --> Create[Create draft Question Set - Phase 5]
+    Create --> SelectReady[Select ready material]
+    SelectReady --> Config[Configure assessment, difficulty, type, and count]
     Config --> ValidConfig{Configuration valid?}
     ValidConfig -- No --> Config
     ValidConfig -- Yes --> Quota{Quota available?}
@@ -66,14 +74,20 @@ flowchart LR
 ### User Flow Rules
 
 1. Login pertama membuat user dan role default; login berikutnya memperbarui profil Google.
-2. Material upload harus lolos MIME, extension, size, dan ownership validation.
-3. Material text menggunakan extraction status `not_required`; upload berjalan pending, processing, lalu completed/failed.
-4. Material berubah dari draft menjadi ready setelah content text tersedia atau extraction berhasil.
-5. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.
-6. Credit direservasi sebelum job dijalankan agar request paralel tidak melewati quota.
-7. Credit hanya ditagihkan setelah output Gemini valid.
-8. Raw response dan failure tetap disimpan untuk audit.
-9. Question set berada pada status review sampai user mengonfirmasi publish.
+2. Phase 2 Material Management dibuka langsung dari dashboard dan tidak bergantung pada question set.
+3. Material upload hanya menerima PDF, DOCX, atau TXT dengan batas sementara 10 MB per file.
+4. Material upload harus lolos MIME, extension, size, dan ownership validation.
+5. Upload wajib menyimpan internal file path, file size, MIME type, SHA-256 hash, dan extraction status.
+6. Kombinasi user dan file hash unique sehingga duplikat user yang sama ditolak.
+7. Material text menggunakan extraction status `not_required`; upload berjalan pending, processing, lalu completed/failed.
+8. Material berubah dari draft menjadi ready setelah content text tersedia atau extraction berhasil.
+9. Seluruh upload yang belum dihapus tetap dihitung pada storage usage, termasuk archived dan extraction failed.
+10. Owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
+11. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.
+12. Credit direservasi sebelum job dijalankan agar request paralel tidak melewati quota.
+13. Credit hanya ditagihkan setelah output Gemini valid.
+14. Raw response dan failure tetap disimpan untuk audit.
+15. Question set berada pada status review sampai user mengonfirmasi publish.
 
 ## AI Generation State Flow
 

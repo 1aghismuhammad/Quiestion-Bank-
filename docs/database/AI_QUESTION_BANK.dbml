@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.4
+// Version: 0.6
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -239,9 +239,9 @@ Table materials {
   file_name varchar(255)
   file_path varchar(2048)
   file_size bigint
-  file_hash varchar(64)
+  file_hash char(64)
   mime_type varchar(127)
-  content text
+  content longtext
   extraction_status extraction_status [not null, default: 'pending']
   status material_status [not null, default: 'draft']
   created_at timestamp
@@ -251,10 +251,10 @@ Table materials {
   indexes {
     (user_id, status)
     (user_id, extraction_status)
-    file_hash
+    (user_id, file_hash) [unique]
   }
 
-  Note: 'Upload mewajibkan file_path dan default extraction pending; text mewajibkan content dan diubah ke not_required oleh aplikasi.'
+  Note: 'Upload PDF/DOCX/TXT maksimal sementara 10 MB mewajibkan file_path, file_size, mime_type, file_hash, dan extraction_status. Text mewajibkan content dan memakai not_required. Semua upload non-deleted termasuk archived/failed dihitung sebagai storage usage. Lifecycle owner: draft/ready ke archived dan archived ke ready.'
 }
 
 Table material_topics {
@@ -262,8 +262,8 @@ Table material_topics {
   material_id bigint [not null]
   topic_name varchar(255) [not null]
   focus_area varchar(255)
-  chapter varchar(255)
-  sub_chapter varchar(255)
+  chapter varchar(255) [not null, default: '']
+  sub_chapter varchar(255) [not null, default: '']
   page_start int
   page_end int
   created_at timestamp

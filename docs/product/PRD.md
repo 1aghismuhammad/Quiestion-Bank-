@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.4
-- Updated: 21 August 2026
-- Status: Foundation / pre-implementation
+- Version: 0.6
+- Updated: 24 August 2026
+- Status: Phase 1 implemented / Phase 2 canonical design approved
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -37,6 +37,7 @@ Pengelola platform yang memonitor user, question bank, penggunaan AI, dan subscr
 - Question types MVP: multiple choice, true/false, dan essay.
 - AI generation diproses secara asynchronous melalui queue.
 - Database domain canonical: `docs/database/AI_QUESTION_BANK.dbml`.
+- Phase 2 menggunakan Blade/controller tanpa Livewire component.
 
 ## MVP Scope
 
@@ -75,6 +76,18 @@ Pengelola platform yang memonitor user, question bank, penggunaan AI, dan subscr
 
 Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 
+### Phase 2 Material Journey
+
+1. User membuka menu Material Management langsung dari dashboard.
+2. User membuat material melalui upload PDF, DOCX, TXT, atau input teks manual.
+3. Sistem memvalidasi input; upload dibatasi sementara maksimal 10 MB per file sampai quota Phase 3 tersedia.
+4. Text material langsung siap, sedangkan upload diproses melalui extraction queue.
+5. User memantau status extraction dan dapat retry jika gagal.
+6. User mengatur chapter, sub-chapter, topic, focus area, serta optional page range.
+7. User dapat mengarsipkan material draft/ready dan memulihkan material archived menjadi ready.
+
+Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan material dari flow question set baru digunakan ketika Phase 5 diimplementasikan.
+
 ## Functional Requirements
 
 ### Authentication
@@ -92,9 +105,12 @@ Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 - FR-MAT-02: Sistem menyimpan metadata file, ukuran, MIME type, hash, dan status ekstraksi.
 - FR-MAT-03: User dapat menentukan bab, sub-bab, topik, serta focus area.
 - FR-MAT-04: User hanya dapat melihat dan mengubah materi miliknya.
-- FR-MAT-05: Sistem menghitung file aktif terhadap storage limit plan.
-
-Format upload final akan dikunci sebelum Phase 2. Kandidat MVP: PDF, DOCX, dan TXT.
+- FR-MAT-05: Sistem menghitung seluruh upload yang belum dihapus terhadap storage usage, termasuk material archived dan extraction failed.
+- FR-MAT-06: Phase 2 hanya menerima PDF, DOCX, dan TXT dengan batas sementara 10 MB per file.
+- FR-MAT-07: Upload wajib memiliki file path internal, file size, MIME type, SHA-256 file hash, dan extraction status.
+- FR-MAT-08: Kombinasi user dan file hash wajib unique untuk menolak upload duplikat milik user yang sama.
+- FR-MAT-09: User dapat mengubah material draft/ready menjadi archived dan memulihkan material archived menjadi ready.
+- FR-MAT-10: Phase 2 Material Management dapat digunakan langsung dari dashboard tanpa membuat question set.
 
 ### AI Generation
 
@@ -193,7 +209,7 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 
 ## Open Decisions
 
-- Format file upload final dan batas ukuran per plan.
 - Nilai generation credit serta storage limit Free dan Pro.
+- Batas upload per plan yang menggantikan batas sementara 10 MB setelah Phase 3.
 - Format export pertama: PDF, DOCX, XLSX, atau LMS.
 - Provider payment dan WhatsApp untuk fase post-MVP.

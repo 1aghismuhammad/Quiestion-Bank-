@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.4
+- Version: 0.6
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -44,6 +44,8 @@ MVP dibangun sebagai satu aplikasi Laravel agar deployment, authorization, trans
 ### Blade + Livewire
 
 Blade menangani layout dan server-rendered page. Livewire menangani form interaktif, status queue, filter dashboard, review soal, dan admin tools. REST API publik tidak menjadi kebutuhan MVP.
+
+Phase 2 Material Management secara khusus menggunakan Blade, controller, Form Request, policy, action/service, dan JavaScript polling minimal. Phase 2 tidak menginstal atau membuat Livewire component; Livewire hanya dapat diperkenalkan pada phase lain melalui keputusan terpisah.
 
 ### Google OAuth Only
 
@@ -112,12 +114,18 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 
 ### Material Management
 
-- Upload file dan input teks manual.
+- Menu material berdiri sendiri dan dapat dibuka langsung dari dashboard tanpa membuat question set.
+- Upload hanya mendukung PDF, DOCX, dan TXT dengan batas sementara 10 MB per file sampai Phase 3.
+- Input teks manual langsung menghasilkan material ready.
 - Metadata file, hash, extraction status, dan storage usage.
 - Chapter, sub-chapter, topic, dan focus area.
 - Ownership policy.
 - Material text memakai extraction status `not_required`; upload berjalan dari pending ke processing lalu completed/failed.
 - Material berubah dari draft menjadi ready setelah teks tersedia atau extraction selesai.
+- Upload wajib menyimpan internal file path, file size, MIME type, SHA-256 hash, dan extraction status.
+- Kombinasi user dan file hash unique untuk mencegah duplikasi per user.
+- Storage usage menghitung seluruh upload yang belum dihapus, termasuk archived dan extraction failed.
+- Lifecycle material mendukung `draft|ready -> archived` dan owner restore `archived -> ready`.
 
 ### Subscription and Quota
 

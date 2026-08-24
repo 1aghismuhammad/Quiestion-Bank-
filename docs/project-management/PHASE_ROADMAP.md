@@ -62,19 +62,22 @@ Status: `PLANNED`
 
 Scope:
 
-- Material upload.
+- Material menu berdiri sendiri dari dashboard tanpa dependency question set.
+- Material upload PDF, DOCX, dan TXT dengan batas sementara 10 MB per file.
 - Text input.
 - File validation dan private storage.
 - Content extraction queue.
 - Chapter, sub-chapter, topic, dan focus.
 - Ownership policy dan storage usage.
+- Lifecycle `draft|ready -> archived` dan owner restore `archived -> ready`.
 
 Definition of Done:
 
 - Upload dan text source tervalidasi.
 - Extraction success/failure dapat dipantau.
 - User tidak dapat mengakses material user lain.
-- Storage limit dapat dihitung dari material aktif.
+- Storage usage dapat dihitung dari seluruh upload non-deleted, termasuk archived dan extraction failed.
+- Duplicate file milik user yang sama ditolak melalui `(user_id, file_hash)`.
 
 ## Phase 3 - Subscription and Quota Foundation
 

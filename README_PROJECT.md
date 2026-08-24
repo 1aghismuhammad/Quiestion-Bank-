@@ -28,6 +28,7 @@ Question type MVP:
 
 - Backend: Laravel 13 on PHP 8.3+.
 - Frontend: Blade + Livewire.
+- Phase 2 UI: Blade/controller only; no Livewire component.
 - Authentication: Google OAuth only.
 - AI: Google Gemini.
 - Processing: queue for long-running operation.
@@ -59,7 +60,7 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 
 - Phase 0: foundation dan dokumentasi.
 - Phase 1: authentication.
-- Phase 2: material management.
+- Phase 2: standalone material management dari dashboard untuk PDF, DOCX, TXT, dan text input.
 - Phase 3: subscription/quota foundation.
 - Phase 4: AI question engine.
 - Phase 5: question bank.

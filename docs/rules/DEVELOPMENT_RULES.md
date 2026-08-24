@@ -9,6 +9,7 @@ Keputusan stack:
 - PHP 8.3+
 - Laravel 13
 - Blade + Livewire + Tailwind CSS
+- Phase 2 Material Management wajib Blade/controller dan tidak menambahkan Livewire dependency atau component
 - Google OAuth melalui Laravel Socialite
 - Google Gemini melalui service/adapter internal
 - Queue untuk AI generation, extraction, serta broadcast ketika Phase 7 dimulai
@@ -26,6 +27,7 @@ Gunakan pragmatic modular architecture:
 
 Rules:
 
+- Phase 2 menggunakan route, controller, Form Request, policy, action/service, model, dan job tanpa Livewire component.
 - Livewire component tidak boleh berisi query kompleks atau provider call.
 - Controller/Livewire tidak mengelola transaction bisnis.
 - Provider-specific response tidak boleh menyebar ke domain layer.
@@ -130,12 +132,16 @@ Additional rules:
 
 ## File Upload
 
-- Gunakan allowlist MIME type dan extension.
-- Validasi file size berdasarkan plan.
+- Phase 2 hanya menerima PDF, DOCX, dan TXT.
+- Phase 2 memakai batas sementara 10 MB per file sampai limit berbasis plan tersedia pada Phase 3.
+- Gunakan allowlist MIME type dan extension; keduanya wajib sesuai.
+- Upload wajib menyimpan internal file path, file size, MIME type, SHA-256 file hash, dan extraction status.
 - Nama file asli tidak digunakan sebagai storage path.
-- Simpan hash untuk deteksi duplikasi.
+- Kombinasi `(user_id, file_hash)` wajib unique untuk mencegah duplikasi per user.
 - File private tidak boleh diakses melalui URL publik tanpa authorization.
 - Content extraction dijalankan melalui queue.
+- Storage usage menghitung seluruh upload non-deleted termasuk archived dan extraction failed.
+- Archive mempertahankan file; owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
 
 ## Security
 

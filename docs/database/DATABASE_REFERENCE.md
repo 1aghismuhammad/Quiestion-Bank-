@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.4
+- Version: 0.6
 - Domain entities: 16
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; entitas future mengikuti DBML sampai phase implementasinya
@@ -83,16 +83,21 @@ Materi milik user yang berasal dari upload atau input teks.
 
 Aturan aplikasi:
 
-- Source upload mewajibkan file path, file size, dan MIME type.
+- Source upload Phase 2 hanya menerima PDF, DOCX, dan TXT dengan batas sementara 10 MB per file.
+- Source upload mewajibkan internal file path, file size, MIME type, SHA-256 file hash, dan extraction status.
 - Source text mewajibkan content.
+- `materials.content` menggunakan LONGTEXT agar hasil extraction tidak dibatasi kapasitas MySQL TEXT.
 - Source text memakai extraction status `not_required` dan dapat langsung berubah dari draft menjadi ready.
 - Source upload berjalan pending, processing, completed/failed; status material menjadi ready setelah extraction completed.
-- File aktif dihitung terhadap `plans.storage_limit_mb`.
-- File hash digunakan untuk mendeteksi duplikasi.
+- Seluruh upload yang belum dihapus dihitung sebagai storage usage, termasuk material archived dan extraction failed.
+- Kombinasi `(user_id, file_hash)` unique untuk menolak upload duplikat milik user yang sama.
+- Lifecycle owner: `draft|ready -> archived` dan `archived -> ready`.
+- Material Management Phase 2 berdiri sendiri dari dashboard dan tidak memiliki dependency pada question set.
+- Nilai quota serta limit per plan tetap menjadi tanggung jawab Phase 3; Phase 2 memakai batas sementara 10 MB.
 
 #### `material_topics`
 
-Bab, sub-bab, topik, focus area, dan rentang halaman yang berasal dari satu material.
+Bab, sub-bab, topik, focus area, dan rentang halaman yang berasal dari satu material. Input chapter dan sub-chapter yang kosong dinormalisasi menjadi empty string non-null.
 
 Kombinasi material, chapter, sub-chapter, dan topic dibuat unique.
 
@@ -243,6 +248,13 @@ Phase 1:
 2. roles
 3. role_user
 4. whatsapp_contacts
+
+Phase 2:
+
+1. materials, setelah users Phase 1
+2. material_topics, setelah materials
+
+Phase 3 menambahkan plans dan subscriptions tanpa menjadi dependency migration untuk materials.
 
 Urutan target schema lengkap:
 

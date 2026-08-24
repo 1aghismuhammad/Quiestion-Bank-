@@ -26,6 +26,40 @@ Notes:
 -
 ```
 
+## v0.6 Phase 2 Material Design Alignment
+
+- Date: 24 August 2026
+- Version: 0.6
+- Phase: Phase 2 - Material Management
+- Type: Canonical design decision
+
+Added:
+
+- Standalone Material Management flow from the user dashboard.
+- Canonical PDF, DOCX, and TXT allowlist with a temporary 10 MB per-file limit.
+- Owner restore transition from archived material back to ready.
+
+Changed:
+
+- Phase 2 remains Blade/controller based without Livewire.
+- Material content uses LONGTEXT.
+- Upload metadata requires internal path, size, MIME type, SHA-256 hash, and extraction status.
+- Duplicate protection uses unique `(user_id, file_hash)`.
+- Empty chapter and sub-chapter values normalize to non-null empty strings.
+- Storage usage counts every non-deleted upload, including archived and extraction failed.
+- Material lifecycle is `draft|ready -> archived` and `archived -> ready`.
+
+Database Impact:
+
+- Canonical `materials` and `material_topics` definitions are aligned before migrations are implemented.
+- No migration or application code is included in this documentation-only decision.
+
+Notes:
+
+- Phase 2 remains `PLANNED`.
+- PDF/DOCX extraction dependencies still require explicit approval before Composer changes.
+- Plan-specific quota values remain deferred to Phase 3.
+
 ## v0.5 Phase 1 Authentication
 
 - Date: 21 August 2026

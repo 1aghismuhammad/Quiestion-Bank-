@@ -6,7 +6,8 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 
 - Phase: 1 - Authentication and User Management (`IMPLEMENTED`)
 - Application code: Google OAuth, role access, profile setup, and basic dashboards
-- Documentation version: 0.5
+- Next phase: 2 - Material Management (`PLANNED`, canonical design approved)
+- Documentation version: 0.6
 - MVP target: Phase 0-6
 - Database design: 16 domain entities
 
@@ -16,6 +17,7 @@ Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap s
 
 - PHP 8.3+ dan Laravel 13.
 - Blade + Livewire untuk UI.
+- Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Google OAuth only melalui Laravel Socialite.
 - Google Gemini sebagai AI provider MVP.
 - Queue untuk generation, extraction, serta broadcast pada Phase 7.
@@ -60,8 +62,8 @@ Environment value dan credential tidak boleh dicatat dalam repository.
 
 ## Open Product Decisions
 
-- Format dan ukuran file upload MVP.
 - Nilai quota generation/storage Free dan Pro.
+- Limit upload per plan yang akan menggantikan batas sementara Phase 2 sebesar 10 MB.
 - Format export pertama.
 - Provider payment dan WhatsApp post-MVP.
 
