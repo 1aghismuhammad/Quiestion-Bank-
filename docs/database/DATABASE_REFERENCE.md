@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.6
+- Version: 0.6.1
 - Domain entities: 16
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; entitas future mengikuti DBML sampai phase implementasinya
@@ -97,9 +97,11 @@ Aturan aplikasi:
 
 #### `material_topics`
 
-Bab, sub-bab, topik, focus area, dan rentang halaman yang berasal dari satu material. Input chapter dan sub-chapter yang kosong dinormalisasi menjadi empty string non-null.
+Bab, sub-bab, topik, focus area, urutan, dan rentang halaman yang berasal dari satu material. Input chapter dan sub-chapter yang kosong dinormalisasi menjadi empty string non-null.
 
-Kombinasi material, chapter, sub-chapter, dan topic dibuat unique.
+`sort_order` adalah unsigned integer dengan default `0` untuk mempertahankan urutan topik pada pemrosesan AI/konten berikutnya. Kombinasi material, chapter, sub-chapter, dan topic tetap unique; urutan tidak menjadi bagian constraint unique.
+
+Kombinasi material, chapter, sub-chapter, dan topic dibuat unique. Index `(material_id, sort_order)` dipakai untuk membaca topik sesuai urutan.
 
 ### AI Engine
 
@@ -293,3 +295,5 @@ Institution Plan tidak diaktifkan sebelum organization dan membership model dira
 - Default migration `users` Laravel harus diselaraskan sebelum migration domain dibuat.
 - Database constraints tidak menggantikan Form Request, Livewire validation, policy, dan domain invariant.
 - Perubahan schema wajib memperbarui DBML, dokumen ini, migration, model, test, dan changelog.
+- Pengembangan lokal memakai MySQL 8+ melalui Laragon dengan `DB_CONNECTION=mysql`. Jangan memakai SQLite sebagai database aplikasi lokal.
+- Test otomatis tetap memakai SQLite in-memory melalui `phpunit.xml` dan tidak mengubah `DB_CONNECTION` di `.env`.

@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.6
+// Version: 0.6.1
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -264,13 +264,14 @@ Table material_topics {
   focus_area varchar(255)
   chapter varchar(255) [not null, default: '']
   sub_chapter varchar(255) [not null, default: '']
+  sort_order int [not null, default: 0, note: 'Urutan topik untuk pemrosesan AI/konten']
   page_start int
   page_end int
   created_at timestamp
   updated_at timestamp
 
   indexes {
-    material_id
+    (material_id, sort_order)
     (material_id, chapter, sub_chapter, topic_name) [unique]
   }
 }

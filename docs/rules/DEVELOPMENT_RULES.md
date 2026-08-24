@@ -74,6 +74,8 @@ app/Services/Subscriptions
 
 ## Database
 
+- Pengembangan lokal memakai MySQL 8+ melalui Laragon. Pastikan MySQL Laragon berjalan sebelum `php artisan migrate`, `migrate:status`, atau `migrate --pretend`.
+- `.env` lokal wajib `DB_CONNECTION=mysql`. SQLite hanya untuk test otomatis melalui `phpunit.xml`.
 - Semua perubahan schema menggunakan migration.
 - `docs/database/AI_QUESTION_BANK.dbml` adalah desain canonical.
 - Semua foreign key memiliki index.

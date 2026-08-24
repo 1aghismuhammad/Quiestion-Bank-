@@ -32,7 +32,8 @@ Question type MVP:
 - Authentication: Google OAuth only.
 - AI: Google Gemini.
 - Processing: queue for long-running operation.
-- Database: 16 domain entities documented in canonical DBML.
+- Database: MySQL 8+ (Laragon for local development; `DB_CONNECTION=mysql`). Canonical DBML documents 16 domain entities.
+- Automated tests: SQLite in-memory via `phpunit.xml`.
 
 ## Product Modules
 

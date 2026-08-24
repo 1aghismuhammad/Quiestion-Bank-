@@ -10,6 +10,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -39,6 +40,11 @@ class User extends Authenticatable
     public function whatsappContact(): HasOne
     {
         return $this->hasOne(WhatsAppContact::class);
+    }
+
+    public function materials(): HasMany
+    {
+        return $this->hasMany(Material::class);
     }
 
     public function hasRole(RoleName|string $role): bool

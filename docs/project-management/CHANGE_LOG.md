@@ -26,6 +26,33 @@ Notes:
 -
 ```
 
+## v0.6.1 Phase 2.1 Schema Refinement
+
+- Date: 24 August 2026
+- Version: 0.6.1
+- Phase: Phase 2 - Material Management
+- Type: Schema refinement
+
+Added:
+
+- `material_topics.sort_order` unsigned integer, default `0`, to preserve topic order for later AI/content processing.
+- Local MySQL/Laragon development requirement with `DB_CONNECTION=mysql`.
+
+Changed:
+
+- Canonical DBML and database reference now include topic sort order and `(material_id, sort_order)` index.
+
+Database Impact:
+
+- Pending `create_material_topics_table` migration includes `sort_order` before the table is applied.
+- Materials core columns are unchanged.
+- Rollback still drops only `material_topics` then `materials`.
+
+Notes:
+
+- Phase 2.2 is not included.
+- Automated tests continue to use SQLite in-memory via `phpunit.xml`.
+
 ## v0.6 Phase 2 Material Design Alignment
 
 - Date: 24 August 2026
