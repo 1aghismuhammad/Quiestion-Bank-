@@ -47,7 +47,7 @@ Blade menangani layout dan server-rendered page. Livewire menangani form interak
 
 ### Google OAuth Only
 
-Laravel Socialite menangani redirect dan callback Google. Tidak ada registration, password login, atau password reset lokal. Admin adalah user Google dengan role `admin`, bukan guard terpisah.
+Laravel Socialite menangani redirect dan callback Google. Tidak ada registration, password login, atau password reset lokal. Admin adalah user Google dengan role `ADMIN`, bukan guard terpisah.
 
 ### Google Gemini
 
@@ -105,7 +105,8 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 
 - Google OAuth redirect dan callback.
 - Auto-provision user dan sinkronisasi profil.
-- Role `user` dan `admin`.
+- Role `USER` dan `ADMIN`.
+- First-login phone setup melalui `whatsapp_contacts`.
 - User status enforcement.
 - Session termination dan logout.
 

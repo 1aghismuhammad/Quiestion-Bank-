@@ -143,21 +143,18 @@ Enum delivery_status {
 //////////////////////////////////////////////////////
 
 Table users {
-  user_id bigint [pk, increment]
+  id bigint [pk, increment]
   google_id varchar(255) [not null, unique]
   name varchar(255) [not null]
   email varchar(255) [not null, unique]
-  email_verified_at timestamp
   avatar_url varchar(2048)
   phone_number varchar(32)
   phone_verified_at timestamp
   marketing_consent boolean [not null, default: false]
   status user_status [not null, default: 'active']
   last_login_at timestamp
-  remember_token varchar(100)
   created_at timestamp
   updated_at timestamp
-  deleted_at timestamp
 
   indexes {
     status
@@ -168,13 +165,13 @@ Table users {
 }
 
 Table roles {
-  role_id bigint [pk, increment]
-  role_name varchar(64) [not null, unique]
+  id bigint [pk, increment]
+  role_name varchar(32) [not null, unique]
   description text
   created_at timestamp
   updated_at timestamp
 
-  Note: 'Seed minimum: user dan admin.'
+  Note: 'Seed minimum: USER dan ADMIN.'
 }
 
 Table role_user {
@@ -443,7 +440,7 @@ Table question_options {
 //////////////////////////////////////////////////////
 
 Table whatsapp_contacts {
-  contact_id bigint [pk, increment]
+  id bigint [pk, increment]
   user_id bigint [not null, unique]
   phone_number varchar(32) [not null, unique]
   country_code varchar(8) [not null, default: '+62']
@@ -512,34 +509,34 @@ Table broadcast_logs {
 // RELATIONSHIPS
 //////////////////////////////////////////////////////
 
-Ref: users.user_id < role_user.user_id [delete: cascade]
-Ref: roles.role_id < role_user.role_id [delete: cascade]
+Ref: users.id < role_user.user_id [delete: cascade]
+Ref: roles.id < role_user.role_id [delete: cascade]
 
-Ref: users.user_id < subscriptions.user_id
+Ref: users.id < subscriptions.user_id
 Ref: plans.plan_id < subscriptions.plan_id
-Ref: users.user_id < subscriptions.approved_by
+Ref: users.id < subscriptions.approved_by
 
-Ref: users.user_id < materials.user_id
+Ref: users.id < materials.user_id
 Ref: materials.material_id < material_topics.material_id [delete: cascade]
 
-Ref: users.user_id < prompt_versions.created_by
-Ref: users.user_id < ai_generations.user_id
+Ref: users.id < prompt_versions.created_by
+Ref: users.id < ai_generations.user_id
 Ref: materials.material_id < ai_generations.material_id
 Ref: material_topics.topic_id < ai_generations.topic_id
 Ref: prompt_versions.prompt_version_id < ai_generations.prompt_version_id
 Ref: ai_generations.generation_id < ai_generations.parent_generation_id
 
-Ref: users.user_id < ai_usage_logs.user_id
+Ref: users.id < ai_usage_logs.user_id
 Ref: subscriptions.subscription_id < ai_usage_logs.subscription_id
 Ref: ai_generations.generation_id < ai_usage_logs.generation_id
 
-Ref: users.user_id < question_sets.user_id
+Ref: users.id < question_sets.user_id
 Ref: ai_generations.generation_id - question_sets.generation_id
-Ref: users.user_id < question_sets.reviewed_by
+Ref: users.id < question_sets.reviewed_by
 Ref: question_sets.question_set_id < questions.question_set_id [delete: cascade]
 Ref: questions.question_id < question_options.question_id [delete: cascade]
 
-Ref: users.user_id - whatsapp_contacts.user_id [delete: cascade]
-Ref: users.user_id < broadcast_campaigns.admin_id
+Ref: users.id - whatsapp_contacts.user_id [delete: cascade]
+Ref: users.id < broadcast_campaigns.admin_id
 Ref: broadcast_campaigns.campaign_id < broadcast_logs.campaign_id [delete: cascade]
-Ref: users.user_id < broadcast_logs.user_id
+Ref: users.id < broadcast_logs.user_id

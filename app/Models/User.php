@@ -1,21 +1,57 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\RoleName;
+use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable([
+    'google_id',
+    'name',
+    'email',
+    'avatar_url',
+    'phone_number',
+    'phone_verified_at',
+    'marketing_consent',
+    'status',
+    'last_login_at',
+])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class)
+            ->withPivot('created_at');
+    }
+
+    public function whatsappContact(): HasOne
+    {
+        return $this->hasOne(WhatsAppContact::class);
+    }
+
+    public function hasRole(RoleName|string $role): bool
+    {
+        $roleName = $role instanceof RoleName ? $role->value : $role;
+
+        return $this->roles()->where('role_name', $roleName)->exists();
+    }
+
+    public function hasCompletedProfile(): bool
+    {
+        return $this->whatsappContact()->whereNotNull('phone_number')->exists();
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -25,8 +61,10 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
+            'phone_verified_at' => 'datetime',
+            'marketing_consent' => 'boolean',
+            'status' => UserStatus::class,
+            'last_login_at' => 'datetime',
         ];
     }
 }

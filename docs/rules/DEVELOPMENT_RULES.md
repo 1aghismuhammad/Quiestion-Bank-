@@ -52,11 +52,12 @@ app/Services/Subscriptions
 
 - Hanya Google OAuth; jangan menambahkan registration atau password login.
 - Socialite callback harus memvalidasi state.
-- User baru mendapatkan role `user`.
-- Admin memakai akun yang sama dengan role `admin`.
-- Route admin menggunakan middleware role dan policy.
+- User baru mendapatkan role `USER`.
+- Admin memakai akun yang sama dengan role `ADMIN`.
+- Route admin menggunakan middleware role; policy ditambahkan pada setiap aksi resource domain saat modulnya diimplementasikan.
 - Suspended/inactive user ditolak setelah OAuth callback.
 - Model dan migration users tidak menyimpan password lokal.
+- User tanpa WhatsApp contact wajib menyelesaikan profile setup sebelum dashboard.
 - Test OAuth menggunakan fake/mock provider; jangan memanggil Google sungguhan.
 
 ## Livewire

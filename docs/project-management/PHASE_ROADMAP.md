@@ -15,7 +15,7 @@ Urutan diperbarui agar quota tersedia sebelum AI generation dan admin flow terse
 
 ## Phase 0 - Foundation
 
-Status: `IN PROGRESS`
+Status: `DONE`
 
 Scope:
 
@@ -36,23 +36,25 @@ Definition of Done:
 
 ## Phase 1 - Authentication and Authorization
 
-Status: `PLANNED`
+Status: `DONE`
 
 Scope:
 
 - Laravel Socialite dan Google OAuth.
 - User provisioning dan profile sync.
-- Roles user/admin.
+- Roles USER/ADMIN.
+- First-login WhatsApp contact setup.
 - User status enforcement.
-- Route middleware dan policy foundation.
+- Route middleware; policy resource mulai diterapkan saat modul ownership tersedia pada Phase 2.
 - Logout dan session termination.
 
 Definition of Done:
 
 - Tidak ada email/password registration.
-- User baru menerima Free subscription dan role user.
+- User baru menerima role USER.
+- User tanpa nomor telepon diarahkan ke profile setup.
 - Admin route ditolak untuk non-admin.
-- OAuth success, failure, suspended user, dan logout memiliki feature test.
+- OAuth success/failure, suspended user, profile setup, relationship, dan admin authorization memiliki feature test.
 
 ## Phase 2 - Material Management
 
@@ -81,6 +83,7 @@ Status: `PLANNED`
 Scope:
 
 - Seed Free dan Pro plan.
+- Provision Free subscription untuk user yang belum memiliki subscription.
 - Subscription lifecycle.
 - Generation credit per billing period.
 - Storage limit.

@@ -26,6 +26,43 @@ Notes:
 -
 ```
 
+## v0.5 Phase 1 Authentication
+
+- Date: 21 August 2026
+- Version: 0.5
+- Phase: Phase 1 - Authentication and User Management
+- Type: Feature implementation
+
+Added:
+
+- Google OAuth-only authentication with Laravel Socialite.
+- User provisioning and Google profile synchronization.
+- USER and ADMIN roles with composite pivot relation.
+- First-login phone setup backed by `whatsapp_contacts`.
+- Account status, profile completeness, and role middleware.
+- User and admin dashboard.
+- Authentication, relationship, profile, and authorization tests.
+
+Changed:
+
+- Phase 1 uses Laravel conventional `id` primary keys.
+- Free subscription provisioning is deferred to Phase 3.
+- WhatsApp contact identity is created in Phase 1; CRM operations remain Phase 7.
+- Socialite compatibility uses Guzzle 7 instead of the previous Guzzle 8 lock.
+
+Database Impact:
+
+- Added Google identity, profile, consent, status, and login fields to users.
+- Removed local password and password reset storage.
+- Added roles, role_user, and whatsapp_contacts.
+- Framework sessions, cache, and jobs tables remain infrastructure tables.
+- OAuth migration requires empty legacy authentication data and blocks rollback while users exist.
+
+Notes:
+
+- No material, subscription, AI, question bank, monitoring, or broadcast feature is implemented.
+- Google credentials must be configured outside the repository.
+
 ## v0.4 System Design Alignment
 
 - Date: 21 August 2026

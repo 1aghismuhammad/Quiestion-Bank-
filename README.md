@@ -4,9 +4,9 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 
 ## Current Status
 
-- Phase: 0 - Foundation (`IN PROGRESS`)
-- Application code: Laravel 13 skeleton
-- Documentation version: 0.4
+- Phase: 1 - Authentication and User Management (`IMPLEMENTED`)
+- Application code: Google OAuth, role access, profile setup, and basic dashboards
+- Documentation version: 0.5
 - MVP target: Phase 0-6
 - Database design: 16 domain entities
 

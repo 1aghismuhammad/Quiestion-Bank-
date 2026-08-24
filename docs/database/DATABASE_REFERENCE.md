@@ -11,7 +11,7 @@ DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen
 - Version: 0.4
 - Domain entities: 16
 - Target implementation: Laravel 13 / MySQL 8+
-- Primary key style: nama eksplisit seperti `user_id`
+- Primary key style: Laravel `id` untuk entitas Phase 1; entitas future mengikuti DBML sampai phase implementasinya
 - Timestamp style: `created_at`, `updated_at`, dan `deleted_at` jika diperlukan
 
 Tabel bawaan Laravel seperti sessions, cache, jobs, job batches, dan failed jobs tidak dihitung sebagai domain entity.
@@ -46,11 +46,12 @@ Key constraints:
 - `google_id` dan `email` wajib serta unique.
 - Tidak ada password lokal.
 - Status: active, suspended, inactive.
-- Soft delete mempertahankan audit.
+- Migration OAuth Phase 1 hanya berjalan otomatis ketika tabel legacy users dan password reset masih kosong.
+- Rollback migration OAuth ditolak ketika user OAuth sudah ada agar identitas login tidak terhapus.
 
 #### `roles`
 
-Daftar role aplikasi. Seed minimum: `user` dan `admin`. `role_name` wajib unique.
+Daftar role aplikasi. Seed Phase 1: `USER` dan `ADMIN`. `role_name` wajib unique.
 
 #### `role_user`
 
@@ -71,7 +72,7 @@ Riwayat kepemilikan plan user, periode aktif, payment status, dan approval admin
 Aturan aplikasi:
 
 - Maksimal satu subscription aktif per user.
-- Free subscription dibuat saat user baru diprovision.
+- Free subscription baru dibuat saat Phase 3 diimplementasikan.
 - Aktivasi dan penolakan mencatat admin serta waktu keputusan.
 
 ### Material Management
@@ -188,6 +189,8 @@ Satu contact WhatsApp per user, disimpan dalam format E.164. Contact menyimpan v
 
 `whatsapp_contacts.phone_number` menjadi sumber utama pengiriman WhatsApp. `users.phone_number` hanya profil umum.
 
+Phase 1 mengimplementasikan identitas contact, country code, status verifikasi, consent, dan last message timestamp untuk profile setup. Provider ID dan opt-out workflow tetap Phase 7.
+
 #### `broadcast_campaigns`
 
 Campaign milik admin dengan message template, JSON target segment, schedule, aggregate result, dan status.
@@ -234,6 +237,15 @@ erDiagram
 
 ## Migration Order
 
+Phase 1:
+
+1. Prepare users for Google OAuth
+2. roles
+3. role_user
+4. whatsapp_contacts
+
+Urutan target schema lengkap:
+
 1. users
 2. roles
 3. role_user
@@ -257,15 +269,15 @@ Self-reference `ai_generations.parent_generation_id` dapat ditambahkan setelah t
 
 Minimum seed:
 
-- Roles: user, admin.
-- Plans: Free, Pro.
+- Phase 1 roles: USER, ADMIN.
+- Phase 3 plans: Free, Pro.
 - One active prompt version dengan schema gabungan yang diskriminatif untuk ketiga question type.
 
 Institution Plan tidak diaktifkan sebelum organization dan membership model dirancang.
 
 ## Implementation Notes
 
-- Model Eloquent dengan custom primary key wajib mendefinisikan `$primaryKey`.
+- Model Eloquent dengan custom primary key pada entitas future wajib mendefinisikan `$primaryKey`.
 - Default migration `users` Laravel harus diselaraskan sebelum migration domain dibuat.
 - Database constraints tidak menggantikan Form Request, Livewire validation, policy, dan domain invariant.
 - Perubahan schema wajib memperbarui DBML, dokumen ini, migration, model, test, dan changelog.

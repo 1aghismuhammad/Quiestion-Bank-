@@ -80,10 +80,11 @@ Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 ### Authentication
 
 - FR-AUTH-01: Sistem hanya menyediakan login Google OAuth.
-- FR-AUTH-02: Login pertama membuat user dengan role `user` dan Free subscription.
-- FR-AUTH-03: Login berikutnya memperbarui nama, avatar, email terverifikasi, dan waktu login terakhir.
-- FR-AUTH-04: Halaman admin hanya dapat diakses user dengan role `admin`.
+- FR-AUTH-02: Login pertama membuat user dengan role `USER`; Free subscription baru diprovision pada Phase 3.
+- FR-AUTH-03: Login berikutnya memperbarui nama, avatar, email Google, dan waktu login terakhir.
+- FR-AUTH-04: Halaman admin hanya dapat diakses user dengan role `ADMIN`.
 - FR-AUTH-05: User berstatus suspended atau inactive tidak dapat mengakses aplikasi.
+- FR-AUTH-06: User tanpa WhatsApp contact wajib melengkapi nomor telepon sebelum mengakses dashboard.
 
 ### Material Management
 
