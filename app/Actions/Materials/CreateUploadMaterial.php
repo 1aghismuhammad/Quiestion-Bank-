@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -64,6 +65,7 @@ class CreateUploadMaterial
     private function ownerAlreadyHasHash(User $user, string $hash): bool
     {
         return Material::query()
+            ->withTrashed()
             ->where('user_id', $user->id)
             ->where('file_hash', $hash)
             ->exists();
@@ -75,6 +77,13 @@ class CreateUploadMaterial
             return;
         }
 
-        $this->fileStore->delete($stored->path);
+        try {
+            $this->fileStore->delete($stored->path);
+        } catch (Throwable $cleanupException) {
+            Log::warning('Material upload file cleanup failed.', [
+                'path' => $stored->path,
+                'exception' => $cleanupException::class,
+            ]);
+        }
     }
 }
