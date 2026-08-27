@@ -5,19 +5,22 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 ## Current Status
 
 - Phase 1 - Authentication and User Management: `IMPLEMENTED`
-- Phase 2 - Material Management: `IN PROGRESS` (canonical design approved; Phase 2 Definition of Done not yet met)
+- Phase 2 - Material Management: `COMPLETE`
+- Phase 2.1 - Material Domain Foundation: `COMPLETE`
+- Phase 2.2 - Material Creation Flow: `COMPLETE`
+- Phase 2.3 - Private Storage & Usage: `COMPLETE`
 - Phase 2.4 - Content Extraction: `COMPLETE`
 - Phase 2.5 - Topic Management: `COMPLETE`
 - Phase 2.6 - Material Ownership & Authorization: `COMPLETE`
 - Phase 2.7 - Archive / Restore Lifecycle: `COMPLETE`
 - Phase 2.8 - Material Web Management: `COMPLETE`
-- Application code: Google OAuth, role access, profile setup, dashboards, and owner-scoped Blade Material Management (create text/upload, detail, topics, archive/restore) on top of Phase 2.1–2.6 domain, storage, extraction, and authorization
-- Next technical milestone: Phase 2 final integration / QA / documentation closure
-- Documentation version: 0.6.5
+- Application code: Google OAuth, role access, profile setup, dashboards, and owner-scoped Blade Material Management (create text/upload, detail, topics, archive/restore) with private storage, duplicate protection, storage usage accounting, and PDF/DOCX/TXT extraction
+- Next phase: Phase 3 - Subscription & Quota Foundation (`PLANNED`; not started)
+- Documentation version: 0.6.6
 - MVP target: Phase 0-6
 - Database design: 16 domain entities
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 2.7–2.8 archive/restore and Material web UI are technically complete; Phase 2 overall is not complete.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 2 Material Management is complete. Phase 3 has not started.
 
 ## Architecture Decisions
 

@@ -58,9 +58,9 @@ Definition of Done:
 
 ## Phase 2 - Material Management
 
-Status: `IN PROGRESS`
+Status: `DONE`
 
-Technical slices complete (Phase 2 Definition of Done not met):
+Technical slices complete:
 
 - Material domain foundation (schema, models, enums).
 - Material creation flow (text and upload actions).
@@ -74,10 +74,9 @@ Technical slices complete (Phase 2 Definition of Done not met):
 - Material ownership / authorization (`COMPLETE`): owner-only `MaterialPolicy`; ADMIN does not receive global Material access.
 - Archive / restore lifecycle (`COMPLETE`): owner `draft|ready -> archived` and `archived -> ready`; archive is Material status, not soft delete.
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
+- Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Remaining Phase 2 scope (not started or not complete):
-
-- Phase 2 final integration / QA.
+Next phase: Phase 3 - Subscription and Quota Foundation (`PLANNED`; not started).
 
 Scope:
 

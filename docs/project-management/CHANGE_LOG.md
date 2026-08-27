@@ -26,6 +26,33 @@ Notes:
 -
 ```
 
+## v0.6.6 Phase 2 Closure
+
+- Date: 27 August 2026
+- Version: 0.6.6
+- Phase: Phase 2 - Material Management
+- Type: Documentation / integration closure
+
+Added:
+
+- None. Application code was already complete through Phase 2.8.
+
+Changed:
+
+- Phase 2.1–2.8 are `COMPLETE`. Phase 2 overall is `COMPLETE`. Next phase is Phase 3 Subscription & Quota Foundation (`PLANNED`; not started).
+
+Database Impact:
+
+- None. No migration. No DBML change.
+
+Notes:
+
+- Final integration/QA found no application defects requiring a code fix.
+- Owner-scoped listing, owner-only policy, nested topic IDOR protection, private materials disk, archive-as-status (not soft delete), and after-commit extraction dispatch remain as implemented.
+- Automatic Laravel queue retry remains implemented. No `RetryMaterialExtraction` Action or manual retry UI.
+- ADMIN still does not receive global Material access.
+- Phase 3 has not started. No subscription, quota, Gemini, or Question Bank implementation in this closure.
+
 ## v0.6.5 Phase 2.7–2.8 Archive/Restore and Material Web UI
 
 - Date: 27 August 2026
