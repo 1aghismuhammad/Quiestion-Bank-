@@ -23,7 +23,10 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['material_id', 'sort_order']);
-            $table->unique(['material_id', 'chapter', 'sub_chapter', 'topic_name']);
+            $table->unique(
+                ['material_id', 'chapter', 'sub_chapter', 'topic_name'],
+                'material_topics_path_unique',
+            );
         });
     }
 

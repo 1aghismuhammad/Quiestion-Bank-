@@ -101,6 +101,44 @@ class PhaseTwoMaterialSchemaTest extends TestCase
             ['material_id', 'chapter', 'sub_chapter', 'topic_name'],
             unique: true,
         ));
+
+        $unique = $this->index(
+            'material_topics',
+            ['material_id', 'chapter', 'sub_chapter', 'topic_name'],
+            unique: true,
+        );
+
+        $this->assertSame('material_topics_path_unique', $unique['name']);
+        $this->assertLessThanOrEqual(64, strlen($unique['name']));
+        $this->assertGreaterThan(
+            64,
+            strlen('material_topics_material_id_chapter_sub_chapter_topic_name_unique'),
+        );
+    }
+
+    public function test_phase_two_index_and_foreign_key_names_fit_mysql_identifier_limit(): void
+    {
+        foreach (['materials', 'material_topics'] as $table) {
+            foreach (Schema::getIndexes($table) as $index) {
+                $this->assertLessThanOrEqual(
+                    64,
+                    strlen($index['name']),
+                    "Index {$index['name']} on {$table} exceeds MySQL's 64-character identifier limit.",
+                );
+            }
+
+            foreach (Schema::getForeignKeys($table) as $foreignKey) {
+                if (! isset($foreignKey['name']) || $foreignKey['name'] === '') {
+                    continue;
+                }
+
+                $this->assertLessThanOrEqual(
+                    64,
+                    strlen($foreignKey['name']),
+                    "Foreign key {$foreignKey['name']} on {$table} exceeds MySQL's 64-character identifier limit.",
+                );
+            }
+        }
     }
 
     public function test_materials_enum_defaults_are_pending_and_draft(): void
@@ -238,6 +276,20 @@ class PhaseTwoMaterialSchemaTest extends TestCase
         $this->assertIsArray($foreignKey, "Expected foreign key on {$table}.{$column}");
 
         return $foreignKey;
+    }
+
+    /**
+     * @param  list<string>  $columns
+     * @return array{name: string, columns: list<string>, unique: bool}
+     */
+    private function index(string $table, array $columns, bool $unique): array
+    {
+        $index = collect(Schema::getIndexes($table))
+            ->first(fn (array $index): bool => $index['columns'] === $columns && $index['unique'] === $unique);
+
+        $this->assertIsArray($index, 'Expected index on '.$table.' ('.implode(', ', $columns).')');
+
+        return $index;
     }
 
     /**
