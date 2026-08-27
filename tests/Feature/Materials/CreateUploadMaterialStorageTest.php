@@ -166,6 +166,16 @@ class CreateUploadMaterialStorageTest extends TestCase
                 return $stored;
             }
 
+            public function exists(string $path): bool
+            {
+                return $this->inner->exists($path);
+            }
+
+            public function read(string $path): string
+            {
+                return $this->inner->read($path);
+            }
+
             public function delete(string $path): void
             {
                 $this->inner->delete($path);
@@ -217,6 +227,16 @@ class CreateUploadMaterialStorageTest extends TestCase
                 $this->loserPath = $stored->path;
 
                 return $stored;
+            }
+
+            public function exists(string $path): bool
+            {
+                return $this->inner->exists($path);
+            }
+
+            public function read(string $path): string
+            {
+                return $this->inner->read($path);
             }
 
             public function delete(string $path): void

@@ -71,6 +71,38 @@ class MaterialStorageService implements MaterialFileStore
         return $metadata->withPath($path);
     }
 
+    public function exists(string $path): bool
+    {
+        if (! $this->isUsableRelativePath($path)) {
+            return false;
+        }
+
+        $disk = Storage::disk(self::DISK);
+
+        return $disk->exists($path) && ! $disk->directoryExists($path);
+    }
+
+    public function read(string $path): string
+    {
+        if (! $this->isUsableRelativePath($path)) {
+            throw new RuntimeException('Material file path is invalid.');
+        }
+
+        $disk = Storage::disk(self::DISK);
+
+        if (! $disk->exists($path) || $disk->directoryExists($path)) {
+            throw new RuntimeException('Material file does not exist.');
+        }
+
+        $contents = $disk->get($path);
+
+        if (! is_string($contents)) {
+            throw new RuntimeException('Material file could not be read.');
+        }
+
+        return $contents;
+    }
+
     public function delete(string $path): void
     {
         if ($path === '') {
@@ -78,5 +110,10 @@ class MaterialStorageService implements MaterialFileStore
         }
 
         Storage::disk(self::DISK)->delete($path);
+    }
+
+    private function isUsableRelativePath(string $path): bool
+    {
+        return $path !== '' && trim($path) !== '';
     }
 }

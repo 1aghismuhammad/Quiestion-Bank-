@@ -145,7 +145,8 @@ class MaterialUploadValidationTest extends TestCase
         $this->assertSame($store->hash, $material->file_hash);
         $this->assertSame('application/pdf', $material->mime_type);
         $this->assertNotNull($material->file_path);
-        $this->assertStringStartsWith('materials/'.$user->id.'/', $material->file_path);
+        $this->assertStringStartsWith($user->id.'/', $material->file_path);
+        $this->assertStringNotContainsString('materials/', (string) $material->file_path);
         $this->assertNull($material->content);
         $this->assertSame([], $store->deleted);
     }

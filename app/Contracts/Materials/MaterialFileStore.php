@@ -14,5 +14,9 @@ interface MaterialFileStore
 
     public function store(User $owner, UploadedFile $file, MaterialFileMetadata $metadata): MaterialFileMetadata;
 
+    public function exists(string $path): bool;
+
+    public function read(string $path): string;
+
     public function delete(string $path): void;
 }

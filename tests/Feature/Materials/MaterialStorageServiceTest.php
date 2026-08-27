@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Materials;
 
+use App\Contracts\Materials\MaterialContentExtractor;
 use App\Contracts\Materials\MaterialFileStore;
 use App\Models\User;
 use App\Services\Materials\MaterialStorageService;
@@ -11,6 +12,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use ReflectionClass;
 use ReflectionMethod;
 use RuntimeException;
 use Tests\TestCase;
@@ -148,6 +150,128 @@ class MaterialStorageServiceTest extends TestCase
         Storage::disk('materials')->assertExists($path);
         Storage::disk('public')->assertMissing($path);
         Storage::disk('local')->assertMissing($path);
+    }
+
+    public function test_exists_returns_true_for_a_file_on_the_private_materials_disk(): void
+    {
+        Storage::fake('materials');
+
+        $path = '3/'.(string) Str::uuid().'.txt';
+        Storage::disk('materials')->put($path, 'payload-bytes');
+
+        $this->assertTrue($this->service()->exists($path));
+    }
+
+    public function test_exists_returns_false_for_a_missing_path(): void
+    {
+        Storage::fake('materials');
+
+        $this->assertFalse($this->service()->exists('3/missing-'.(string) Str::uuid().'.txt'));
+    }
+
+    public function test_empty_path_does_not_resolve_to_the_disk_root(): void
+    {
+        Storage::fake('materials');
+        Storage::disk('materials')->put('kept.txt', 'keep-me');
+
+        $this->assertFalse($this->service()->exists(''));
+        $this->assertFalse($this->service()->exists('   '));
+
+        try {
+            $this->service()->read('');
+            $this->fail('Empty path read should fail explicitly.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Material file path is invalid.', $exception->getMessage());
+        }
+
+        Storage::disk('materials')->assertExists('kept.txt');
+        $this->assertSame('keep-me', Storage::disk('materials')->get('kept.txt'));
+    }
+
+    public function test_read_returns_exact_stored_bytes(): void
+    {
+        Storage::fake('materials');
+
+        $path = '4/'.(string) Str::uuid().'.txt';
+        $bytes = "exact-bytes\r\n\0and-null";
+        Storage::disk('materials')->put($path, $bytes);
+
+        $this->assertSame($bytes, $this->service()->read($path));
+    }
+
+    public function test_read_cannot_read_from_public_or_local_disks(): void
+    {
+        Storage::fake('materials');
+        Storage::fake('public');
+        Storage::fake('local');
+
+        $path = '5/'.(string) Str::uuid().'.txt';
+        Storage::disk('public')->put($path, 'from-public');
+        Storage::disk('local')->put($path, 'from-local');
+
+        $this->assertFalse($this->service()->exists($path));
+
+        try {
+            $this->service()->read($path);
+            $this->fail('Read should not succeed from public or local disks.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Material file does not exist.', $exception->getMessage());
+        }
+
+        Storage::disk('materials')->put($path, 'from-materials');
+
+        $this->assertSame('from-materials', $this->service()->read($path));
+        $this->assertNotSame('from-public', $this->service()->read($path));
+        $this->assertNotSame('from-local', $this->service()->read($path));
+    }
+
+    public function test_read_of_a_missing_file_fails_explicitly(): void
+    {
+        Storage::fake('materials');
+
+        try {
+            $this->service()->read('6/missing-'.(string) Str::uuid().'.pdf');
+            $this->fail('Missing file read should fail explicitly.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Material file does not exist.', $exception->getMessage());
+        }
+    }
+
+    public function test_exists_and_read_use_materials_disk_without_public_urls(): void
+    {
+        $exists = $this->methodSource('exists');
+        $read = $this->methodSource('read');
+        $source = $exists.$read;
+
+        $this->assertStringContainsString('Storage::disk(self::DISK)', $exists);
+        $this->assertStringContainsString('Storage::disk(self::DISK)', $read);
+        $this->assertStringNotContainsString('url(', $source);
+        $this->assertStringNotContainsString("disk('public')", $source);
+        $this->assertStringNotContainsString("disk('local')", $source);
+        $this->assertStringNotContainsString('->path(', $source);
+    }
+
+    public function test_material_content_extractor_contract_has_no_storage_or_format_dependency(): void
+    {
+        $filename = (new ReflectionClass(MaterialContentExtractor::class))->getFileName();
+        $this->assertNotFalse($filename);
+
+        $source = file_get_contents($filename);
+        $this->assertNotFalse($source);
+        $this->assertStringNotContainsString('Eloquent', $source);
+        $this->assertStringNotContainsString('Storage', $source);
+        $this->assertStringNotContainsString('Illuminate\\', $source);
+        $this->assertStringNotContainsString('Smalot', $source);
+        $this->assertStringNotContainsString('ZipArchive', $source);
+        $this->assertStringNotContainsString('pdf', $source);
+        $this->assertStringNotContainsString('docx', $source);
+        $this->assertStringNotContainsString('txt', $source);
+
+        $method = new ReflectionMethod(MaterialContentExtractor::class, 'extract');
+        $this->assertSame(1, $method->getNumberOfParameters());
+        $this->assertSame('contents', $method->getParameters()[0]->getName());
+        $this->assertSame('string', $method->getParameters()[0]->getType()?->getName());
+        $this->assertSame('string', $method->getReturnType()?->getName());
     }
 
     public function test_delete_removes_the_path_returned_by_store(): void
