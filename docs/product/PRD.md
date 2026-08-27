@@ -5,7 +5,7 @@
 - Product: AI Question Bank SaaS
 - Version: 0.6
 - Updated: 27 August 2026
-- Status: Phase 1 implemented. Phase 2 implementation is in progress. Private storage, upload safety, storage usage, and content extraction have been implemented. Full Phase 2 acceptance criteria are not yet complete.
+- Status: Phase 1 implemented. Phase 2 implementation is in progress. Private storage, upload safety, storage usage, content extraction, topic management, and owner-only Material authorization have been implemented. Full Phase 2 acceptance criteria are not yet complete. Archive/restore and Material web UI remain.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision

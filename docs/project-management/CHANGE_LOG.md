@@ -26,6 +26,37 @@ Notes:
 -
 ```
 
+## v0.6.4 Phase 2.5–2.6 Topic Management and Ownership
+
+- Date: 27 August 2026
+- Version: 0.6.4
+- Phase: Phase 2 - Material Management
+- Type: Feature implementation
+
+Added:
+
+- Material topic Actions: `CreateMaterialTopic`, `UpdateMaterialTopic`, `DeleteMaterialTopic`, and `ListMaterialTopics`.
+- Domain validation for topic name, optional focus area, chapter/sub-chapter empty-string normalization, `sort_order`, and page range (`page_start >= 1`, `page_end >= page_start` when both are set).
+- Owner-only `MaterialPolicy` abilities: `viewAny`, `create`, `view`, `update`, and `manageTopics`.
+- Topic mutations authorize through the parent Material; cross-Material topic id reuse is denied.
+
+Changed:
+
+- Phase 2.5 topic management and Phase 2.6 Material ownership are technically complete. Phase 2 status remains `IN PROGRESS`. Phase 2 Definition of Done is not met.
+
+Database Impact:
+
+- None. Existing `material_topics` migration and canonical DBML were reused. No new migration. No DBML change.
+
+Notes:
+
+- Ownership derives from `materials.user_id`. Topic rows do not store `user_id`.
+- ADMIN does not receive global Material access. Admin dashboard, user management, and later question-bank admin remain separate.
+- Soft-deleted Materials cannot be viewed or have topics managed. Archived topic mutability is unchanged pending Phase 2.7–2.8 lifecycle work.
+- Duplicate `(material_id, chapter, sub_chapter, topic_name)` is rejected as validation, not a raw query exception.
+- No drag-and-drop reorder Action. List order remains `sort_order`, then `topic_id`.
+- Remaining Phase 2: combined archive/restore plus controllers/routes/Blade UI, then Phase 2 final integration.
+
 ## v0.6.3 Phase 2.4 Content Extraction
 
 - Date: 27 August 2026
