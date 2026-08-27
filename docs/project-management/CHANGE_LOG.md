@@ -26,6 +26,38 @@ Notes:
 -
 ```
 
+## v0.6.5 Phase 2.7–2.8 Archive/Restore and Material Web UI
+
+- Date: 27 August 2026
+- Version: 0.6.5
+- Phase: Phase 2 - Material Management
+- Type: Feature implementation
+
+Added:
+
+- `ArchiveMaterial` and `RestoreMaterial` Actions with owner authorization.
+- `MaterialPolicy` abilities `archive` and `restore`.
+- Blade/controller Material Management: owner-scoped index, archived index, create text/upload, show, edit, nested topic create/update/delete, archive, and restore.
+- Named authenticated routes under the same `auth` / `account.active` / `profile.complete` middleware as the user dashboard.
+
+Changed:
+
+- Phase 2.7 archive/restore and Phase 2.8 Material web management are technically complete. Phase 2 status remains `IN PROGRESS`. Phase 2 Definition of Done is not met until final integration / QA.
+
+Database Impact:
+
+- None. No migration. No DBML change. Lifecycle uses existing `materials.status`.
+
+Notes:
+
+- Canonical transitions: `draft|ready -> archived` and `archived -> ready`. Archive is not Eloquent SoftDeletes.
+- Archive/restore retain source metadata, extracted/text content, topics, and private files. They do not dispatch extraction.
+- ADMIN still does not receive global Material access.
+- Listing uses `$user->materials()` only. Soft-deleted Materials are not reachable by guessed URLs.
+- Browser upload uses existing `CreateUploadMaterial` after-commit `ExtractMaterialContent` dispatch. No controller-level redispatch.
+- No source-file download/preview. No `RetryMaterialExtraction`. No Livewire.
+- Remaining Phase 2: final integration / QA / documentation closure.
+
 ## v0.6.4 Phase 2.5–2.6 Topic Management and Ownership
 
 - Date: 27 August 2026

@@ -15,6 +15,10 @@
 
     <h2>Menu</h2>
     <div class="grid">
+        <a class="card placeholder" href="{{ route('materials.index') }}" style="text-decoration: none;">
+            <strong>Material Management</strong>
+            <span class="muted">Kelola materi, topik, dan arsip.</span>
+        </a>
         @foreach (['Generate Question', 'Question Bank', 'History', 'Subscription'] as $menu)
             <div class="card placeholder">
                 <strong>{{ $menu }}</strong>

@@ -72,11 +72,11 @@ Technical slices complete (Phase 2 Definition of Done not met):
 - Content extraction queue (`COMPLETE`): PDF, DOCX, and TXT via `material-extraction`; after-commit upload dispatch; unique and overlap locks; guarded `pending|failed` → `processing` → `completed`/`failed`.
 - Topic management (`COMPLETE`): chapter, sub-chapter, topic, focus area, sort order, and optional page range via Material Topic Actions.
 - Material ownership / authorization (`COMPLETE`): owner-only `MaterialPolicy`; ADMIN does not receive global Material access.
+- Archive / restore lifecycle (`COMPLETE`): owner `draft|ready -> archived` and `archived -> ready`; archive is Material status, not soft delete.
+- Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 
 Remaining Phase 2 scope (not started or not complete):
 
-- Archive / restore lifecycle (`draft|ready -> archived` and owner restore `archived -> ready`).
-- Controllers, routes, and Blade Material Management UI.
 - Phase 2 final integration / QA.
 
 Scope:

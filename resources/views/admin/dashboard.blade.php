@@ -7,6 +7,10 @@
     <h1>Ringkasan pengguna</h1>
     <p class="muted">Monitoring detail belum termasuk dalam Phase 1.</p>
 
+    <p>
+        <a class="button" href="{{ route('materials.index') }}">Materi saya</a>
+    </p>
+
     <div class="grid" style="margin-top: 24px;">
         <div class="card">
             <span class="muted">Total User</span>

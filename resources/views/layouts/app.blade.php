@@ -35,6 +35,16 @@
         .stat { font-size: 34px; font-weight: 800; margin: 6px 0 0; }
         .placeholder { min-height: 120px; display: flex; flex-direction: column; justify-content: space-between; }
         .status { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #e8f8ef; color: #155e3b; font-size: 13px; font-weight: 700; }
+        .status-warn { background: #fff4d6; color: #7a5400; }
+        .status-error { background: #fdecec; color: #9f2424; }
+        .status-muted { background: #e9eef8; color: #344054; }
+        .table { width: 100%; border-collapse: collapse; }
+        .table th, .table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #dce3ee; vertical-align: top; }
+        .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .button-danger { background: #b42318; color: #ffffff; }
+        textarea.input { min-height: 180px; resize: vertical; }
+        .content-block { white-space: pre-wrap; background: #f4f7fb; border-radius: 9px; padding: 16px; }
+        .field-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
         h1, h2, p { margin-top: 0; }
     </style>
 </head>
@@ -45,6 +55,8 @@
 
             @auth
                 <div class="nav-actions">
+                    <a href="{{ route('dashboard') }}">Dashboard</a>
+                    <a href="{{ route('materials.index') }}">Materi</a>
                     <span class="muted">{{ auth()->user()->name }}</span>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf

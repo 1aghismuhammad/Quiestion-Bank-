@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Materials;
 
+use App\Enums\SourceType;
+use App\Models\Material;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateMaterialRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        $material = $this->route('material');
+
+        return $material instanceof Material
+            && $this->user()?->can('update', $material) === true;
     }
 
     /**
@@ -18,10 +23,18 @@ class UpdateMaterialRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $material = $this->route('material');
+        $rules = [
             'title' => ['required', 'string', 'max:255'],
-            'content' => ['sometimes', 'string'],
         ];
+
+        if ($material instanceof Material && $material->source_type === SourceType::TEXT) {
+            $rules['content'] = ['required', 'string'];
+        } else {
+            $rules['content'] = ['prohibited'];
+        }
+
+        return $rules;
     }
 
     /**

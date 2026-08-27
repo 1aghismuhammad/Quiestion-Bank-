@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Materials;
 
+use App\Models\Material;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
@@ -20,7 +21,7 @@ class StoreUploadMaterialRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        return $this->user()?->can('create', Material::class) === true;
     }
 
     /**
