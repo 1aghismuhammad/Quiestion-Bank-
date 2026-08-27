@@ -26,6 +26,40 @@ Notes:
 -
 ```
 
+## v0.6.2 Phase 2.3 Private Storage and Usage
+
+- Date: 27 August 2026
+- Version: 0.6.2
+- Phase: Phase 2 - Material Management
+- Type: Feature implementation
+
+Added:
+
+- Material domain foundation: `materials` / `material_topics` migrations, models, and enums.
+- Text and upload creation actions with Form Request MIME, extension, and 10 MB validation.
+- Dedicated private `materials` disk at `storage/app/materials` (`serve => false`, no public URL).
+- SHA-256 inspection metadata and UUID internal storage paths `{user_id}/{uuid}.{extension}`.
+- Duplicate protection aligned with UNIQUE `(user_id, file_hash)`, including `withTrashed()` pre-check.
+- Independent UUID paths for concurrent same-user uploads; UNIQUE loser compensates only its own file.
+- Post-store database failure compensation; cleanup failure is logged without replacing the original exception.
+- `MaterialUsageCalculator` integer-byte SUM of non-deleted upload `file_size`.
+
+Changed:
+
+- Phase 2 status is `IN PROGRESS`. Phase 2.3 private storage and usage is technically complete. Phase 2 Definition of Done is not met.
+
+Database Impact:
+
+- No schema change during Phase 2.3.
+- Canonical `materials` unique `(user_id, file_hash)` and nullable `file_size` remain as defined in Phase 2.1.
+
+Notes:
+
+- No new Composer dependency.
+- Content extraction is not implemented (`NOT STARTED`).
+- Quota enforcement remains deferred to Phase 3.
+- Archived and extraction-failed uploads count toward usage; text, soft-deleted, and other-user rows do not.
+
 ## v0.6.1 Phase 2.1 Schema Refinement
 
 - Date: 24 August 2026

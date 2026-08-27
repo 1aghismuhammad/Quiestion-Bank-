@@ -4,14 +4,15 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 
 ## Current Status
 
-- Phase: 1 - Authentication and User Management (`IMPLEMENTED`)
-- Application code: Google OAuth, role access, profile setup, and basic dashboards
-- Next phase: 2 - Material Management (`PLANNED`, canonical design approved)
-- Documentation version: 0.6.1
+- Phase 1 - Authentication and User Management: `IMPLEMENTED`
+- Phase 2 - Material Management: `IN PROGRESS` (canonical design approved; Phase 2 Definition of Done not yet met)
+- Application code: Google OAuth, role access, profile setup, and basic dashboards; Phase 2.1–2.3 material domain, creation, MIME/extension validation, private storage, SHA-256/UUID paths, duplicate/failure safety, and storage usage accounting
+- Next technical milestone: content extraction (`NOT STARTED`; requires its own planning and Composer dependency approval)
+- Documentation version: 0.6.2
 - MVP target: Phase 0-6
 - Database design: 16 domain entities
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 2.3 private storage and usage is technically complete; Phase 2 overall is not complete.
 
 ## Architecture Decisions
 

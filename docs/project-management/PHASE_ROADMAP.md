@@ -58,7 +58,26 @@ Definition of Done:
 
 ## Phase 2 - Material Management
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
+
+Technical slices complete (Phase 2 Definition of Done not met):
+
+- Material domain foundation (schema, models, enums).
+- Material creation flow (text and upload actions).
+- Upload MIME and extension validation (temporary 10 MB per file).
+- Private storage (`storage/app/materials`, unserved disk).
+- SHA-256 metadata and internal UUID file paths.
+- Duplicate protection and upload failure compensation.
+- Storage usage accounting (integer bytes; quota deferred to Phase 3).
+
+Remaining Phase 2 scope (not started or not complete):
+
+- Content extraction queue (`NOT STARTED`; next expected technical milestone, requires its own planning and dependency approval).
+- Chapter, sub-chapter, topic, and focus management workflow.
+- Ownership policy.
+- Lifecycle `draft|ready -> archived` and owner restore `archived -> ready`.
+- Controllers, routes, and Blade UI.
+- Final Phase 2 Definition of Done.
 
 Scope:
 
