@@ -26,6 +26,44 @@ Notes:
 -
 ```
 
+## v0.6.3 Phase 2.4 Content Extraction
+
+- Date: 27 August 2026
+- Version: 0.6.3
+- Phase: Phase 2 - Material Management
+- Type: Feature implementation
+
+Added:
+
+- PDF, DOCX, and TXT content extraction on the private `materials` disk.
+- After-commit `ExtractMaterialContent` dispatch from `CreateUploadMaterial` onto queue `material-extraction`.
+- Atomic `pending|failed` → `processing` claim, processing resume, and guarded success (`completed` + `ready`) / terminal (`failed` + `draft`) transitions.
+- `ShouldBeUnique` (`uniqueFor` 900) and `WithoutOverlapping` (`releaseAfter` 120, `expireAfter` 180).
+- DOCX ZIP/XML hardening (compression ratio, uncompressed and `document.xml` caps, encrypted archive rejection, `LIBXML_NONET`, DTD/entity substitution disabled).
+- `ext-zip` platform requirement test.
+- Local `composer dev` queue listener `--queue=material-extraction,default`.
+
+Changed:
+
+- Phase 2.4 content extraction is technically complete. Phase 2 status remains `IN PROGRESS`. Phase 2 Definition of Done is not met.
+- Upload factory `file_path` uses `{user_id}/{uuid}.pdf`.
+
+Database Impact:
+
+- None. No migration. No DBML change.
+
+Notes:
+
+- SHA-256 hashing, duplicate protection, 10 MB upload limit, and upload compensation are unchanged.
+- Extracted UTF-8 content limit is 10 MiB (`10 * 1024 * 1024` bytes) with no truncation.
+- Job: `tries` 3, `timeout` 60, `failOnTimeout` true, `backoff` `[10, 30, 60]`, `afterCommit` true, payload `material_id` only.
+- Queue `retry_after` remains 90 from `config/queue.php`.
+- Dedicated worker direction: `php artisan queue:work --queue=material-extraction --timeout=60 --tries=3 --memory=256`.
+- `ShouldBeUnique` and `WithoutOverlapping` require a shared production cache lock store (`database` or Redis). Array and per-host file cache are not production-safe for multi-host coordination.
+- Dispatch failure after persist keeps the material row, source file, `draft`, and `pending`. It does not invoke upload compensation.
+- Automatic Laravel queue retry is implemented. No `RetryMaterialExtraction` Action. Manual user retry is deferred to later Material UI/controller work.
+- Remaining Phase 2: topic management, ownership/authorization, archive/restore, controllers/routes, Blade UI, and Phase 2 final integration.
+
 ## v0.6.2 Phase 2.3 Private Storage and Usage
 
 - Date: 27 August 2026

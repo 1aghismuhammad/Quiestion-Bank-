@@ -53,10 +53,10 @@ class MaterialFactory extends Factory
 
     public function upload(): static
     {
-        return $this->state(fn (array $attributes): array => [
+        return $this->state(fn (): array => [
             'source_type' => SourceType::UPLOAD,
             'file_name' => fake()->unique()->lexify('material-????.pdf'),
-            'file_path' => 'materials/'.fake()->uuid().'.pdf',
+            'file_path' => fn (array $attributes): string => $attributes['user_id'].'/'.fake()->uuid().'.pdf',
             'file_size' => fake()->numberBetween(1024, 10_485_760),
             'file_hash' => hash('sha256', fake()->unique()->uuid()),
             'mime_type' => 'application/pdf',

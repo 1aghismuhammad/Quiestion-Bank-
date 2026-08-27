@@ -127,6 +127,16 @@ class DocxExtractorTest extends TestCase
         }
     }
 
+    public function test_it_disables_network_dtd_and_entity_substitution_without_global_loader_mutation(): void
+    {
+        $source = (string) file_get_contents(base_path('app/Services/Materials/Extraction/DocxExtractor.php'));
+
+        $this->assertStringContainsString('LIBXML_NONET', $source);
+        $this->assertStringContainsString('XMLReader::LOADDTD, false', $source);
+        $this->assertStringContainsString('XMLReader::SUBST_ENTITIES, false', $source);
+        $this->assertStringNotContainsString('libxml_disable_entity_loader', $source);
+    }
+
     /**
      * @return list<string>
      */

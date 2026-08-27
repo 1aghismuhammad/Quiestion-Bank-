@@ -144,6 +144,30 @@ class ExtractMaterialContentTest extends TestCase
         $job->assertFailedWith(UnrecoverableMaterialExtractionException::class);
     }
 
+    public function test_deterministic_format_failure_marks_failed_and_retains_source_bytes(): void
+    {
+        [$store, $material] = $this->pendingTxt(
+            contents: MaterialExtractionFixtures::invalidUtf8Txt(),
+        );
+        $path = (string) $material->file_path;
+        $this->app->instance(MaterialFileStore::class, $store);
+
+        $job = (new ExtractMaterialContent($material->material_id))->withFakeQueueInteractions();
+        $job->handle($this->app->make(ProcessMaterialExtraction::class));
+
+        $material->refresh();
+
+        $this->assertSame(ExtractionStatus::FAILED, $material->extraction_status);
+        $this->assertSame(MaterialStatus::DRAFT, $material->status);
+        $this->assertNull($material->content);
+        $this->assertTrue($store->exists($path));
+        $this->assertSame(MaterialExtractionFixtures::invalidUtf8Txt(), $store->files[$path]);
+        $this->assertSame([], $store->deleted);
+        $this->assertNotContains('delete', $store->calls);
+        $job->assertFailed();
+        $job->assertFailedWith(UnrecoverableMaterialExtractionException::class);
+    }
+
     public function test_infrastructure_read_failure_bubbles_without_marking_failed(): void
     {
         [$store, $material] = $this->pendingTxt();

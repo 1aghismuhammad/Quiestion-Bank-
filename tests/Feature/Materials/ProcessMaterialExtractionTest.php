@@ -520,6 +520,64 @@ class ProcessMaterialExtractionTest extends TestCase
         $this->assertSame(ExtractionStatus::COMPLETED, $material->fresh()->extraction_status);
     }
 
+    public function test_pending_pdf_upload_completes_with_ready_status_and_content(): void
+    {
+        $store = new FakeMaterialFileStore;
+        $user = User::factory()->create();
+        $bytes = MaterialExtractionFixtures::extractablePdf();
+        $path = $user->id.'/'.fake()->uuid().'.pdf';
+        $store->files[$path] = $bytes;
+
+        $material = Material::factory()->upload()->create([
+            'user_id' => $user->id,
+            'file_name' => 'lesson.pdf',
+            'file_path' => $path,
+            'mime_type' => 'application/pdf',
+            'file_size' => strlen($bytes),
+            'content' => null,
+            'extraction_status' => ExtractionStatus::PENDING,
+            'status' => MaterialStatus::DRAFT,
+        ]);
+
+        $this->action($store)->handle($material->material_id);
+
+        $material->refresh();
+
+        $this->assertSame(MaterialStatus::READY, $material->status);
+        $this->assertSame(ExtractionStatus::COMPLETED, $material->extraction_status);
+        $this->assertStringContainsString('Hello PDF', (string) $material->content);
+        $this->assertSame([], $store->deleted);
+    }
+
+    public function test_pending_docx_upload_completes_with_ready_status_and_content(): void
+    {
+        $store = new FakeMaterialFileStore;
+        $user = User::factory()->create();
+        $bytes = MaterialExtractionFixtures::simpleParagraphDocx();
+        $path = $user->id.'/'.fake()->uuid().'.docx';
+        $store->files[$path] = $bytes;
+
+        $material = Material::factory()->upload()->create([
+            'user_id' => $user->id,
+            'file_name' => 'lesson.docx',
+            'file_path' => $path,
+            'mime_type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'file_size' => strlen($bytes),
+            'content' => null,
+            'extraction_status' => ExtractionStatus::PENDING,
+            'status' => MaterialStatus::DRAFT,
+        ]);
+
+        $this->action($store)->handle($material->material_id);
+
+        $material->refresh();
+
+        $this->assertSame(MaterialStatus::READY, $material->status);
+        $this->assertSame(ExtractionStatus::COMPLETED, $material->extraction_status);
+        $this->assertSame("Hello DOCX\n", $material->content);
+        $this->assertSame([], $store->deleted);
+    }
+
     /**
      * @return array{0: FakeMaterialFileStore, 1: Material}
      */

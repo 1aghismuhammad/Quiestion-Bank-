@@ -5,7 +5,7 @@
 - Product: AI Question Bank SaaS
 - Version: 0.6
 - Updated: 27 August 2026
-- Status: Phase 1 implemented. Phase 2 implementation is in progress. Private storage, upload safety, and storage usage foundation have been implemented. Full Phase 2 acceptance criteria are not yet complete.
+- Status: Phase 1 implemented. Phase 2 implementation is in progress. Private storage, upload safety, storage usage, and content extraction have been implemented. Full Phase 2 acceptance criteria are not yet complete.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -82,7 +82,7 @@ Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 2. User membuat material melalui upload PDF, DOCX, TXT, atau input teks manual.
 3. Sistem memvalidasi input; upload dibatasi sementara maksimal 10 MB per file sampai quota Phase 3 tersedia.
 4. Text material langsung siap, sedangkan upload diproses melalui extraction queue.
-5. User memantau status extraction dan dapat retry jika gagal.
+5. Automatic Laravel queue retry is implemented for extraction jobs. Manual user retry from Material UI is deferred until controllers and Blade work.
 6. User mengatur chapter, sub-chapter, topic, focus area, serta optional page range.
 7. User dapat mengarsipkan material draft/ready dan memulihkan material archived menjadi ready.
 

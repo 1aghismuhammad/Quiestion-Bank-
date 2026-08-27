@@ -69,15 +69,15 @@ Technical slices complete (Phase 2 Definition of Done not met):
 - SHA-256 metadata and internal UUID file paths.
 - Duplicate protection and upload failure compensation.
 - Storage usage accounting (integer bytes; quota deferred to Phase 3).
+- Content extraction queue (`COMPLETE`): PDF, DOCX, and TXT via `material-extraction`; after-commit upload dispatch; unique and overlap locks; guarded `pending|failed` → `processing` → `completed`/`failed`.
 
 Remaining Phase 2 scope (not started or not complete):
 
-- Content extraction queue (`NOT STARTED`; next expected technical milestone, requires its own planning and dependency approval).
-- Chapter, sub-chapter, topic, and focus management workflow.
-- Ownership policy.
-- Lifecycle `draft|ready -> archived` and owner restore `archived -> ready`.
-- Controllers, routes, and Blade UI.
-- Final Phase 2 Definition of Done.
+- Topic management (chapter, sub-chapter, topic, and focus workflow).
+- Ownership / authorization (`MaterialPolicy`).
+- Archive / restore lifecycle (`draft|ready -> archived` and owner restore `archived -> ready`).
+- Controllers, routes, and Blade Material Management UI.
+- Phase 2 final integration / QA.
 
 Scope:
 

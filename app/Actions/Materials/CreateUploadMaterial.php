@@ -9,6 +9,7 @@ use App\Data\Materials\MaterialFileMetadata;
 use App\Enums\ExtractionStatus;
 use App\Enums\MaterialStatus;
 use App\Enums\SourceType;
+use App\Jobs\ExtractMaterialContent;
 use App\Models\Material;
 use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -35,7 +36,7 @@ class CreateUploadMaterial
         $stored = $this->fileStore->store($user, $file, $metadata);
 
         try {
-            return DB::transaction(function () use ($user, $title, $stored): Material {
+            $material = DB::transaction(function () use ($user, $title, $stored): Material {
                 return $user->materials()->create([
                     'title' => $title,
                     'source_type' => SourceType::UPLOAD,
@@ -60,6 +61,17 @@ class CreateUploadMaterial
 
             throw $exception;
         }
+
+        try {
+            ExtractMaterialContent::dispatch($material->material_id);
+        } catch (Throwable $exception) {
+            Log::warning('Material extraction job dispatch failed.', [
+                'material_id' => $material->material_id,
+                'exception' => $exception::class,
+            ]);
+        }
+
+        return $material;
     }
 
     private function ownerAlreadyHasHash(User $user, string $hash): bool
