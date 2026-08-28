@@ -197,7 +197,7 @@ class PhaseThreePlanSchemaTest extends TestCase
 
     public function test_phase_three_index_and_foreign_key_names_fit_mysql_identifier_limit(): void
     {
-        foreach (['plans', 'subscriptions'] as $table) {
+        foreach (['plans', 'subscriptions', 'plan_offers', 'subscription_upgrade_requests'] as $table) {
             foreach (Schema::getIndexes($table) as $index) {
                 $this->assertLessThanOrEqual(
                     64,
@@ -220,8 +220,14 @@ class PhaseThreePlanSchemaTest extends TestCase
         }
     }
 
-    public function test_rolling_back_phase_three_drops_only_plan_and_subscription_tables(): void
+    public function test_rolling_back_phase_three_drops_only_plan_subscription_and_offer_tables(): void
     {
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_08_28_100004_create_subscription_upgrade_requests_table.php',
+        ])->assertSuccessful();
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_08_28_100003_create_plan_offers_table.php',
+        ])->assertSuccessful();
         $this->artisan('migrate:rollback', [
             '--path' => 'database/migrations/2026_08_28_100002_create_subscriptions_table.php',
         ])->assertSuccessful();
@@ -229,6 +235,8 @@ class PhaseThreePlanSchemaTest extends TestCase
             '--path' => 'database/migrations/2026_08_28_100001_create_plans_table.php',
         ])->assertSuccessful();
 
+        $this->assertFalse(Schema::hasTable('subscription_upgrade_requests'));
+        $this->assertFalse(Schema::hasTable('plan_offers'));
         $this->assertFalse(Schema::hasTable('subscriptions'));
         $this->assertFalse(Schema::hasTable('plans'));
         $this->assertTrue(Schema::hasTable('material_topics'));

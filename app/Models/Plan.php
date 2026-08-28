@@ -28,6 +28,11 @@ class Plan extends Model
         return $this->hasMany(Subscription::class, 'plan_id', 'plan_id');
     }
 
+    public function offers(): HasMany
+    {
+        return $this->hasMany(PlanOffer::class, 'plan_id', 'plan_id');
+    }
+
     /**
      * @return array<string, string>
      */

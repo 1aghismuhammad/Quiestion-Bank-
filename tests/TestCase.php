@@ -2,8 +2,12 @@
 
 namespace Tests;
 
+use App\Enums\RoleName;
+use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Storage;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -24,5 +28,26 @@ abstract class TestCase extends BaseTestCase
         ]);
 
         return $user;
+    }
+
+    protected function createCompleteAdmin(array $overrides = []): User
+    {
+        $this->seed(RoleSeeder::class);
+
+        $user = $this->createCompleteUser($overrides);
+        $user->roles()->attach(Role::query()->where('role_name', RoleName::ADMIN->value)->firstOrFail());
+
+        return $user;
+    }
+
+    protected function enableManualPaymentCheckout(): void
+    {
+        config([
+            'subscriptions.whatsapp_number' => '6281111111111',
+            'subscriptions.qris_path' => 'payment/qris.png',
+        ]);
+
+        Storage::fake('public');
+        Storage::disk('public')->put('payment/qris.png', 'qris-fixture');
     }
 }

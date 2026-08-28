@@ -32,7 +32,7 @@ Question type MVP:
 - Authentication: Google OAuth only.
 - AI: Google Gemini.
 - Processing: queue for long-running operation.
-- Database: MySQL 8+ (Laragon for local development; `DB_CONNECTION=mysql`). Canonical DBML documents 16 domain entities.
+- Database: MySQL 8+ (Laragon for local development; `DB_CONNECTION=mysql`). Canonical DBML documents 18 domain entities.
 - Automated tests: SQLite in-memory via `phpunit.xml`.
 
 ## Product Modules
@@ -62,7 +62,7 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 - Phase 0: foundation dan dokumentasi.
 - Phase 1: authentication.
 - Phase 2: standalone material management dari dashboard untuk PDF, DOCX, TXT, dan text input.
-- Phase 3: subscription/quota foundation.
+- Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine.
 - Phase 5: question bank.
 - Phase 6: admin dashboard dan MVP release.

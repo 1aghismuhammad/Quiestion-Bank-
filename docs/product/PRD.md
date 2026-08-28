@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.8
+- Version: 0.9
 - Updated: 28 August 2026
-- Status: Phase 1 and Phase 2 are complete. Phase 3.1 through 3.4 are implemented (Plan/Subscription domain, entitlement resolver, account storage quota). Phase 3 overall remains in progress. Generation quota and payment are not started.
+- Status: Phase 0 through Phase 3 are complete. Phase 4 (Gemini generation runtime, reservation, `ai_usage_logs`) remains planned.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -137,9 +137,9 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 
 - FR-SUB-01: Plan mendefinisikan entitlement: `storage_limit_bytes`, `generation_limit`, dan `generation_reset_strategy` (`lifetime` atau `monthly`). Plan bukan harga atau durasi komersial.
 - FR-SUB-02: Subscription menyimpan window Pro berbatas waktu. Paling banyak satu window efektif pada satu instant; unique `(user_id, status)` tidak dipakai. Free bukan baris subscription. Resolver entitlement memakai `[starts_at, ends_at)` dan memvalidasi seluruh antrian `active` current/future sebagai Pro.
-- FR-SUB-03: Penggunaan generation dicatat pada `ai_usage_logs` dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window subscription efektif.
-- FR-SUB-04: Credit generation direservasi sebelum request AI, memiliki waktu kedaluwarsa, ditagihkan saat berhasil, dan dilepas saat gagal atau reservation expired. Fondasi quota generation dan `ai_usage_logs` adalah Phase 3.5 + 3.6; integrasi pemakaian Gemini dikoordinasikan dengan Phase 4.
-- FR-SUB-05: Verifikasi pembayaran/aktivasi Pro oleh admin adalah milestone payment kemudian; bukan bagian domain foundation.
+- FR-SUB-03: Penggunaan generation akan dicatat pada `ai_usage_logs` (Phase 4) dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window subscription efektif.
+- FR-SUB-04: Credit generation direservasi sebelum request AI, memiliki waktu kedaluwarsa, ditagihkan saat berhasil, dan dilepas saat gagal atau reservation expired. **Phase 4.** Phase 3.5 hanya mendefinisikan limit dan jendela generation; UI tidak menampilkan used/remaining.
+- FR-SUB-05: User memilih offer Pro 1 bulan atau 3 bulan, membayar via QRIS statis, dan mengonfirmasi via WhatsApp. Admin menyetujui, menolak (alasan wajib), atau membatalkan permintaan. Persetujuan membuat atau menambahkan window Subscription Pro. Subscription itu sendiri tidak berstatus pending/rejected pembayaran.
 
 ### Admin
 
@@ -189,7 +189,7 @@ Fallback entitlement permanen. Storage 50 MiB (`52428800` bytes). Generation 2 u
 
 ### Pro Plan
 
-Satu Plan entitlement. Storage 500 MiB (`524288000` bytes). Generation 100 per window bulanan yang mengikuti anniversary subscription, bukan kalender. Reset `monthly`. Window Pro selalu memiliki `ends_at` hingga. Harga dan durasi komersial (1 bulan / 3 bulan) adalah layer offer/payment kemudian.
+Satu Plan entitlement. Storage 500 MiB (`524288000` bytes). Generation 100 per window bulanan yang mengikuti anniversary `starts_at` subscription, bukan tanggal 1 kalender. Reset `monthly`. Window Pro selalu memiliki `ends_at` hingga. Offer komersial: Pro 1 bulan Rp10.000 dan Pro 3 bulan Rp25.000 (`plan_offers`).
 
 ### Institution Plan
 
@@ -200,9 +200,9 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 - User dapat login hanya melalui Google dan masuk ke dashboard.
 - Admin menggunakan login yang sama, tetapi aksesnya dibatasi role.
 - User dapat membuat materi upload atau teks dan memilih topik/fokus.
-- Quota diperiksa sebelum generation.
+- Quota diperiksa sebelum generation (definisi limit Phase 3.5; konsumsi/reservation Phase 4).
 - Gemini dapat menghasilkan ketiga tipe soal dengan schema yang valid.
-- Failure AI tidak mengurangi credit secara permanen.
+- Failure AI tidak mengurangi credit secara permanen (Phase 4 usage ledger).
 - User dapat review, edit, save, dan publish question set.
 - Admin dapat menjalankan modul Phase 6 pada flow admin; branch broadcast baru wajib pada Phase 7.
 - Semua generation dan penggunaan credit dapat diaudit.
@@ -211,4 +211,4 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 
 - Batas per file tetap 10 MB. Quota storage akun Plan sudah ditegakkan dan tidak menggantikan batas per file.
 - Format export pertama: PDF, DOCX, XLSX, atau LMS.
-- Provider payment otomatis dan invoice tetap post-MVP. Phase 3.5 + 3.6 MVP: opsi durasi Pro, QRIS statis, konfirmasi pembayaran via WhatsApp, verifikasi admin. Phase 7: WhatsApp CRM / broadcast.
+- Provider payment otomatis dan invoice tetap post-MVP. Phase 3.6: opsi durasi Pro, QRIS statis pada public disk, konfirmasi WhatsApp, verifikasi admin. Phase 7: WhatsApp CRM / broadcast.

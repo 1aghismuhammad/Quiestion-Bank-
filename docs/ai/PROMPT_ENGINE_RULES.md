@@ -6,7 +6,7 @@ Prompt Engine mengubah materi dan konfigurasi user menjadi request Google Gemini
 
 - Provider MVP: Google Gemini.
 - Prompt source of truth: `prompt_versions`.
-- Database mapping: `ai_generations` dan `ai_usage_logs`.
+- Database mapping: `ai_generations` dan `ai_usage_logs` (runtime reservation/konsumsi adalah Phase 4).
 - Output harus berupa JSON, bukan Markdown atau prose bebas.
 
 ## Configuration Dimensions

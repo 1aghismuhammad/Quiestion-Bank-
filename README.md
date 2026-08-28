@@ -14,18 +14,20 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 2.6 - Material Ownership & Authorization: `COMPLETE`
 - Phase 2.7 - Archive / Restore Lifecycle: `COMPLETE`
 - Phase 2.8 - Material Web Management: `COMPLETE`
-- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, Plan catalog, Pro subscription history, active entitlement resolver, and account storage quota
-- Phase 3 - Subscription & Quota Foundation: `IN PROGRESS`
+- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, Plan catalog, Pro subscription history, entitlement resolver, account storage quota, generation quota definition, Plan Offers, and manual QRIS/WhatsApp upgrade verification
+- Phase 3 - Subscription & Quota Foundation: `COMPLETE`
 - Phase 3.1 - Plan Domain Foundation: `COMPLETE`
 - Phase 3.2 - Subscription Domain Foundation: `COMPLETE`
 - Phase 3.3 - Active Entitlement Resolution: `COMPLETE`
 - Phase 3.4 - Storage Quota Enforcement: `COMPLETE`
-- Next remaining Phase 3 work: 3.5 + 3.6 generation quota foundation, subscription/quota UI, and manual upgrade/payment
-- Documentation version: 0.8.0
+- Phase 3.5 - Generation Quota Foundation: `COMPLETE`
+- Phase 3.6 - Subscription UI and Manual Payment: `COMPLETE`
+- Next: Phase 4 AI Question Engine (Gemini, reservation, `ai_usage_logs` runtime)
+- Documentation version: 0.9.0
 - MVP target: Phase 0-6
-- Database design: 16 domain entities
+- Database design: 18 domain entities
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 2 Material Management is complete. Phase 3.1 through 3.4 are implemented; Phase 3 overall is not complete.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 3 are complete. Phase 4 remains future work.
 
 ## Architecture Decisions
 
@@ -72,6 +74,8 @@ DB_DATABASE=ai_question_bank
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
+SUBSCRIPTION_WHATSAPP_NUMBER=
+SUBSCRIPTION_QRIS_PATH=payment/qris.png
 GEMINI_API_KEY=
 GEMINI_MODEL=
 ```
@@ -84,6 +88,6 @@ Environment value dan credential tidak boleh dicatat dalam repository.
 
 - Upload per file tetap maksimal 10 MB. Quota storage akun (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah yang sudah ditegakkan dan tidak menggantikan batas per file.
 - Format export pertama.
-- Provider payment otomatis tetap post-MVP. Phase 3.5 + 3.6 MVP memakai QRIS statis dan konfirmasi pembayaran manual via WhatsApp (admin verifikasi). Phase 7 adalah WhatsApp CRM / broadcast.
+- Provider payment otomatis tetap post-MVP. Phase 3.6 memakai QRIS statis (public disk) dan konfirmasi WhatsApp manual. Phase 7 adalah WhatsApp CRM / broadcast.
 
 Keputusan baru harus diselaraskan pada PRD, design, flow, database, roadmap, dan changelog.

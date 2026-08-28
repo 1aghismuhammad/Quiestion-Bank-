@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.8
+- Version: 0.9
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -133,8 +133,8 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Free adalah fallback jika tidak ada window Pro efektif. Tidak ada baris subscription Free.
 - Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
 - Paling banyak satu window efektif per instant. Resolver memvalidasi seluruh antrian `active` current/future sebagai Pro; overlap efektif fail-closed; data stale historis tidak mengunci akun. Plan Pro inactive tidak mencabut window yang sudah dibayar.
-- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Fondasi quota generation, reservation, dan `ai_usage_logs` adalah Phase 3.5 + 3.6; integrasi Gemini dikoordinasikan dengan Phase 4.
-- UI subscription/quota, QRIS statis, konfirmasi WhatsApp, dan verifikasi admin minimum adalah Phase 3.5 + 3.6. Tidak ada payment gateway di MVP.
+- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Reservation, konsumsi, dan `ai_usage_logs` adalah Phase 4.
+- UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests` lalu, setelah admin approve, satu baris `subscriptions`.
 
 ### AI Engine
 

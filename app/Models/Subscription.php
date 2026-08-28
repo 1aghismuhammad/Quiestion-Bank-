@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'user_id',
@@ -34,6 +35,11 @@ class Subscription extends Model
     public function plan(): BelongsTo
     {
         return $this->belongsTo(Plan::class, 'plan_id', 'plan_id');
+    }
+
+    public function approvedUpgradeRequest(): HasOne
+    {
+        return $this->hasOne(SubscriptionUpgradeRequest::class, 'approved_subscription_id', 'subscription_id');
     }
 
     /**

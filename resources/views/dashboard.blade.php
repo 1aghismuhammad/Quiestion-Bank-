@@ -19,7 +19,11 @@
             <strong>Material Management</strong>
             <span class="muted">Kelola materi, topik, dan arsip.</span>
         </a>
-        @foreach (['Generate Question', 'Question Bank', 'History', 'Subscription'] as $menu)
+        <a class="card placeholder" href="{{ route('account.subscription.show') }}" style="text-decoration: none;">
+            <strong>Subscription</strong>
+            <span class="muted">Paket, kuota penyimpanan, dan upgrade.</span>
+        </a>
+        @foreach (['Generate Question', 'Question Bank', 'History'] as $menu)
             <div class="card placeholder">
                 <strong>{{ $menu }}</strong>
                 <span class="muted">Segera hadir pada phase berikutnya.</span>

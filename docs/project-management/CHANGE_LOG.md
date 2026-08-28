@@ -26,6 +26,45 @@ Notes:
 -
 ```
 
+## v0.9.0 Phase 3.5 + 3.6 Generation Quota, Offers, and Manual Payment
+
+- Date: 28 August 2026
+- Version: 0.9.0
+- Phase: Phase 3 - Subscription and Quota Foundation
+- Type: Feature implementation
+
+Added:
+
+- `ResolveGenerationQuota` / `ResolvedGenerationQuota` (read-only; carries the same `ResolvedEntitlement` used by the subscription page).
+- `CalendarMonths::addNoOverflow` from the original `starts_at` anchor; monthly windows are half-open and bounded by `ends_at`.
+- `plan_offers` and `subscription_upgrade_requests` with short MySQL-safe index/FK names; unique nullable `approved_subscription_id`.
+- Canonical offers `pro_1m` (Rp10.000 / 1 month) and `pro_3m` (Rp25.000 / 3 months) via `PlanOfferSeeder` `firstOrCreate`.
+- Blade `/account/subscription` and `/admin/subscription-upgrades` (approve / reject with required reason / cancel).
+- Static QRIS on the Laravel `public` disk (`SUBSCRIPTION_QRIS_PATH=payment/qris.png`) and WhatsApp `wa.me` redirect (`SUBSCRIPTION_WHATSAPP_NUMBER`).
+
+Changed:
+
+- New pending requests require an active Pro Plan, active Offer, valid QRIS file, and valid WhatsApp number. Existing pending requests remain approvable if Plan/Offer later become inactive, using the stored snapshot.
+- Approval locks user then request then the active subscription queue, appends one `status=active` Pro window, and is idempotent.
+- Phase 3.5 + 3.6 and Phase 3 overall are `COMPLETE`. Generation consumption, reservation, and `ai_usage_logs` runtime move to Phase 4.
+
+Fixed:
+
+- Confirm pending insert retries on UNIQUE(`reference_code`) around the actual insert (bounded, 8 attempts), not an `exists()` precheck.
+- `RejectSubscriptionUpgrade` rejects blank or whitespace-only reasons without mutating status or reviewer fields.
+
+Database Impact:
+
+- New tables `plan_offers` and `subscription_upgrade_requests`. No changes to `subscriptions` status enum.
+
+Notes:
+
+- UI does not show generation used/remaining.
+- SQLite PHPUnit does not prove row locks. Local MySQL: two confirm processes for the same user produced one pending request; two approve processes for the same pending request produced one Subscription. Two different users confirming concurrently produced two pending requests. Marker fixtures were deleted after QA.
+- Real production QRIS is not committed. `php artisan storage:link` is required to serve the public disk.
+- No new Composer dependencies.
+- Authenticated browser walkthrough (Free / Pro / Admin with local QRIS and WhatsApp) remains required before treating Phase 3 as accepted.
+
 ## v0.8.0 Phase 3.3 + 3.4 Entitlement Resolver and Storage Quota
 
 - Date: 28 August 2026

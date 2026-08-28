@@ -9,6 +9,7 @@
 
     <p>
         <a class="button" href="{{ route('materials.index') }}">Materi saya</a>
+        <a class="button" href="{{ route('admin.subscription-upgrades.index') }}">Verifikasi upgrade</a>
     </p>
 
     <div class="grid" style="margin-top: 24px;">

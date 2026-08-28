@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 3 - Subscription and Quota Foundation (`IN PROGRESS`; 3.1 through 3.4 complete).
+Next phase: Phase 4 - AI Question Engine (`PLANNED`). Phase 3 is `COMPLETE`.
 
 Scope:
 
@@ -99,7 +99,7 @@ Definition of Done:
 
 ## Phase 3 - Subscription and Quota Foundation
 
-Status: `IN PROGRESS`
+Status: `COMPLETE`
 
 Technical slices:
 
@@ -108,16 +108,16 @@ Technical slices:
   - active entitlement resolver (`ResolveUserEntitlement`)
   - account storage quota enforcement (`Plan.storage_limit_bytes`; Free 50 MiB / Pro 500 MiB total)
   - 10 MB per-file upload limit remains a separate MVP safety control
-- Phase 3.5 + 3.6 (`PLANNED`):
-  - generation quota foundation
-  - subscription/quota user UI
-  - Pro duration selection (1 month / 3 months)
-  - static QRIS
+- Phase 3.5 + 3.6 (`COMPLETE`):
+  - generation quota definition (`ResolveGenerationQuota`; no consumption)
+  - subscription/quota user UI (`/account/subscription`)
+  - Plan Offers (`pro_1m` / `pro_3m`)
+  - static QRIS on the Laravel public disk
   - WhatsApp payment confirmation
-  - minimum manual admin verification
+  - minimum manual admin verification (`/admin/subscription-upgrades`)
   - no payment gateway
 
-Do not treat generation credit reservation, generation usage enforcement, or `ai_usage_logs` runtime as Phase 3.3 + 3.4. Those belong to Phase 3.5 + 3.6; Gemini usage integration is coordinated with Phase 4.
+Generation credit reservation, generation usage enforcement, failed-generation credit release, and `ai_usage_logs` runtime belong to **Phase 4**, together with Gemini integration.
 
 Scope:
 
@@ -126,14 +126,14 @@ Scope:
 - Account storage quota from Plan (enforced in 3.3 + 3.4).
 - Generation quota foundation, user quota UI, and manual upgrade/payment (3.5 + 3.6).
 
-Definition of Done (Phase 3 overall; not yet met):
+Definition of Done:
 
-- Entitlement efektif: Pro window valid atau fallback Free. (storage/entitlement slice done)
+- Entitlement efektif: Pro window valid atau fallback Free.
 - Concurrent file-upload request tidak dapat melewati quota storage. (verified on local MySQL)
-- Generation gagal tidak mengurangi credit permanen.
-- Upgrade manual dapat disetujui atau ditolak admin.
+- User dapat melihat paket, storage, dan allowance generation (tanpa used/remaining).
+- Upgrade manual dapat disetujui, ditolak (alasan wajib), atau dibatalkan admin; approval menulis window Pro.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 3 overall is not COMPLETE.
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Runtime konsumsi generation adalah Phase 4.
 
 ## Phase 4 - AI Question Engine
 
@@ -148,6 +148,8 @@ Scope:
 - Output schema validation.
 - Token/cost audit.
 - Retry lineage dan failure handling.
+- `ai_usage_logs` runtime, reservation, charge, dan release.
+- Penegakan limit generation dari `ResolveGenerationQuota`.
 
 Definition of Done:
 
@@ -155,6 +157,7 @@ Definition of Done:
 - Raw response dan parsed output tercatat.
 - Timeout, invalid JSON, dan provider failure tertangani.
 - Retry tidak menimpa audit generation sebelumnya.
+- Generation gagal tidak mengurangi credit permanen.
 - Semua output validator memiliki unit test.
 
 ## Phase 5 - Question Bank
@@ -188,7 +191,7 @@ Scope:
 - AI generation monitoring.
 - AI usage monitoring.
 - Subscription monitoring.
-- Manual upgrade/payment verification.
+- Full admin billing portal (minimum payment verification already exists in Phase 3.6).
 - Admin authorization dan action confirmation.
 
 Definition of Done:

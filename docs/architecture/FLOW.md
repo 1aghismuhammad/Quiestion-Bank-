@@ -10,7 +10,7 @@ Dokumen ini menerjemahkan rancangan flowchart user dan admin ke alur implementas
 - Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Google Gemini melalui queue untuk generation.
 - Database canonical: `docs/database/AI_QUESTION_BANK.dbml`.
-- Phase 3.1 + 3.2: Plan catalog Free/Pro dan riwayat window Pro. Phase 3.3 + 3.4: resolver entitlement dan quota storage akun pada upload. Payment belum diimplementasikan.
+- Phase 3.1 + 3.2: Plan catalog Free/Pro dan riwayat window Pro. Phase 3.3 + 3.4: resolver entitlement dan quota storage akun pada upload. Phase 3.5: definisi quota generation. Phase 3.6: Plan Offers, QRIS/WhatsApp, dan verifikasi admin.
 
 ## User Flow
 
@@ -25,6 +25,11 @@ flowchart LR
     Account -- No --> Blocked[Show account blocked]
     Account -- Yes --> Dashboard[User Dashboard]
     Dashboard --> Materials[Material Management]
+    Dashboard --> AccountSub[Account Subscription]
+    AccountSub --> ChooseOffer[Choose Pro 1m or 3m offer]
+    ChooseOffer --> PayQris[Pay static QRIS]
+    PayQris --> WaConfirm[POST confirm + WhatsApp]
+    WaConfirm --> AdminVerify[Admin approve reject or cancel]
     Materials --> MaterialChoice{Material source?}
     MaterialChoice -- Existing --> Existing[Open existing material]
     MaterialChoice -- Upload --> Upload[Upload material]
@@ -206,9 +211,9 @@ flowchart TB
 
 - Semua admin action menggunakan authorization policy, bukan hanya tampilan menu.
 - User dibuat otomatis oleh Google OAuth; admin tidak membuat password account secara manual.
-- Monitoring subscription terpisah dari verifikasi pembayaran/upgrade manual (Phase 3.5 + 3.6 / Phase 6). Domain 3.1 + 3.2 hanya catalog Plan dan riwayat window Pro.
+- Monitoring subscription terpisah dari verifikasi pembayaran/upgrade manual (minimum Phase 3.6; dashboard penuh Phase 6). Domain 3.1 + 3.2 hanya catalog Plan dan riwayat window Pro.
 - Delete user sebaiknya berupa deactivation atau soft delete untuk menjaga audit.
-- Verifikasi permintaan pembayaran/upgrade menyimpan admin, waktu keputusan, dan notifikasi email pada record permintaan masa depan, bukan pada Subscription.
+- Verifikasi permintaan pembayaran/upgrade menyimpan admin, waktu keputusan, dan alasan penolakan pada `subscription_upgrade_requests`, bukan pada Subscription. Notifikasi email belum termasuk Phase 3.6.
 - Monitoring AI bersifat read-only kecuali retry/cancel diberikan secara eksplisit.
 - Branch broadcast adalah target Phase 7 dan bukan release gate MVP.
 - Broadcast membutuhkan confirmation, consent filter, opt-out filter, dan delivery log.
@@ -226,7 +231,7 @@ File invalid ditolak sebelum disimpan. Extraction failure dapat di-retry tanpa m
 
 ### Quota Failure
 
-Generation tidak dibuat jika quota tidak cukup. Reservation memiliki `reservation_expires_at`; scheduler melepaskan reservation yang gagal atau kedaluwarsa.
+Upload yang melebihi `storage_limit_bytes` ditolak. Definisi allowance generation tersedia di Phase 3.5; reservation/`ai_usage_logs` dan “generation gagal tidak mengurangi credit” adalah Phase 4.
 
 ### Gemini Failure
 

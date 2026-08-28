@@ -1,7 +1,9 @@
 <?php
 
 use App\Enums\RoleName;
+use App\Http\Controllers\Account\SubscriptionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\SubscriptionUpgradeController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MaterialController;
@@ -40,9 +42,32 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
         Route::get('/dashboard', DashboardController::class)
             ->name('dashboard');
 
+        Route::get('/account/subscription', [SubscriptionController::class, 'show'])
+            ->name('account.subscription.show');
+        Route::post('/account/subscription/confirm', [SubscriptionController::class, 'confirm'])
+            ->middleware('throttle:10,1')
+            ->name('account.subscription.confirm');
+
         Route::get('/admin/dashboard', AdminDashboardController::class)
             ->middleware('role:'.RoleName::ADMIN->value)
             ->name('admin.dashboard');
+
+        Route::middleware('role:'.RoleName::ADMIN->value)->group(function (): void {
+            Route::get('/admin/subscription-upgrades', [SubscriptionUpgradeController::class, 'index'])
+                ->name('admin.subscription-upgrades.index');
+            Route::get('/admin/subscription-upgrades/{upgradeRequest}', [SubscriptionUpgradeController::class, 'show'])
+                ->whereNumber('upgradeRequest')
+                ->name('admin.subscription-upgrades.show');
+            Route::post('/admin/subscription-upgrades/{upgradeRequest}/approve', [SubscriptionUpgradeController::class, 'approve'])
+                ->whereNumber('upgradeRequest')
+                ->name('admin.subscription-upgrades.approve');
+            Route::post('/admin/subscription-upgrades/{upgradeRequest}/reject', [SubscriptionUpgradeController::class, 'reject'])
+                ->whereNumber('upgradeRequest')
+                ->name('admin.subscription-upgrades.reject');
+            Route::post('/admin/subscription-upgrades/{upgradeRequest}/cancel', [SubscriptionUpgradeController::class, 'cancel'])
+                ->whereNumber('upgradeRequest')
+                ->name('admin.subscription-upgrades.cancel');
+        });
 
         Route::get('/materials', [MaterialController::class, 'index'])
             ->name('materials.index');

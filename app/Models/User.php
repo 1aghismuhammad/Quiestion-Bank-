@@ -52,6 +52,11 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class);
     }
 
+    public function subscriptionUpgradeRequests(): HasMany
+    {
+        return $this->hasMany(SubscriptionUpgradeRequest::class);
+    }
+
     public function hasRole(RoleName|string $role): bool
     {
         $roleName = $role instanceof RoleName ? $role->value : $role;

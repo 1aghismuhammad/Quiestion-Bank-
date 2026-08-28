@@ -75,6 +75,8 @@ app/Services/Subscriptions
 ## Database
 
 - Pengembangan lokal memakai MySQL 8+ melalui Laragon. Pastikan MySQL Laragon berjalan sebelum `php artisan migrate`, `migrate:status`, atau `migrate --pretend`.
+- `env()` hanya di `config/*.php`. Kredensial pembayaran manual: `config/subscriptions.php` (`SUBSCRIPTION_WHATSAPP_NUMBER`, `SUBSCRIPTION_QRIS_PATH`). QRIS memakai disk `public`, bukan path Blade hard-code.
+- Operasi pembayaran/upgrade mengunci baris `users` terlebih dahulu, lalu request, lalu antrian subscription. Satu pending request per user ditegakkan di aplikasi, bukan unique `(user_id, status)`.
 - `.env` lokal wajib `DB_CONNECTION=mysql`. SQLite hanya untuk test otomatis melalui `phpunit.xml`.
 - Semua perubahan schema menggunakan migration.
 - `docs/database/AI_QUESTION_BANK.dbml` adalah desain canonical.
@@ -99,7 +101,7 @@ Checklist perubahan schema:
 ## Domain Invariants
 
 - Paling banyak satu subscription efektif untuk user pada satu instant. Beberapa row berstatus `active` boleh ada untuk renewal berurutan selama effective windows `[starts_at, ends_at)` tidak overlap. Unique `(user_id, status)` tidak dipakai. Resolver memvalidasi seluruh antrian `active` current/future sebagai Plan Pro dengan window well-formed; overlap efektif fail-closed. Data stale historis tidak mengunci akun.
-- Credit harus reserved dengan expiry sebelum generation, charged hanya setelah valid, dan released ketika gagal/expired.
+- Credit generation direservasi dengan expiry sebelum job AI (Phase 4), charged hanya setelah valid, dan released ketika gagal/expired. Phase 3.5 hanya mendefinisikan limit dan jendela.
 - Question count output harus sama dengan request.
 - Multiple choice memiliki minimal empat options dan tepat satu benar.
 - True/false memiliki tepat dua options dan satu benar.
