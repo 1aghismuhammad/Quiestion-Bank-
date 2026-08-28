@@ -98,7 +98,7 @@ Checklist perubahan schema:
 
 ## Domain Invariants
 
-- Paling banyak satu subscription efektif untuk user pada satu instant. Beberapa row berstatus `active` boleh ada untuk renewal berurutan selama effective windows `[starts_at, ends_at)` tidak overlap. Pencegahan overlap adalah enforcement application-layer di masa depan, bukan unique constraint database.
+- Paling banyak satu subscription efektif untuk user pada satu instant. Beberapa row berstatus `active` boleh ada untuk renewal berurutan selama effective windows `[starts_at, ends_at)` tidak overlap. Unique `(user_id, status)` tidak dipakai. Resolver memvalidasi seluruh antrian `active` current/future sebagai Plan Pro dengan window well-formed; overlap efektif fail-closed. Data stale historis tidak mengunci akun.
 - Credit harus reserved dengan expiry sebelum generation, charged hanya setelah valid, dan released ketika gagal/expired.
 - Question count output harus sama dengan request.
 - Multiple choice memiliki minimal empat options dan tepat satu benar.
@@ -136,7 +136,9 @@ Additional rules:
 
 - Phase 2 hanya menerima PDF, DOCX, dan TXT.
 - Setiap file upload maksimal 10 MB (batas keselamatan MVP). Batas ini tidak digantikan oleh quota Plan.
-- Quota storage akun memakai `Plan.storage_limit_bytes` (Free 50 MiB / Pro 500 MiB total). Enforcement: counted upload usage + file baru harus muat dalam limit efektif. Itu Phase 3.3 + 3.4, terpisah dari batas per file.
+- Quota storage akun memakai `Plan.storage_limit_bytes` (Free 50 MiB / Pro 500 MiB total). Enforcement: counted upload usage + file baru harus `<=` limit efektif (byte persis). Terpisah dari batas per file.
+- Upload file yang mengubah counted usage wajib `lockForUpdate` pada baris `users` pemilik, lalu duplicate re-check `(user_id, file_hash)` termasuk trash, baru entitlement/quota, store, dan insert. Jangan serialisasi global antar user.
+- Pesan duplikat: `File yang sama sudah diunggah.` Pesan quota: `Penyimpanan paket Anda tidak mencukupi untuk file ini.`
 - Gunakan allowlist MIME type dan extension; keduanya wajib sesuai.
 - Upload wajib menyimpan internal file path, file size, MIME type, SHA-256 file hash, dan extraction status.
 - Nama file asli tidak digunakan sebagai storage path.
@@ -172,7 +174,7 @@ Minimum coverage khusus:
 - Quota reservation, charge, release, dan concurrency.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
-- Material ownership dan upload validation.
+- Material ownership, upload validation, entitlement resolution, dan storage quota.
 - Phase 7: broadcast consent dan duplicate prevention.
 
 Gunakan factory, fake queue, fake storage, dan fake HTTP/provider. Test tidak boleh bergantung pada koneksi internet.

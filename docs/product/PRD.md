@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.7
+- Version: 0.8
 - Updated: 28 August 2026
-- Status: Phase 1 and Phase 2 are complete. Phase 3.1 + 3.2 Plan and Subscription domain foundation is implemented. Phase 3 overall remains in progress. Quota resolver and payment are not started.
+- Status: Phase 1 and Phase 2 are complete. Phase 3.1 through 3.4 are implemented (Plan/Subscription domain, entitlement resolver, account storage quota). Phase 3 overall remains in progress. Generation quota and payment are not started.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -80,7 +80,7 @@ Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 
 1. User membuka menu Material Management langsung dari dashboard.
 2. User membuat material melalui upload PDF, DOCX, TXT, atau input teks manual.
-3. Sistem memvalidasi input; setiap file upload maksimal 10 MB. Batas itu tetap berlaku di MVP. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) ditambahkan pada Phase 3.3 + 3.4 dan tidak menggantikan batas per file.
+3. Sistem memvalidasi input; setiap file upload maksimal 10 MB. Batas itu tetap berlaku di MVP. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah dan tidak menggantikan batas per file.
 4. Text material langsung siap, sedangkan upload diproses melalui extraction queue.
 5. Automatic Laravel queue retry is implemented for extraction jobs. Manual user extraction retry is not part of the current implementation: there is no `RetryMaterialExtraction` Action or Material UI retry control. Manual retry remains deferred until a later explicitly authorized lifecycle/UI decision.
 6. User mengatur chapter, sub-chapter, topic, focus area, serta optional page range.
@@ -106,7 +106,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 - FR-MAT-03: User dapat menentukan bab, sub-bab, topik, serta focus area.
 - FR-MAT-04: User hanya dapat melihat dan mengubah materi miliknya.
 - FR-MAT-05: Sistem menghitung seluruh upload yang belum dihapus terhadap storage usage, termasuk material archived dan extraction failed.
-- FR-MAT-06: Phase 2 hanya menerima PDF, DOCX, dan TXT. Setiap file upload maksimal 10 MB (batas keselamatan MVP yang tetap berlaku). Quota storage akun memakai `Plan.storage_limit_bytes` dan ditegakkan pada Phase 3.3 + 3.4.
+- FR-MAT-06: Phase 2 hanya menerima PDF, DOCX, dan TXT. Setiap file upload maksimal 10 MB (batas keselamatan MVP yang tetap berlaku). Quota storage akun memakai `Plan.storage_limit_bytes` (Free 50 MiB / Pro 500 MiB total) dan ditegakkan pada upload file.
 - FR-MAT-07: Upload wajib memiliki file path internal, file size, MIME type, SHA-256 file hash, dan extraction status.
 - FR-MAT-08: Kombinasi user dan file hash wajib unique untuk menolak upload duplikat milik user yang sama.
 - FR-MAT-09: User dapat mengubah material draft/ready menjadi archived dan memulihkan material archived menjadi ready.
@@ -136,7 +136,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 ### Subscription and Quota
 
 - FR-SUB-01: Plan mendefinisikan entitlement: `storage_limit_bytes`, `generation_limit`, dan `generation_reset_strategy` (`lifetime` atau `monthly`). Plan bukan harga atau durasi komersial.
-- FR-SUB-02: Subscription menyimpan window Pro berbatas waktu. Paling banyak satu window efektif pada satu instant; unique `(user_id, status)` tidak dipakai. Free bukan baris subscription.
+- FR-SUB-02: Subscription menyimpan window Pro berbatas waktu. Paling banyak satu window efektif pada satu instant; unique `(user_id, status)` tidak dipakai. Free bukan baris subscription. Resolver entitlement memakai `[starts_at, ends_at)` dan memvalidasi seluruh antrian `active` current/future sebagai Pro.
 - FR-SUB-03: Penggunaan generation dicatat pada `ai_usage_logs` dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window subscription efektif.
 - FR-SUB-04: Credit generation direservasi sebelum request AI, memiliki waktu kedaluwarsa, ditagihkan saat berhasil, dan dilepas saat gagal atau reservation expired. Fondasi quota generation dan `ai_usage_logs` adalah Phase 3.5 + 3.6; integrasi pemakaian Gemini dikoordinasikan dengan Phase 4.
 - FR-SUB-05: Verifikasi pembayaran/aktivasi Pro oleh admin adalah milestone payment kemudian; bukan bagian domain foundation.
@@ -209,6 +209,6 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 
 ## Open Decisions
 
-- Batas per file tetap 10 MB. Quota storage akun Plan ditegakkan pada Phase 3.3 + 3.4 dan tidak menggantikan batas per file.
+- Batas per file tetap 10 MB. Quota storage akun Plan sudah ditegakkan dan tidak menggantikan batas per file.
 - Format export pertama: PDF, DOCX, XLSX, atau LMS.
 - Provider payment otomatis dan invoice tetap post-MVP. Phase 3.5 + 3.6 MVP: opsi durasi Pro, QRIS statis, konfirmasi pembayaran via WhatsApp, verifikasi admin. Phase 7: WhatsApp CRM / broadcast.

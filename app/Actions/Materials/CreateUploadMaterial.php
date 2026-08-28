@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Materials;
 
+use App\Actions\Subscriptions\ResolveUserEntitlement;
 use App\Contracts\Materials\MaterialFileStore;
 use App\Data\Materials\MaterialFileMetadata;
 use App\Enums\ExtractionStatus;
@@ -21,7 +22,11 @@ use Throwable;
 
 class CreateUploadMaterial
 {
-    public function __construct(private MaterialFileStore $fileStore) {}
+    public function __construct(
+        private MaterialFileStore $fileStore,
+        private GuardUploadStorageQuota $guard,
+        private ResolveUserEntitlement $resolveEntitlement,
+    ) {}
 
     public function handle(User $user, string $title, UploadedFile $file): Material
     {
@@ -33,11 +38,27 @@ class CreateUploadMaterial
             ]);
         }
 
-        $stored = $this->fileStore->store($user, $file, $metadata);
+        $stored = null;
 
         try {
-            $material = DB::transaction(function () use ($user, $title, $stored): Material {
-                return $user->materials()->create([
+            $material = DB::transaction(function () use ($user, $title, $file, $metadata, &$stored): Material {
+                $owner = User::query()
+                    ->whereKey($user->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($this->ownerAlreadyHasHash($owner, $metadata->hash)) {
+                    throw ValidationException::withMessages([
+                        'file' => 'File yang sama sudah diunggah.',
+                    ]);
+                }
+
+                $entitlement = $this->resolveEntitlement->handle($owner);
+                $this->guard->handle($owner, $metadata->size, $entitlement);
+
+                $stored = $this->fileStore->store($owner, $file, $metadata);
+
+                return $owner->materials()->create([
                     'title' => $title,
                     'source_type' => SourceType::UPLOAD,
                     'file_name' => $stored->originalName,
@@ -83,9 +104,9 @@ class CreateUploadMaterial
             ->exists();
     }
 
-    private function compensate(MaterialFileMetadata $stored): void
+    private function compensate(?MaterialFileMetadata $stored): void
     {
-        if ($stored->path === null || $stored->path === '') {
+        if ($stored === null || $stored->path === null || $stored->path === '') {
             return;
         }
 

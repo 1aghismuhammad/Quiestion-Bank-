@@ -26,6 +26,43 @@ Notes:
 -
 ```
 
+## v0.8.0 Phase 3.3 + 3.4 Entitlement Resolver and Storage Quota
+
+- Date: 28 August 2026
+- Version: 0.8.0
+- Phase: Phase 3 - Subscription and Quota Foundation
+- Type: Feature implementation
+
+Added:
+
+- `ResolveUserEntitlement` with readonly `ResolvedEntitlement` (live Plan limits, nullable Subscription).
+- Integrity exceptions: ambiguous effective windows, missing/inactive canonical Free, invalid current/future Pro queue.
+- `GuardUploadStorageQuota` reusing `MaterialUsageCalculator`.
+- Account storage quota on file upload: Free 52428800 bytes, Pro 524288000 bytes; equality allowed; +1 byte rejected.
+
+Changed:
+
+- `CreateUploadMaterial` locks the owner `users` row, re-checks duplicates under the lock, then resolves entitlement and quota before storing the private file and inserting Material. Dispatch remains after commit.
+- Inactive Pro Plan still honors an already-paid effective window. Admin follows the same entitlement rules. MaterialPolicy unchanged.
+- Phase 3.3 + 3.4 are `COMPLETE`. Phase 3 overall remains `IN PROGRESS`.
+
+Fixed:
+
+- None.
+
+Database Impact:
+
+- None. No new tables or columns.
+
+Notes:
+
+- Effective rule: `status=active` AND `starts_at <= now < ends_at`. Time is source of truth; no scheduler required.
+- Current/future active queue (`ends_at > now` OR `starts_at >= now`) must reference Plan Pro with `starts_at < ends_at`. Historical stale rows do not lock the account.
+- Duplicate message is preferred over quota when the same hash already exists.
+- Over-quota after Pro ends retains existing Materials; text/archive/restore remain allowed.
+- SQLite PHPUnit does not prove row locks. Local MySQL race (database queue, worker stopped): same-user 45 MiB + two concurrent 4 MiB uploads produced one Material, one `jobs` row on `material-extraction`, quota ValidationException for the loser, usage 51380224 <= 52428800. Different-user concurrent uploads both succeeded.
+- No new Composer dependencies.
+
 ## v0.7.0 Phase 3.1 + 3.2 Plan and Subscription Domain
 
 - Date: 28 August 2026

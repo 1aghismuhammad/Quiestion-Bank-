@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Materials;
 
 use App\Actions\Materials\CreateUploadMaterial;
+use App\Actions\Materials\GuardUploadStorageQuota;
+use App\Actions\Subscriptions\ResolveUserEntitlement;
 use App\Contracts\Materials\MaterialFileStore;
 use App\Data\Materials\MaterialFileMetadata;
 use App\Enums\ExtractionStatus;
@@ -13,7 +15,8 @@ use App\Enums\SourceType;
 use App\Models\Material;
 use App\Models\User;
 use App\Services\Materials\MaterialStorageService;
-use Illuminate\Database\QueryException;
+use Database\Seeders\PlanSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Log\Events\MessageLogged;
@@ -35,6 +38,7 @@ class CreateUploadMaterialStorageTest extends TestCase
         parent::setUp();
 
         Storage::fake('materials');
+        $this->seed(PlanSeeder::class);
     }
 
     public function test_successful_upload_persists_draft_pending_material_and_uuid_file(): void
@@ -120,7 +124,7 @@ class CreateUploadMaterialStorageTest extends TestCase
         $this->assertSame([$originalPath], Storage::disk('materials')->allFiles());
     }
 
-    public function test_generic_db_failure_after_store_compensates_the_uuid_file(): void
+    public function test_missing_owner_is_rejected_before_store(): void
     {
         $missingOwner = User::factory()->make(['id' => 9_999_999]);
         $missingOwner->exists = true;
@@ -128,24 +132,22 @@ class CreateUploadMaterialStorageTest extends TestCase
         try {
             $this->action()->handle($missingOwner, 'Broken persist', $this->pdfUpload());
             $this->fail('Expected persistence to fail for a missing owner.');
-        } catch (QueryException) {
+        } catch (ModelNotFoundException) {
         } catch (ValidationException) {
-            $this->fail('Generic DB failure must not be mapped to a duplicate validation error.');
+            $this->fail('Missing owner must not be mapped to a duplicate validation error.');
         }
 
         $this->assertDatabaseCount('materials', 0);
         $this->assertSame([], Storage::disk('materials')->allFiles());
     }
 
-    public function test_unique_loss_after_store_compensates_loser_and_keeps_winner_row(): void
+    public function test_unique_loss_after_store_compensates_loser_file(): void
     {
         $user = User::factory()->create();
         $inner = new MaterialStorageService;
         $store = new class($inner) implements MaterialFileStore
         {
             public ?string $loserPath = null;
-
-            public ?Material $winner = null;
 
             public function __construct(private MaterialFileStore $inner) {}
 
@@ -158,7 +160,7 @@ class CreateUploadMaterialStorageTest extends TestCase
             {
                 $stored = $this->inner->store($owner, $file, $metadata);
                 $this->loserPath = $stored->path;
-                $this->winner = Material::factory()->upload()->for($owner)->create([
+                Material::factory()->upload()->for($owner)->create([
                     'file_hash' => $stored->hash,
                     'file_path' => 'winner-placeholder.pdf',
                 ]);
@@ -189,11 +191,8 @@ class CreateUploadMaterialStorageTest extends TestCase
             $this->assertSame(self::DUPLICATE_MESSAGE, $exception->errors()['file'][0] ?? null);
         }
 
-        $this->assertNotNull($store->winner);
         $this->assertNotNull($store->loserPath);
-        $this->assertSame(1, Material::query()->where('user_id', $user->id)->where('file_hash', $store->winner->file_hash)->count());
-        $this->assertTrue(Material::query()->findOrFail($store->winner->material_id)->is($store->winner));
-        $this->assertSame('winner-placeholder.pdf', $store->winner->fresh()->file_path);
+        $this->assertSame(0, Material::query()->where('user_id', $user->id)->count());
         Storage::disk('materials')->assertMissing($store->loserPath);
         $this->assertSame([], Storage::disk('materials')->allFiles());
     }
@@ -205,6 +204,7 @@ class CreateUploadMaterialStorageTest extends TestCase
             $logged[] = $event;
         });
 
+        $user = User::factory()->create();
         $inner = new MaterialStorageService;
         $cleanup = new RuntimeException('cleanup failed');
         $store = new class($inner, $cleanup) implements MaterialFileStore
@@ -225,6 +225,10 @@ class CreateUploadMaterialStorageTest extends TestCase
             {
                 $stored = $this->inner->store($owner, $file, $metadata);
                 $this->loserPath = $stored->path;
+                Material::factory()->upload()->for($owner)->create([
+                    'file_hash' => $stored->hash,
+                    'file_path' => 'winner-placeholder.pdf',
+                ]);
 
                 return $stored;
             }
@@ -245,18 +249,17 @@ class CreateUploadMaterialStorageTest extends TestCase
             }
         };
 
-        $missingOwner = User::factory()->make(['id' => 9_999_999]);
-        $missingOwner->exists = true;
         $originalName = 'Secret Name.pdf';
 
         try {
             $this->action($store)->handle(
-                $missingOwner,
-                'Broken persist',
+                $user,
+                'Loser',
                 $this->pdfUpload('cleanup-failure-bytes', $originalName),
             );
-            $this->fail('Expected persistence to fail for a missing owner.');
-        } catch (QueryException) {
+            $this->fail('Expected unique-loss to become a duplicate validation error.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(self::DUPLICATE_MESSAGE, $exception->errors()['file'][0] ?? null);
         } catch (RuntimeException $exception) {
             $this->fail('Cleanup exception replaced the original DB exception: '.$exception->getMessage());
         }
@@ -278,7 +281,11 @@ class CreateUploadMaterialStorageTest extends TestCase
 
     private function action(?MaterialFileStore $store = null): CreateUploadMaterial
     {
-        return new CreateUploadMaterial($store ?? new MaterialStorageService);
+        return new CreateUploadMaterial(
+            $store ?? $this->app->make(MaterialFileStore::class),
+            $this->app->make(GuardUploadStorageQuota::class),
+            $this->app->make(ResolveUserEntitlement::class),
+        );
     }
 
     private function pdfUpload(string $content = 'upload-bytes', string $name = 'lesson.pdf'): UploadedFile

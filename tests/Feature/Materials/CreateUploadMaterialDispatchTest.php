@@ -6,12 +6,16 @@ namespace Tests\Feature\Materials;
 
 use App\Actions\Materials\CreateTextMaterial;
 use App\Actions\Materials\CreateUploadMaterial;
+use App\Actions\Materials\GuardUploadStorageQuota;
+use App\Actions\Subscriptions\ResolveUserEntitlement;
+use App\Contracts\Materials\MaterialFileStore;
 use App\Enums\ExtractionStatus;
 use App\Enums\MaterialStatus;
 use App\Jobs\ExtractMaterialContent;
 use App\Models\Material;
 use App\Models\User;
-use Illuminate\Database\QueryException;
+use Database\Seeders\PlanSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Log\Events\MessageLogged;
@@ -26,6 +30,13 @@ class CreateUploadMaterialDispatchTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(PlanSeeder::class);
+    }
+
     public function test_successful_upload_dispatches_one_extraction_job_and_stays_draft_pending(): void
     {
         Queue::fake();
@@ -34,7 +45,7 @@ class CreateUploadMaterialDispatchTest extends TestCase
         $store = new FakeMaterialFileStore;
         $file = UploadedFile::fake()->createWithContent('lesson.pdf', 'upload-bytes');
 
-        $material = (new CreateUploadMaterial($store))->handle($user, 'Lesson PDF', $file);
+        $material = $this->action($store)->handle($user, 'Lesson PDF', $file);
 
         Queue::assertPushed(ExtractMaterialContent::class, 1);
         Queue::assertPushedOn('material-extraction', ExtractMaterialContent::class);
@@ -70,7 +81,7 @@ class CreateUploadMaterialDispatchTest extends TestCase
         $store = new FakeMaterialFileStore($hash);
 
         try {
-            (new CreateUploadMaterial($store))->handle(
+            $this->action($store)->handle(
                 $user,
                 'Duplicate',
                 UploadedFile::fake()->create('lesson.pdf', 120, 'application/pdf'),
@@ -83,7 +94,7 @@ class CreateUploadMaterialDispatchTest extends TestCase
         }
     }
 
-    public function test_database_persistence_failure_compensates_and_does_not_dispatch(): void
+    public function test_missing_owner_is_rejected_before_store_and_does_not_dispatch(): void
     {
         Queue::fake();
 
@@ -92,16 +103,16 @@ class CreateUploadMaterialDispatchTest extends TestCase
         $missingOwner->exists = true;
 
         try {
-            (new CreateUploadMaterial($store))->handle(
+            $this->action($store)->handle(
                 $missingOwner,
                 'Broken persist',
                 UploadedFile::fake()->create('lesson.pdf', 120, 'application/pdf'),
             );
             $this->fail('Expected persistence to fail for a missing owner.');
-        } catch (QueryException) {
+        } catch (ModelNotFoundException) {
             Queue::assertNothingPushed();
-            $this->assertSame(['inspect', 'store', 'delete'], $store->calls);
-            $this->assertNotEmpty($store->deleted);
+            $this->assertSame(['inspect'], $store->calls);
+            $this->assertSame([], $store->deleted);
             $this->assertDatabaseCount('materials', 0);
         }
     }
@@ -122,7 +133,7 @@ class CreateUploadMaterialDispatchTest extends TestCase
         $store = new FakeMaterialFileStore;
         $file = UploadedFile::fake()->createWithContent('lesson.pdf', 'keep-these-bytes');
 
-        $material = (new CreateUploadMaterial($store))->handle($user, 'Lesson PDF', $file);
+        $material = $this->action($store)->handle($user, 'Lesson PDF', $file);
 
         $this->assertInstanceOf(Material::class, $material);
         $this->assertDatabaseCount('materials', 1);
@@ -144,5 +155,14 @@ class CreateUploadMaterialDispatchTest extends TestCase
         $this->assertSame(RuntimeException::class, $warnings[0]->context['exception'] ?? null);
         $this->assertArrayNotHasKey('hash', $warnings[0]->context);
         $this->assertArrayNotHasKey('content', $warnings[0]->context);
+    }
+
+    private function action(?MaterialFileStore $store = null): CreateUploadMaterial
+    {
+        return new CreateUploadMaterial(
+            $store ?? $this->app->make(MaterialFileStore::class),
+            $this->app->make(GuardUploadStorageQuota::class),
+            $this->app->make(ResolveUserEntitlement::class),
+        );
     }
 }

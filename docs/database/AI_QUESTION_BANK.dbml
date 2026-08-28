@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.7.0
+// Version: 0.8.0
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -206,7 +206,7 @@ Table subscriptions {
     (user_id, status)
   }
 
-  Note: 'Finite Pro entitlement windows only. No Free subscription rows. Effectiveness is [starts_at, ends_at). Sequential non-overlapping active rows are allowed for renewal. Overlap prevention is application-layer, not a unique status constraint.'
+  Note: 'Finite Pro entitlement windows only. No Free subscription rows. Effectiveness is [starts_at, ends_at). Sequential non-overlapping active rows are allowed for renewal. Application-layer resolver validates the current/future active queue as Pro and fails closed on overlapping effective windows. Overlap is not a unique status constraint.'
 }
 
 //////////////////////////////////////////////////////
@@ -236,7 +236,7 @@ Table materials {
     (user_id, file_hash) [unique]
   }
 
-  Note: 'Upload PDF/DOCX/TXT maksimal 10 MB per file (MVP safety; not replaced by Plan quota). Account storage quota is Plan.storage_limit_bytes, enforced later. Text requires content and uses not_required. All non-deleted uploads including archived/failed count as storage usage. Owner lifecycle: draft/ready to archived and archived to ready.'
+  Note: 'Upload PDF/DOCX/TXT maksimal 10 MB per file (MVP safety; not replaced by Plan quota). Account storage quota is Plan.storage_limit_bytes, enforced on file upload. Text requires content and uses not_required. All non-deleted uploads including archived/failed count as storage usage. Owner lifecycle: draft/ready to archived and archived to ready.'
 }
 
 Table material_topics {

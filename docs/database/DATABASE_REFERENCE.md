@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.7.0
+- Version: 0.8.0
 - Domain entities: 16
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `material_id`, dan `topic_id` mengikuti custom PK
@@ -97,10 +97,10 @@ Aturan aplikasi:
 - Hanya window Pro. Tidak ada baris subscription Free.
 - Satu user boleh punya banyak baris historis.
 - Paling banyak satu window efektif pada satu instant. Unique `(user_id, status)` **tidak** dipakai agar renewal berurutan dapat menyimpan dua baris `active` yang tidak overlap.
-- Pencegahan overlap adalah Action/service (Phase 3.3 + 3.4), bukan constraint database.
+- Pencegahan overlap window efektif adalah application-layer (`ResolveUserEntitlement` fail-closed), bukan unique constraint database.
 - FK `user_id` dan `plan_id` memakai `ON DELETE RESTRICT`.
 - Tidak ada hard-delete lifecycle normal. Plan yang sudah direferensikan dinonaktifkan, bukan dihapus.
-- Resolver entitlement, quota, dan payment/approval bukan bagian Phase 3.1 + 3.2.
+- Resolver entitlement: load semua row `status=active`; validasi seluruh antrian current/future (`ends_at > now` OR `starts_at >= now`) sebagai Plan Pro dengan `starts_at < ends_at`; window efektif `[starts_at, ends_at)`; 0 → Free; 1 → Pro; 2+ → error integritas. Data stale historis tidak mengunci akun. Plan Pro inactive tetap dihormati untuk window yang sudah dibayar.
 
 ### Material Management
 
@@ -120,7 +120,7 @@ Aturan aplikasi:
 - Kombinasi `(user_id, file_hash)` unique untuk menolak upload duplikat milik user yang sama.
 - Lifecycle owner: `draft|ready -> archived` dan `archived -> ready`.
 - Material Management Phase 2 berdiri sendiri dari dashboard dan tidak memiliki dependency pada question set.
-- Nilai quota storage akun didefinisikan pada catalog `plans` (`storage_limit_bytes`). Enforcement total storage adalah Phase 3.3 + 3.4: counted upload usage + file baru harus muat dalam limit Plan efektif. Batas 10 MB per file tetap terpisah dan tidak digantikan. Quota generation dan `ai_usage_logs` adalah Phase 3.5 + 3.6 (integrasi Gemini dengan Phase 4).
+- Nilai quota storage akun didefinisikan pada catalog `plans` (`storage_limit_bytes`). Enforcement: counted upload usage + ukuran file baru harus `<=` limit Plan efektif (byte persis; sama dengan limit diizinkan). Batas 10 MB per file tetap terpisah. Upload file yang ditolak tidak membuat Material, file permanen, atau job ekstraksi. Text/archive/restore tidak memakai quota upload. Quota generation dan `ai_usage_logs` adalah Phase 3.5 + 3.6 (integrasi Gemini dengan Phase 4).
 
 #### `material_topics`
 

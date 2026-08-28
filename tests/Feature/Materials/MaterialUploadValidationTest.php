@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Materials;
 
 use App\Actions\Materials\CreateUploadMaterial;
+use App\Actions\Materials\GuardUploadStorageQuota;
+use App\Actions\Subscriptions\ResolveUserEntitlement;
 use App\Contracts\Materials\MaterialFileStore;
 use App\Enums\ExtractionStatus;
 use App\Enums\MaterialStatus;
@@ -12,7 +14,8 @@ use App\Enums\SourceType;
 use App\Http\Requests\Materials\StoreUploadMaterialRequest;
 use App\Models\Material;
 use App\Models\User;
-use Illuminate\Database\QueryException;
+use Database\Seeders\PlanSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Validator;
@@ -23,6 +26,13 @@ use Tests\TestCase;
 class MaterialUploadValidationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(PlanSeeder::class);
+    }
 
     public function test_upload_request_accepts_pdf_docx_and_txt_within_size_limit(): void
     {
@@ -135,7 +145,7 @@ class MaterialUploadValidationTest extends TestCase
         $store = new FakeMaterialFileStore;
         $file = UploadedFile::fake()->create('lesson.pdf', 120, 'application/pdf');
 
-        $material = (new CreateUploadMaterial($store))->handle($user, 'Lesson PDF', $file);
+        $material = $this->action($store)->handle($user, 'Lesson PDF', $file);
 
         $this->assertSame(['inspect', 'store'], $store->calls);
         $this->assertSame(SourceType::UPLOAD, $material->source_type);
@@ -160,7 +170,7 @@ class MaterialUploadValidationTest extends TestCase
         $store = new FakeMaterialFileStore($hash);
 
         try {
-            (new CreateUploadMaterial($store))->handle(
+            $this->action($store)->handle(
                 $user,
                 'Duplicate',
                 UploadedFile::fake()->create('lesson.pdf', 120, 'application/pdf'),
@@ -182,7 +192,7 @@ class MaterialUploadValidationTest extends TestCase
         $user = User::factory()->create();
         $store = new FakeMaterialFileStore($hash);
 
-        $material = (new CreateUploadMaterial($store))->handle(
+        $material = $this->action($store)->handle(
             $user,
             'Shared hash',
             UploadedFile::fake()->create('lesson.pdf', 120, 'application/pdf'),
@@ -192,22 +202,22 @@ class MaterialUploadValidationTest extends TestCase
         $this->assertDatabaseCount('materials', 2);
     }
 
-    public function test_upload_action_requests_cleanup_when_persistence_fails(): void
+    public function test_upload_action_rejects_missing_owner_before_store(): void
     {
         $store = new FakeMaterialFileStore;
         $missingOwner = User::factory()->make(['id' => 9_999_999]);
         $missingOwner->exists = true;
 
         try {
-            (new CreateUploadMaterial($store))->handle(
+            $this->action($store)->handle(
                 $missingOwner,
                 'Broken persist',
                 UploadedFile::fake()->create('lesson.pdf', 120, 'application/pdf'),
             );
             $this->fail('Expected persistence to fail for a missing owner.');
-        } catch (QueryException) {
-            $this->assertSame(['inspect', 'store', 'delete'], $store->calls);
-            $this->assertNotEmpty($store->deleted);
+        } catch (ModelNotFoundException) {
+            $this->assertSame(['inspect'], $store->calls);
+            $this->assertSame([], $store->deleted);
         }
 
         $this->assertDatabaseCount('materials', 0);
@@ -227,6 +237,15 @@ class MaterialUploadValidationTest extends TestCase
             ?->getParameters()[0]
             ->getType()
             ?->getName());
+    }
+
+    private function action(?MaterialFileStore $store = null): CreateUploadMaterial
+    {
+        return new CreateUploadMaterial(
+            $store ?? $this->app->make(MaterialFileStore::class),
+            $this->app->make(GuardUploadStorageQuota::class),
+            $this->app->make(ResolveUserEntitlement::class),
+        );
     }
 
     /**

@@ -10,7 +10,7 @@ Dokumen ini menerjemahkan rancangan flowchart user dan admin ke alur implementas
 - Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Google Gemini melalui queue untuk generation.
 - Database canonical: `docs/database/AI_QUESTION_BANK.dbml`.
-- Phase 3.1 + 3.2: Plan catalog Free/Pro dan riwayat window Pro. Resolver quota dan payment belum diimplementasikan.
+- Phase 3.1 + 3.2: Plan catalog Free/Pro dan riwayat window Pro. Phase 3.3 + 3.4: resolver entitlement dan quota storage akun pada upload. Payment belum diimplementasikan.
 
 ## User Flow
 
@@ -76,7 +76,7 @@ flowchart LR
 
 1. Login pertama membuat user dan role default; login berikutnya memperbarui profil Google. Entitlement default adalah Plan Free; OAuth tidak membuat baris subscription.
 2. Phase 2 Material Management dibuka langsung dari dashboard dan tidak bergantung pada question set.
-3. Material upload hanya menerima PDF, DOCX, atau TXT. Setiap file maksimal 10 MB. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah pada Phase 3.3 + 3.4.
+3. Material upload hanya menerima PDF, DOCX, atau TXT. Setiap file maksimal 10 MB. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah: `CreateUploadMaterial` mengunci baris user, menolak duplikat dulu, lalu menolak file baru jika usage terhitung + ukuran file melebihi limit Plan efektif.
 4. Material upload harus lolos MIME, extension, size, dan ownership validation.
 5. Upload wajib menyimpan internal file path, file size, MIME type, SHA-256 hash, dan extraction status.
 6. Kombinasi user dan file hash unique sehingga duplikat user yang sama ditolak.

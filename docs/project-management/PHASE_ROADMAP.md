@@ -68,7 +68,7 @@ Technical slices complete:
 - Private storage (`storage/app/materials`, unserved disk).
 - SHA-256 metadata and internal UUID file paths.
 - Duplicate protection and upload failure compensation.
-- Storage usage accounting (integer bytes; quota deferred to Phase 3).
+- Storage usage accounting (integer bytes; account quota enforced in Phase 3.3 + 3.4).
 - Content extraction queue (`COMPLETE`): PDF, DOCX, and TXT via `material-extraction`; after-commit upload dispatch; unique and overlap locks; guarded `pending|failed` → `processing` → `completed`/`failed`.
 - Topic management (`COMPLETE`): chapter, sub-chapter, topic, focus area, sort order, and optional page range via Material Topic Actions.
 - Material ownership / authorization (`COMPLETE`): owner-only `MaterialPolicy`; ADMIN does not receive global Material access.
@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 3 - Subscription and Quota Foundation (`IN PROGRESS`; 3.1 + 3.2 complete).
+Next phase: Phase 3 - Subscription and Quota Foundation (`IN PROGRESS`; 3.1 through 3.4 complete).
 
 Scope:
 
@@ -104,8 +104,8 @@ Status: `IN PROGRESS`
 Technical slices:
 
 - Phase 3.1 + 3.2 Plan and Subscription domain (`COMPLETE`): `plans` catalog; canonical Free and Pro via idempotent `PlanSeeder`; finite Pro windows; no Free subscription rows.
-- Phase 3.3 + 3.4 (`PLANNED`):
-  - active entitlement resolver
+- Phase 3.3 + 3.4 (`COMPLETE`):
+  - active entitlement resolver (`ResolveUserEntitlement`)
   - account storage quota enforcement (`Plan.storage_limit_bytes`; Free 50 MiB / Pro 500 MiB total)
   - 10 MB per-file upload limit remains a separate MVP safety control
 - Phase 3.5 + 3.6 (`PLANNED`):
@@ -123,13 +123,13 @@ Scope:
 
 - Seed Free dan Pro plan as entitlement catalog (not Free subscription rows).
 - Subscription lifecycle for paid Pro windows.
-- Account storage quota from Plan (enforcement in 3.3 + 3.4).
+- Account storage quota from Plan (enforced in 3.3 + 3.4).
 - Generation quota foundation, user quota UI, and manual upgrade/payment (3.5 + 3.6).
 
 Definition of Done (Phase 3 overall; not yet met):
 
-- Entitlement efektif: Pro window valid atau fallback Free.
-- Concurrent request tidak dapat melewati quota.
+- Entitlement efektif: Pro window valid atau fallback Free. (storage/entitlement slice done)
+- Concurrent file-upload request tidak dapat melewati quota storage. (verified on local MySQL)
 - Generation gagal tidak mengurangi credit permanen.
 - Upgrade manual dapat disetujui atau ditolak admin.
 

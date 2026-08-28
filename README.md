@@ -14,16 +14,18 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 2.6 - Material Ownership & Authorization: `COMPLETE`
 - Phase 2.7 - Archive / Restore Lifecycle: `COMPLETE`
 - Phase 2.8 - Material Web Management: `COMPLETE`
-- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, and Phase 3.1 + 3.2 Plan catalog plus Pro subscription history
+- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, Plan catalog, Pro subscription history, active entitlement resolver, and account storage quota
 - Phase 3 - Subscription & Quota Foundation: `IN PROGRESS`
 - Phase 3.1 - Plan Domain Foundation: `COMPLETE`
 - Phase 3.2 - Subscription Domain Foundation: `COMPLETE`
-- Next remaining Phase 3 work: 3.3 + 3.4 entitlement resolver and account storage quota; 3.5 + 3.6 generation quota foundation, subscription/quota UI, and manual upgrade/payment
-- Documentation version: 0.7.0
+- Phase 3.3 - Active Entitlement Resolution: `COMPLETE`
+- Phase 3.4 - Storage Quota Enforcement: `COMPLETE`
+- Next remaining Phase 3 work: 3.5 + 3.6 generation quota foundation, subscription/quota UI, and manual upgrade/payment
+- Documentation version: 0.8.0
 - MVP target: Phase 0-6
 - Database design: 16 domain entities
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 2 Material Management is complete. Phase 3.1 + 3.2 are implemented; Phase 3 overall is not complete.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 2 Material Management is complete. Phase 3.1 through 3.4 are implemented; Phase 3 overall is not complete.
 
 ## Architecture Decisions
 
@@ -80,7 +82,7 @@ Environment value dan credential tidak boleh dicatat dalam repository.
 
 ## Open Product Decisions
 
-- Upload per file tetap maksimal 10 MB. Quota storage akun (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah pada Phase 3.3 + 3.4 dan tidak menggantikan batas per file.
+- Upload per file tetap maksimal 10 MB. Quota storage akun (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah yang sudah ditegakkan dan tidak menggantikan batas per file.
 - Format export pertama.
 - Provider payment otomatis tetap post-MVP. Phase 3.5 + 3.6 MVP memakai QRIS statis dan konfirmasi pembayaran manual via WhatsApp (admin verifikasi). Phase 7 adalah WhatsApp CRM / broadcast.
 

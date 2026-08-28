@@ -8,6 +8,7 @@ use App\Enums\ExtractionStatus;
 use App\Enums\MaterialStatus;
 use App\Jobs\ExtractMaterialContent;
 use App\Models\Material;
+use Database\Seeders\PlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -17,6 +18,13 @@ use Tests\TestCase;
 class MaterialCreateWebTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(PlanSeeder::class);
+    }
 
     public function test_create_page_loads_for_complete_user(): void
     {
