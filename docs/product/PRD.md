@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.6
-- Updated: 27 August 2026
-- Status: Phase 1 implemented. Phase 2 Material Management is complete. Phase 3 Subscription and Quota Foundation is the next planned phase and has not started.
+- Version: 0.7
+- Updated: 28 August 2026
+- Status: Phase 1 and Phase 2 are complete. Phase 3.1 + 3.2 Plan and Subscription domain foundation is implemented. Phase 3 overall remains in progress. Quota resolver and payment are not started.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -80,7 +80,7 @@ Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 
 1. User membuka menu Material Management langsung dari dashboard.
 2. User membuat material melalui upload PDF, DOCX, TXT, atau input teks manual.
-3. Sistem memvalidasi input; upload dibatasi sementara maksimal 10 MB per file sampai quota Phase 3 tersedia.
+3. Sistem memvalidasi input; setiap file upload maksimal 10 MB. Batas itu tetap berlaku di MVP. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) ditambahkan pada Phase 3.3 + 3.4 dan tidak menggantikan batas per file.
 4. Text material langsung siap, sedangkan upload diproses melalui extraction queue.
 5. Automatic Laravel queue retry is implemented for extraction jobs. Manual user extraction retry is not part of the current implementation: there is no `RetryMaterialExtraction` Action or Material UI retry control. Manual retry remains deferred until a later explicitly authorized lifecycle/UI decision.
 6. User mengatur chapter, sub-chapter, topic, focus area, serta optional page range.
@@ -93,7 +93,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 ### Authentication
 
 - FR-AUTH-01: Sistem hanya menyediakan login Google OAuth.
-- FR-AUTH-02: Login pertama membuat user dengan role `USER`; Free subscription baru diprovision pada Phase 3.
+- FR-AUTH-02: Login pertama membuat user dengan role `USER`. Entitlement default adalah Plan Free sebagai fallback; sistem tidak membuat baris subscription Free.
 - FR-AUTH-03: Login berikutnya memperbarui nama, avatar, email Google, dan waktu login terakhir.
 - FR-AUTH-04: Halaman admin hanya dapat diakses user dengan role `ADMIN`.
 - FR-AUTH-05: User berstatus suspended atau inactive tidak dapat mengakses aplikasi.
@@ -106,7 +106,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 - FR-MAT-03: User dapat menentukan bab, sub-bab, topik, serta focus area.
 - FR-MAT-04: User hanya dapat melihat dan mengubah materi miliknya.
 - FR-MAT-05: Sistem menghitung seluruh upload yang belum dihapus terhadap storage usage, termasuk material archived dan extraction failed.
-- FR-MAT-06: Phase 2 hanya menerima PDF, DOCX, dan TXT dengan batas sementara 10 MB per file.
+- FR-MAT-06: Phase 2 hanya menerima PDF, DOCX, dan TXT. Setiap file upload maksimal 10 MB (batas keselamatan MVP yang tetap berlaku). Quota storage akun memakai `Plan.storage_limit_bytes` dan ditegakkan pada Phase 3.3 + 3.4.
 - FR-MAT-07: Upload wajib memiliki file path internal, file size, MIME type, SHA-256 file hash, dan extraction status.
 - FR-MAT-08: Kombinasi user dan file hash wajib unique untuk menolak upload duplikat milik user yang sama.
 - FR-MAT-09: User dapat mengubah material draft/ready menjadi archived dan memulihkan material archived menjadi ready.
@@ -135,18 +135,18 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 
 ### Subscription and Quota
 
-- FR-SUB-01: Plan mendefinisikan generation credit per billing period dan storage limit dalam MB.
-- FR-SUB-02: Setiap user hanya boleh memiliki satu subscription aktif.
-- FR-SUB-03: Penggunaan generation dicatat pada `ai_usage_logs` dan dikaitkan dengan subscription.
-- FR-SUB-04: Credit direservasi sebelum request AI, memiliki waktu kedaluwarsa, ditagihkan saat berhasil, dan dilepas saat gagal atau reservation expired.
-- FR-SUB-05: Aktivasi atau penolakan subscription oleh admin mengirim notifikasi email kepada user; kegagalan pengiriman dicatat di application log.
+- FR-SUB-01: Plan mendefinisikan entitlement: `storage_limit_bytes`, `generation_limit`, dan `generation_reset_strategy` (`lifetime` atau `monthly`). Plan bukan harga atau durasi komersial.
+- FR-SUB-02: Subscription menyimpan window Pro berbatas waktu. Paling banyak satu window efektif pada satu instant; unique `(user_id, status)` tidak dipakai. Free bukan baris subscription.
+- FR-SUB-03: Penggunaan generation dicatat pada `ai_usage_logs` dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window subscription efektif.
+- FR-SUB-04: Credit generation direservasi sebelum request AI, memiliki waktu kedaluwarsa, ditagihkan saat berhasil, dan dilepas saat gagal atau reservation expired. Fondasi quota generation dan `ai_usage_logs` adalah Phase 3.5 + 3.6; integrasi pemakaian Gemini dikoordinasikan dengan Phase 4.
+- FR-SUB-05: Verifikasi pembayaran/aktivasi Pro oleh admin adalah milestone payment kemudian; bukan bagian domain foundation.
 
 ### Admin
 
 - FR-ADM-01: Admin dapat mengelola user dan status akun.
 - FR-ADM-02: Admin dapat mengelola question bank.
 - FR-ADM-03: Admin dapat memonitor AI generation dan AI usage.
-- FR-ADM-04: Admin dapat menyetujui atau menolak subscription yang menunggu verifikasi.
+- FR-ADM-04: Admin dapat menyetujui atau menolak permintaan pembayaran/upgrade manual. Persetujuan menghasilkan pembuatan atau perpanjangan subscription Pro. Subscription itu sendiri tidak berstatus pending/rejected pembayaran.
 
 ### Post-MVP WhatsApp CRM
 
@@ -185,11 +185,11 @@ Kontrak JSON lengkap menjadi source of truth di `docs/ai/PROMPT_ENGINE_RULES.md`
 
 ### Free Plan
 
-Quota generation dan storage terbatas untuk akuisisi serta evaluasi produk.
+Fallback entitlement permanen. Storage 50 MiB (`52428800` bytes). Generation 2 untuk lifetime akun. Reset `lifetime`. Tidak kedaluwarsa. Tidak direpresentasikan sebagai baris subscription.
 
 ### Pro Plan
 
-Quota generation dan storage lebih besar serta akses fitur premium yang ditentukan sebelum Phase 5.
+Satu Plan entitlement. Storage 500 MiB (`524288000` bytes). Generation 100 per window bulanan yang mengikuti anniversary subscription, bukan kalender. Reset `monthly`. Window Pro selalu memiliki `ends_at` hingga. Harga dan durasi komersial (1 bulan / 3 bulan) adalah layer offer/payment kemudian.
 
 ### Institution Plan
 
@@ -209,7 +209,6 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 
 ## Open Decisions
 
-- Nilai generation credit serta storage limit Free dan Pro.
-- Batas upload per plan yang menggantikan batas sementara 10 MB setelah Phase 3.
+- Batas per file tetap 10 MB. Quota storage akun Plan ditegakkan pada Phase 3.3 + 3.4 dan tidak menggantikan batas per file.
 - Format export pertama: PDF, DOCX, XLSX, atau LMS.
-- Provider payment dan WhatsApp untuk fase post-MVP.
+- Provider payment otomatis dan invoice tetap post-MVP. Phase 3.5 + 3.6 MVP: opsi durasi Pro, QRIS statis, konfirmasi pembayaran via WhatsApp, verifikasi admin. Phase 7: WhatsApp CRM / broadcast.

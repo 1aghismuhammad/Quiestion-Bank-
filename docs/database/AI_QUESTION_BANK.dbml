@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.6.1
+// Version: 0.7.0
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -10,32 +10,20 @@ Enum user_status {
   inactive
 }
 
-Enum billing_period {
-  monthly
-  yearly
+Enum generation_reset_strategy {
   lifetime
+  monthly
 }
 
 Enum plan_status {
   active
   inactive
-  archived
 }
 
 Enum subscription_status {
-  pending
   active
   expired
   cancelled
-  rejected
-}
-
-Enum payment_status {
-  unpaid
-  pending_verification
-  paid
-  failed
-  refunded
 }
 
 Enum source_type {
@@ -191,40 +179,34 @@ Table role_user {
 
 Table plans {
   plan_id bigint [pk, increment]
-  plan_name varchar(100) [not null, unique]
-  description text
-  price decimal(12,2) [not null, default: 0]
-  currency char(3) [not null, default: 'IDR']
-  billing_period billing_period [not null]
-  generation_limit int [not null, note: 'Jumlah credit generation per billing period']
-  storage_limit_mb int [not null, note: 'Batas penyimpanan aktif dalam megabyte']
+  code varchar(32) [not null, unique, note: 'Machine key: free, pro']
+  name varchar(100) [not null]
+  storage_limit_bytes bigint [not null, note: 'Free 52428800; Pro 524288000']
+  generation_limit int [not null, note: 'Free 2 lifetime; Pro 100 per monthly window']
+  generation_reset_strategy generation_reset_strategy [not null]
   status plan_status [not null, default: 'active']
   created_at timestamp
   updated_at timestamp
+
+  Note: 'Entitlement catalog only. One Pro plan. Price and commercial duration belong to a future offer layer. Free is fallback entitlement, not a subscription row.'
 }
 
 Table subscriptions {
   subscription_id bigint [pk, increment]
   user_id bigint [not null]
   plan_id bigint [not null]
-  subscription_code varchar(100) [not null, unique]
-  start_date timestamp [not null]
-  end_date timestamp
-  status subscription_status [not null, default: 'pending']
-  payment_status payment_status [not null, default: 'unpaid']
-  approved_by bigint
-  approved_at timestamp
+  starts_at timestamp [not null]
+  ends_at timestamp [not null]
+  status subscription_status [not null]
   cancelled_at timestamp
   created_at timestamp
   updated_at timestamp
 
   indexes {
     (user_id, status)
-    (end_date, status)
-    approved_by
   }
 
-  Note: 'Aplikasi memastikan maksimal satu subscription aktif per user.'
+  Note: 'Finite Pro entitlement windows only. No Free subscription rows. Effectiveness is [starts_at, ends_at). Sequential non-overlapping active rows are allowed for renewal. Overlap prevention is application-layer, not a unique status constraint.'
 }
 
 //////////////////////////////////////////////////////
@@ -254,7 +236,7 @@ Table materials {
     (user_id, file_hash) [unique]
   }
 
-  Note: 'Upload PDF/DOCX/TXT maksimal sementara 10 MB mewajibkan file_path, file_size, mime_type, file_hash, dan extraction_status. Text mewajibkan content dan memakai not_required. Semua upload non-deleted termasuk archived/failed dihitung sebagai storage usage. Lifecycle owner: draft/ready ke archived dan archived ke ready.'
+  Note: 'Upload PDF/DOCX/TXT maksimal 10 MB per file (MVP safety; not replaced by Plan quota). Account storage quota is Plan.storage_limit_bytes, enforced later. Text requires content and uses not_required. All non-deleted uploads including archived/failed count as storage usage. Owner lifecycle: draft/ready to archived and archived to ready.'
 }
 
 Table material_topics {
@@ -346,7 +328,8 @@ Table ai_generations {
 Table ai_usage_logs {
   usage_id bigint [pk, increment]
   user_id bigint [not null]
-  subscription_id bigint [not null]
+  plan_id bigint [not null]
+  subscription_id bigint [note: 'Nullable for Free fallback usage; required for Pro window usage']
   generation_id bigint [not null]
   action_type usage_action [not null]
   credit_used int [not null, default: 0]
@@ -358,11 +341,12 @@ Table ai_usage_logs {
 
   indexes {
     (user_id, created_at)
+    (plan_id, created_at)
     (subscription_id, created_at)
     generation_id
   }
 
-  Note: 'Sumber perhitungan quota generation per periode subscription.'
+  Note: 'Future generation quota ledger (Phase 3.5 + 3.6; Gemini integration with Phase 4). Not implemented in Phase 3.1 + 3.2. Not part of Phase 3.3 + 3.4 storage enforcement. Free usage: plan_id = Free, subscription_id null. Pro usage: plan_id = Pro, subscription_id = effective Pro window. Charged Free rows count toward lifetime entitlement; charged Pro rows count toward the subscription window.'
 }
 
 //////////////////////////////////////////////////////
@@ -513,9 +497,8 @@ Table broadcast_logs {
 Ref: users.id < role_user.user_id [delete: cascade]
 Ref: roles.id < role_user.role_id [delete: cascade]
 
-Ref: users.id < subscriptions.user_id
-Ref: plans.plan_id < subscriptions.plan_id
-Ref: users.id < subscriptions.approved_by
+Ref: users.id < subscriptions.user_id [delete: restrict]
+Ref: plans.plan_id < subscriptions.plan_id [delete: restrict]
 
 Ref: users.id < materials.user_id
 Ref: materials.material_id < material_topics.material_id [delete: cascade]
@@ -528,6 +511,7 @@ Ref: prompt_versions.prompt_version_id < ai_generations.prompt_version_id
 Ref: ai_generations.generation_id < ai_generations.parent_generation_id
 
 Ref: users.id < ai_usage_logs.user_id
+Ref: plans.plan_id < ai_usage_logs.plan_id
 Ref: subscriptions.subscription_id < ai_usage_logs.subscription_id
 Ref: ai_generations.generation_id < ai_usage_logs.generation_id
 

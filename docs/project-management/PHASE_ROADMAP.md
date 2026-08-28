@@ -64,7 +64,7 @@ Technical slices complete:
 
 - Material domain foundation (schema, models, enums).
 - Material creation flow (text and upload actions).
-- Upload MIME and extension validation (temporary 10 MB per file).
+- Upload MIME and extension validation (10 MB per-file safety limit; remains in MVP).
 - Private storage (`storage/app/materials`, unserved disk).
 - SHA-256 metadata and internal UUID file paths.
 - Duplicate protection and upload failure compensation.
@@ -76,12 +76,12 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 3 - Subscription and Quota Foundation (`PLANNED`; not started).
+Next phase: Phase 3 - Subscription and Quota Foundation (`IN PROGRESS`; 3.1 + 3.2 complete).
 
 Scope:
 
 - Material menu berdiri sendiri dari dashboard tanpa dependency question set.
-- Material upload PDF, DOCX, dan TXT dengan batas sementara 10 MB per file.
+- Material upload PDF, DOCX, dan TXT dengan batas 10 MB per file (tetap berlaku; terpisah dari quota storage akun).
 - Text input.
 - File validation dan private storage.
 - Content extraction queue.
@@ -99,27 +99,41 @@ Definition of Done:
 
 ## Phase 3 - Subscription and Quota Foundation
 
-Status: `PLANNED`
+Status: `IN PROGRESS`
+
+Technical slices:
+
+- Phase 3.1 + 3.2 Plan and Subscription domain (`COMPLETE`): `plans` catalog; canonical Free and Pro via idempotent `PlanSeeder`; finite Pro windows; no Free subscription rows.
+- Phase 3.3 + 3.4 (`PLANNED`):
+  - active entitlement resolver
+  - account storage quota enforcement (`Plan.storage_limit_bytes`; Free 50 MiB / Pro 500 MiB total)
+  - 10 MB per-file upload limit remains a separate MVP safety control
+- Phase 3.5 + 3.6 (`PLANNED`):
+  - generation quota foundation
+  - subscription/quota user UI
+  - Pro duration selection (1 month / 3 months)
+  - static QRIS
+  - WhatsApp payment confirmation
+  - minimum manual admin verification
+  - no payment gateway
+
+Do not treat generation credit reservation, generation usage enforcement, or `ai_usage_logs` runtime as Phase 3.3 + 3.4. Those belong to Phase 3.5 + 3.6; Gemini usage integration is coordinated with Phase 4.
 
 Scope:
 
-- Seed Free dan Pro plan.
-- Provision Free subscription untuk user yang belum memiliki subscription.
-- Subscription lifecycle.
-- Generation credit per billing period.
-- Storage limit.
-- Credit reservation dengan expiry, charge, dan release.
-- Approval manual oleh admin.
-- Notifikasi email untuk hasil approval.
+- Seed Free dan Pro plan as entitlement catalog (not Free subscription rows).
+- Subscription lifecycle for paid Pro windows.
+- Account storage quota from Plan (enforcement in 3.3 + 3.4).
+- Generation quota foundation, user quota UI, and manual upgrade/payment (3.5 + 3.6).
 
-Definition of Done:
+Definition of Done (Phase 3 overall; not yet met):
 
-- Maksimal satu subscription aktif per user.
+- Entitlement efektif: Pro window valid atau fallback Free.
 - Concurrent request tidak dapat melewati quota.
 - Generation gagal tidak mengurangi credit permanen.
 - Upgrade manual dapat disetujui atau ditolak admin.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP.
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 3 overall is not COMPLETE.
 
 ## Phase 4 - AI Question Engine
 
@@ -173,7 +187,8 @@ Scope:
 - Question bank management dan review.
 - AI generation monitoring.
 - AI usage monitoring.
-- Subscription approval/rejection.
+- Subscription monitoring.
+- Manual upgrade/payment verification.
 - Admin authorization dan action confirmation.
 
 Definition of Done:

@@ -10,6 +10,7 @@ Dokumen ini menerjemahkan rancangan flowchart user dan admin ke alur implementas
 - Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Google Gemini melalui queue untuk generation.
 - Database canonical: `docs/database/AI_QUESTION_BANK.dbml`.
+- Phase 3.1 + 3.2: Plan catalog Free/Pro dan riwayat window Pro. Resolver quota dan payment belum diimplementasikan.
 
 ## User Flow
 
@@ -73,9 +74,9 @@ flowchart LR
 
 ### User Flow Rules
 
-1. Login pertama membuat user dan role default; login berikutnya memperbarui profil Google.
+1. Login pertama membuat user dan role default; login berikutnya memperbarui profil Google. Entitlement default adalah Plan Free; OAuth tidak membuat baris subscription.
 2. Phase 2 Material Management dibuka langsung dari dashboard dan tidak bergantung pada question set.
-3. Material upload hanya menerima PDF, DOCX, atau TXT dengan batas sementara 10 MB per file.
+3. Material upload hanya menerima PDF, DOCX, atau TXT. Setiap file maksimal 10 MB. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah pada Phase 3.3 + 3.4.
 4. Material upload harus lolos MIME, extension, size, dan ownership validation.
 5. Upload wajib menyimpan internal file path, file size, MIME type, SHA-256 hash, dan extraction status.
 6. Kombinasi user dan file hash unique sehingga duplikat user yang sama ditolak.
@@ -172,15 +173,19 @@ flowchart TB
     UsageList --> Menu
 
     Menu --> Subscription[Subscription Monitoring]
-    Subscription --> SubscriptionList[Display plan, payment, billing, expiry]
-    SubscriptionList --> Decision[Approve or Reject]
-    Decision --> Valid{Subscription valid?}
-    Valid -- No --> Reject[Set rejected]
-    Reject --> NotifyReject[Notify user by email]
-    NotifyReject --> SubscriptionList
-    Valid -- Yes --> Activate[Set active and approve]
-    Activate --> NotifyActive[Notify user by email]
-    NotifyActive --> SubscriptionList
+    Subscription --> SubscriptionList[Display Pro windows and status]
+    SubscriptionList --> Menu
+
+    Menu --> Payment[Manual Upgrade Verification]
+    Payment --> RequestList[Display payment or upgrade requests]
+    RequestList --> Verify[Admin verifies]
+    Verify --> Outcome{Request accepted?}
+    Outcome -- No --> RejectRequest[Reject request]
+    RejectRequest --> NotifyReject[Notify user by email]
+    NotifyReject --> RequestList
+    Outcome -- Yes --> GrantPro[Create or append Pro subscription]
+    GrantPro --> NotifyActive[Notify user by email]
+    NotifyActive --> RequestList
 
     Menu --> Broadcast[Phase 7: Broadcast Management]
     Broadcast --> Compose[Compose message and target segment]
@@ -201,8 +206,9 @@ flowchart TB
 
 - Semua admin action menggunakan authorization policy, bukan hanya tampilan menu.
 - User dibuat otomatis oleh Google OAuth; admin tidak membuat password account secara manual.
+- Monitoring subscription terpisah dari verifikasi pembayaran/upgrade manual (Phase 3.5 + 3.6 / Phase 6). Domain 3.1 + 3.2 hanya catalog Plan dan riwayat window Pro.
 - Delete user sebaiknya berupa deactivation atau soft delete untuk menjaga audit.
-- Subscription approval menyimpan admin, waktu approval, status, dan notifikasi email.
+- Verifikasi permintaan pembayaran/upgrade menyimpan admin, waktu keputusan, dan notifikasi email pada record permintaan masa depan, bukan pada Subscription.
 - Monitoring AI bersifat read-only kecuali retry/cancel diberikan secara eksplisit.
 - Branch broadcast adalah target Phase 7 dan bukan release gate MVP.
 - Broadcast membutuhkan confirmation, consent filter, opt-out filter, dan delivery log.

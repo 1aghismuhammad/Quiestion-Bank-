@@ -8,10 +8,10 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.6.1
+- Version: 0.7.0
 - Domain entities: 16
 - Target implementation: Laravel 13 / MySQL 8+
-- Primary key style: Laravel `id` untuk entitas Phase 1; entitas future mengikuti DBML sampai phase implementasinya
+- Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `material_id`, dan `topic_id` mengikuti custom PK
 - Timestamp style: `created_at`, `updated_at`, dan `deleted_at` jika diperlukan
 
 Tabel bawaan Laravel seperti sessions, cache, jobs, job batches, dan failed jobs tidak dihitung sebagai domain entity.
@@ -22,16 +22,22 @@ Tabel bawaan Laravel seperti sessions, cache, jobs, job batches, dan failed jobs
 flowchart LR
     U[users] --> M[materials]
     M --> T[material_topics]
+    U --> Sub[subscriptions]
+    Pl[plans] --> Sub
     U --> G[ai_generations]
     M --> G
     T --> G
     P[prompt_versions] --> G
-    S[subscriptions] --> L[ai_usage_logs]
+    U --> L[ai_usage_logs]
+    Pl --> L
+    Sub -.-> L
     G --> L
     G --> QS[question_sets]
     QS --> Q[questions]
     Q --> O[question_options]
 ```
+
+`ai_usage_logs` always belongs to a user and a Plan. Subscription is optional: Free usage is User + Free Plan with `subscription_id` null; Pro usage is User + Pro Plan + the effective Pro window.
 
 ## Entity Catalog
 
@@ -61,19 +67,40 @@ Pivot many-to-many user-role dengan composite primary key `(user_id, role_id)`.
 
 #### `plans`
 
-Menentukan harga, currency, billing period, generation credit, storage limit dalam MB, dan status active/inactive/archived.
+Catalog entitlement Free dan Pro. Plan bukan harga komersial.
 
-Billing period: monthly, yearly, lifetime.
+Kolom:
+
+- `code` unique (`free`, `pro`)
+- `name` tampilan (`Free`, `Pro`)
+- `storage_limit_bytes` (Free `52428800`, Pro `524288000`)
+- `generation_limit` (Free `2`, Pro `100`)
+- `generation_reset_strategy` (`lifetime` atau `monthly`)
+- `status` (`active` atau `inactive`)
+
+Tidak ada `price`, `currency`, `billing_period`, atau `storage_limit_mb`. Durasi dan harga komersial (1 bulan / 3 bulan) adalah layer offer/payment masa depan, bukan baris Plan terpisah. Institution Plan tidak di-seed.
+
+Free adalah fallback entitlement. User tanpa Pro window yang efektif memakai batas Free. Free **tidak** disimpan sebagai baris subscription.
 
 #### `subscriptions`
 
-Riwayat kepemilikan plan user, periode aktif, payment status, dan approval admin.
+Riwayat window entitlement Pro yang berbatas waktu. Bukan payment record.
+
+Kolom:
+
+- `starts_at` dan `ends_at` wajib (timestamp; window efektif `[starts_at, ends_at)`)
+- `status`: `active`, `expired`, `cancelled`
+- `cancelled_at` nullable
 
 Aturan aplikasi:
 
-- Maksimal satu subscription aktif per user.
-- Free subscription baru dibuat saat Phase 3 diimplementasikan.
-- Aktivasi dan penolakan mencatat admin serta waktu keputusan.
+- Hanya window Pro. Tidak ada baris subscription Free.
+- Satu user boleh punya banyak baris historis.
+- Paling banyak satu window efektif pada satu instant. Unique `(user_id, status)` **tidak** dipakai agar renewal berurutan dapat menyimpan dua baris `active` yang tidak overlap.
+- Pencegahan overlap adalah Action/service (Phase 3.3 + 3.4), bukan constraint database.
+- FK `user_id` dan `plan_id` memakai `ON DELETE RESTRICT`.
+- Tidak ada hard-delete lifecycle normal. Plan yang sudah direferensikan dinonaktifkan, bukan dihapus.
+- Resolver entitlement, quota, dan payment/approval bukan bagian Phase 3.1 + 3.2.
 
 ### Material Management
 
@@ -83,7 +110,7 @@ Materi milik user yang berasal dari upload atau input teks.
 
 Aturan aplikasi:
 
-- Source upload Phase 2 hanya menerima PDF, DOCX, dan TXT dengan batas sementara 10 MB per file.
+- Source upload Phase 2 hanya menerima PDF, DOCX, dan TXT. Setiap file maksimal 10 MB (batas keselamatan MVP yang tetap berlaku).
 - Source upload mewajibkan internal file path, file size, MIME type, SHA-256 file hash, dan extraction status.
 - Source text mewajibkan content.
 - `materials.content` menggunakan LONGTEXT agar hasil extraction tidak dibatasi kapasitas MySQL TEXT.
@@ -93,7 +120,7 @@ Aturan aplikasi:
 - Kombinasi `(user_id, file_hash)` unique untuk menolak upload duplikat milik user yang sama.
 - Lifecycle owner: `draft|ready -> archived` dan `archived -> ready`.
 - Material Management Phase 2 berdiri sendiri dari dashboard dan tidak memiliki dependency pada question set.
-- Nilai quota serta limit per plan tetap menjadi tanggung jawab Phase 3; Phase 2 memakai batas sementara 10 MB.
+- Nilai quota storage akun didefinisikan pada catalog `plans` (`storage_limit_bytes`). Enforcement total storage adalah Phase 3.3 + 3.4: counted upload usage + file baru harus muat dalam limit Plan efektif. Batas 10 MB per file tetap terpisah dan tidak digantikan. Quota generation dan `ai_usage_logs` adalah Phase 3.5 + 3.6 (integrasi Gemini dengan Phase 4).
 
 #### `material_topics`
 
@@ -142,15 +169,18 @@ Retry hanya dibuat untuk generation gagal. Draft question set yang sama memperba
 
 #### `ai_usage_logs`
 
-Ledger credit dan usage per subscription. Tabel ini menjadi sumber quota check, bukan counter yang dapat ditimpa.
+Ledger credit dan usage per entitlement. Tabel ini menjadi sumber quota generation masa depan (Phase 3.5 + 3.6; integrasi Gemini dengan Phase 4), bukan counter yang dapat ditimpa. **Belum diimplementasikan sebagai migration PHP.** Bukan bagian Phase 3.3 + 3.4.
+
+Setiap baris merujuk Plan wajib. Subscription nullable:
+
+- Free: `plan_id` = catalog Free, `subscription_id` null. Charged usage dihitung terhadap lifetime generation Free milik user.
+- Pro: `plan_id` = catalog Pro, `subscription_id` = window Pro efektif. Charged usage dihitung terhadap window `[starts_at, ends_at)` subscription itu.
 
 Lifecycle:
 
 1. Buat log `reserved` sebelum job dikirim.
 2. Ubah menjadi `charged` ketika output valid.
 3. Ubah menjadi `released` ketika generation gagal, dibatalkan, atau melewati `reservation_expires_at`.
-
-Quota periode dihitung dari total `credit_used` berstatus charged di antara start dan end subscription.
 
 Action ledger hanya `generate` atau `retry`. Validasi output merupakan bagian dari generation dan tidak mengurangi credit terpisah.
 
@@ -221,7 +251,8 @@ erDiagram
     MATERIALS ||--o{ AI_GENERATIONS : sources
     MATERIAL_TOPICS o|--o{ AI_GENERATIONS : scopes
     PROMPT_VERSIONS ||--o{ AI_GENERATIONS : controls
-    SUBSCRIPTIONS ||--o{ AI_USAGE_LOGS : billed
+    PLANS ||--o{ AI_USAGE_LOGS : entitles
+    SUBSCRIPTIONS |o--o{ AI_USAGE_LOGS : billed
     AI_GENERATIONS ||--o{ AI_USAGE_LOGS : records
     USERS ||--o{ QUESTION_SETS : owns
     AI_GENERATIONS o|--o| QUESTION_SETS : produces
@@ -236,7 +267,7 @@ erDiagram
 ## Index and Constraint Rules
 
 - Semua foreign key memiliki index.
-- Natural identifier seperti email, google_id, role_name, version_number, subscription_code, dan phone number harus unique.
+- Natural identifier seperti email, google_id, role_name, version_number, plan `code`, dan phone number harus unique.
 - Composite unique digunakan untuk nomor question, topic material, option label, option order, dan broadcast recipient.
 - Delete cascade hanya dipakai pada child yang tidak memiliki makna tanpa parent, seperti options dan material topics.
 - Data audit, subscription, generation, dan usage tidak dihapus secara cascade.
@@ -256,7 +287,12 @@ Phase 2:
 1. materials, setelah users Phase 1
 2. material_topics, setelah materials
 
-Phase 3 menambahkan plans dan subscriptions tanpa menjadi dependency migration untuk materials.
+Phase 3 (setelah materials):
+
+1. plans
+2. subscriptions, setelah users dan plans
+
+Phase 3 tidak menjadi dependency migration untuk materials.
 
 Urutan target schema lengkap:
 
@@ -284,7 +320,7 @@ Self-reference `ai_generations.parent_generation_id` dapat ditambahkan setelah t
 Minimum seed:
 
 - Phase 1 roles: USER, ADMIN.
-- Phase 3 plans: Free, Pro.
+- Phase 3 plans: canonical Free dan Pro via `PlanSeeder` (idempotent `updateOrCreate` on `code`). Tidak membuat baris subscription.
 - One active prompt version dengan schema gabungan yang diskriminatif untuk ketiga question type.
 
 Institution Plan tidak diaktifkan sebelum organization dan membership model dirancang.

@@ -255,10 +255,17 @@ class PhaseTwoMaterialSchemaTest extends TestCase
 
     public function test_rolling_back_phase_two_one_drops_only_material_tables(): void
     {
-        $this->artisan('migrate:rollback', ['--step' => 2])->assertSuccessful();
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_08_24_100146_create_material_topics_table.php',
+        ])->assertSuccessful();
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_08_24_100145_create_materials_table.php',
+        ])->assertSuccessful();
 
         $this->assertFalse(Schema::hasTable('material_topics'));
         $this->assertFalse(Schema::hasTable('materials'));
+        $this->assertTrue(Schema::hasTable('plans'));
+        $this->assertTrue(Schema::hasTable('subscriptions'));
         $this->assertTrue(Schema::hasTable('users'));
         $this->assertTrue(Schema::hasTable('roles'));
         $this->assertTrue(Schema::hasTable('role_user'));

@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.6
+- Version: 0.7
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -115,7 +115,7 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 ### Material Management
 
 - Menu material berdiri sendiri dan dapat dibuka langsung dari dashboard tanpa membuat question set.
-- Upload hanya mendukung PDF, DOCX, dan TXT dengan batas sementara 10 MB per file sampai Phase 3.
+- Upload hanya mendukung PDF, DOCX, dan TXT. Setiap file maksimal 10 MB (batas keselamatan MVP). Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) ditegakkan pada Phase 3.3 + 3.4 dan tidak menggantikan batas per file.
 - Input teks manual langsung menghasilkan material ready.
 - Metadata file, hash, extraction status, dan storage usage.
 - Chapter, sub-chapter, topic, dan focus area.
@@ -129,13 +129,12 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 
 ### Subscription and Quota
 
-- Free, Pro, dan future Institution plan.
-- Satu subscription aktif per user.
-- Generation credit per billing period.
-- Storage limit berdasarkan total file aktif.
-- Reserve, charge, atau release credit melalui `ai_usage_logs`.
-- Reservation memiliki expiry dan dilepas scheduler jika worker tidak menyelesaikannya.
-- Approval/rejection manual mengirim notifikasi email.
+- Catalog Plan: Free dan Pro sebagai entitlement (bukan harga). Institution adalah arah post-MVP.
+- Free adalah fallback jika tidak ada window Pro efektif. Tidak ada baris subscription Free.
+- Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
+- Paling banyak satu window efektif per instant; enforcement overlap dan resolver entitlement adalah Phase 3.3 + 3.4.
+- Generation credit dan storage limit dibaca dari Plan. Enforcement **storage akun** adalah Phase 3.3 + 3.4. Fondasi quota generation, reservation, dan `ai_usage_logs` adalah Phase 3.5 + 3.6; integrasi Gemini dikoordinasikan dengan Phase 4.
+- UI subscription/quota, QRIS statis, konfirmasi WhatsApp, dan verifikasi admin minimum adalah Phase 3.5 + 3.6. Tidak ada payment gateway di MVP.
 
 ### AI Engine
 
@@ -193,7 +192,8 @@ AI Engine terdiri dari:
 - Question bank management CRUD dan review.
 - AI generation monitoring.
 - AI usage monitoring.
-- Subscription approve/reject.
+- Subscription monitoring.
+- Manual upgrade/payment verification.
 
 ### WhatsApp CRM
 

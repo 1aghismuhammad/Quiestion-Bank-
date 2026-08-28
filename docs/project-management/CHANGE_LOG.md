@@ -26,6 +26,45 @@ Notes:
 -
 ```
 
+## v0.7.0 Phase 3.1 + 3.2 Plan and Subscription Domain
+
+- Date: 28 August 2026
+- Version: 0.7.0
+- Phase: Phase 3 - Subscription and Quota Foundation
+- Type: Feature implementation / domain foundation
+
+Added:
+
+- `plans` catalog with canonical Free and Pro entitlement rows via idempotent `PlanSeeder`.
+- `subscriptions` as finite Pro entitlement windows (`starts_at`, `ends_at`, `status`, `cancelled_at`).
+- PHP backed enums: `PlanCode`, `PlanStatus`, `GenerationResetStrategy`, `SubscriptionStatus`.
+- `User` hasMany `Subscription`; `Plan` hasMany `Subscription`.
+- Schema, domain, and seed tests. No `PlanFactory`.
+
+Changed:
+
+- Plan is entitlement only (bytes + generation limit + reset strategy). Price/duration deferred to a future offer layer.
+- Free is fallback Plan, not an endless subscription row. OAuth still does not provision subscriptions.
+- Phase 3 overall is `IN PROGRESS`. Quota resolver, storage enforcement, payment, QRIS, and WhatsApp confirmation are not started.
+
+Fixed:
+
+- None.
+
+Database Impact:
+
+- New tables `plans` and `subscriptions`. Unique `plans.code`. Index `subscriptions(user_id, status)`. FKs restrict on user and plan delete.
+- No `description`, `price`, `storage_limit_mb`, `subscription_code`, or payment/approval columns.
+- Canonical seed: Free `52428800` bytes / 2 lifetime; Pro `524288000` bytes / 100 monthly.
+- DBML and DATABASE_REFERENCE updated to 0.7.0.
+
+Notes:
+
+- Sequential non-overlapping `active` windows are allowed so later renewal can append after `ends_at`.
+- Overlap prevention and entitlement resolver belong to Phase 3.3 + 3.4, together with account storage quota. Generation quota and `ai_usage_logs` belong to Phase 3.5 + 3.6.
+- Future canonical `ai_usage_logs` (not implemented): required `plan_id`; nullable `subscription_id` so Free lifetime usage has no subscription row.
+- No new Composer dependencies.
+
 ## v0.6.6 Phase 2 Closure
 
 - Date: 27 August 2026
