@@ -149,6 +149,7 @@ Additional rules:
 - Content extraction dijalankan melalui queue.
 - Storage usage menghitung seluruh upload non-deleted termasuk archived dan extraction failed.
 - Archive mempertahankan file; owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
+- Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap; akses/read Material existing tetap; create teks, archive, dan restore tetap diizinkan; upload FILE baru ditolak sampai usage di bawah limit entitlement efektif.
 
 ## Security
 
@@ -173,7 +174,7 @@ Minimum coverage khusus:
 
 - Google OAuth provisioning dan suspended user.
 - Role admin route protection.
-- Quota reservation, charge, release, dan concurrency.
+- Phase 4 runtime: quota reservation, charge, release, dan concurrency generation. Phase 3 tidak mengimplementasikan konsumsi generation.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

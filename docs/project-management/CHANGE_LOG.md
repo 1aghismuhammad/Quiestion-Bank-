@@ -63,7 +63,7 @@ Notes:
 - SQLite PHPUnit does not prove row locks. Local MySQL: two confirm processes for the same user produced one pending request; two approve processes for the same pending request produced one Subscription. Two different users confirming concurrently produced two pending requests. Marker fixtures were deleted after QA.
 - Real production QRIS is not committed. `php artisan storage:link` is required to serve the public disk.
 - No new Composer dependencies.
-- Authenticated browser walkthrough (Free / Pro / Admin with local QRIS and WhatsApp) remains required before treating Phase 3 as accepted.
+- Phase 3 COMPLETE + APPROVED. Authenticated browser QA was completed by the Project Owner.
 
 ## v0.8.0 Phase 3.3 + 3.4 Entitlement Resolver and Storage Quota
 

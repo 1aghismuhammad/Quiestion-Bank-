@@ -200,7 +200,7 @@ Table plans {
   created_at timestamp
   updated_at timestamp
 
-  Note: 'Entitlement catalog only. One Pro plan. Price and commercial duration belong to a future offer layer. Free is fallback entitlement, not a subscription row.'
+  Note: 'Entitlement catalog only. One Pro plan. Price and commercial duration belong to plan_offers, not Plan entitlement columns. Free is fallback entitlement, not a subscription row.'
 }
 
 Table subscriptions {

@@ -134,7 +134,9 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
 - Paling banyak satu window efektif per instant. Resolver memvalidasi seluruh antrian `active` current/future sebagai Pro; overlap efektif fail-closed; data stale historis tidak mengunci akun. Plan Pro inactive tidak mencabut window yang sudah dibayar.
 - Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Reservation, konsumsi, dan `ai_usage_logs` adalah Phase 4.
-- UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests` lalu, setelah admin approve, satu baris `subscriptions`.
+- Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak.
+- UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests`. Approval menulis tepat satu baris `subscriptions` `status=active`: tanpa antrian Pro current/future, `starts_at` = waktu approval; jika antrian ada, `starts_at` = `max(ends_at)` antrian itu. `ends_at` memakai durasi bulan kalender no-overflow. Satu pembelian 3 bulan = satu baris Subscription. Window masa depan tetap `active`; tidak ada status Subscription `scheduled`/`pending`.
+- Verifikasi pembayaran Admin tidak menembus `MaterialPolicy`. Admin tidak memperoleh akses global ke Material privat. Halaman admin user-detail penuh bukan bagian Phase 3.
 
 ### AI Engine
 
@@ -193,7 +195,7 @@ AI Engine terdiri dari:
 - AI generation monitoring.
 - AI usage monitoring.
 - Subscription monitoring.
-- Manual upgrade/payment verification.
+- Manual upgrade/payment verification (approve / reject / cancel). Verifikasi ini tidak menembus `MaterialPolicy` dan tidak memberi akses Material privat global.
 
 ### WhatsApp CRM
 
@@ -201,7 +203,7 @@ Modul Phase 7 post-MVP yang menambahkan broadcast compose, confirmation, queue, 
 
 ## Data Design
 
-Enam belas entitas domain dan seluruh relasinya didefinisikan pada:
+Delapan belas entitas domain dan seluruh relasinya didefinisikan pada:
 
 - `docs/database/AI_QUESTION_BANK.dbml`
 - `docs/database/DATABASE_REFERENCE.md`
@@ -213,7 +215,7 @@ Tabel infrastruktur Laravel seperti sessions, cache, jobs, job batches, dan fail
 - Session authentication dan CSRF untuk seluruh UI.
 - OAuth state validation melalui Socialite.
 - Role middleware untuk route admin.
-- Policy untuk material, question set, dan generation.
+- Policy untuk material, question set, dan generation. Admin payment review tidak mengubah `MaterialPolicy` owner-only.
 - MIME, extension, dan size validation pada upload.
 - Rate limit untuk login callback, generation, serta broadcast mulai Phase 7.
 - Environment secret untuk Google dan Gemini.
@@ -228,6 +230,8 @@ Environment minimum:
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
+SUBSCRIPTION_WHATSAPP_NUMBER=
+SUBSCRIPTION_QRIS_PATH=payment/qris.png
 GEMINI_API_KEY=
 GEMINI_MODEL=
 ```

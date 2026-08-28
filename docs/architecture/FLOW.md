@@ -184,13 +184,13 @@ flowchart TB
     Menu --> Payment[Manual Upgrade Verification]
     Payment --> RequestList[Display payment or upgrade requests]
     RequestList --> Verify[Admin verifies]
-    Verify --> Outcome{Request accepted?}
-    Outcome -- No --> RejectRequest[Reject request]
-    RejectRequest --> NotifyReject[Notify user by email]
-    NotifyReject --> RequestList
-    Outcome -- Yes --> GrantPro[Create or append Pro subscription]
-    GrantPro --> NotifyActive[Notify user by email]
-    NotifyActive --> RequestList
+    Verify --> Outcome{Decision}
+    Outcome -- Approve --> GrantPro[Create or append Pro subscription]
+    GrantPro --> RequestList
+    Outcome -- Reject --> RejectRequest[Reject with required reason]
+    RejectRequest --> RequestList
+    Outcome -- Cancel --> CancelRequest[Cancel pending request]
+    CancelRequest --> RequestList
 
     Menu --> Broadcast[Phase 7: Broadcast Management]
     Broadcast --> Compose[Compose message and target segment]
@@ -213,7 +213,8 @@ flowchart TB
 - User dibuat otomatis oleh Google OAuth; admin tidak membuat password account secara manual.
 - Monitoring subscription terpisah dari verifikasi pembayaran/upgrade manual (minimum Phase 3.6; dashboard penuh Phase 6). Domain 3.1 + 3.2 hanya catalog Plan dan riwayat window Pro.
 - Delete user sebaiknya berupa deactivation atau soft delete untuk menjaga audit.
-- Verifikasi permintaan pembayaran/upgrade menyimpan admin, waktu keputusan, dan alasan penolakan pada `subscription_upgrade_requests`, bukan pada Subscription. Notifikasi email belum termasuk Phase 3.6.
+- Verifikasi permintaan pembayaran/upgrade menyimpan admin, waktu keputusan, dan alasan penolakan pada `subscription_upgrade_requests`, bukan pada Subscription. Admin dapat approve, reject (alasan wajib), atau cancel. User tidak dapat membatalkan pending miliknya. Notifikasi email belum termasuk Phase 3.6.
+- Verifikasi pembayaran tidak menembus `MaterialPolicy`. Admin tidak memperoleh akses global ke Material privat.
 - Monitoring AI bersifat read-only kecuali retry/cancel diberikan secara eksplisit.
 - Branch broadcast adalah target Phase 7 dan bukan release gate MVP.
 - Broadcast membutuhkan confirmation, consent filter, opt-out filter, dan delivery log.

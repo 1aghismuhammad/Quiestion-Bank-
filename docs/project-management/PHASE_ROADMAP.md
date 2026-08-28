@@ -7,7 +7,7 @@ Status:
 - `IN PROGRESS`: sedang disiapkan.
 - `PLANNED`: belum dimulai.
 - `DEFERRED`: sengaja ditunda dari MVP.
-- `DONE`: seluruh Definition of Done terpenuhi.
+- `COMPLETE`: seluruh Definition of Done terpenuhi.
 
 MVP mencakup Phase 0-6. Phase 7 adalah post-MVP. Optimization dimulai sejak awal dan diperdalam pada Phase 8.
 
@@ -15,7 +15,7 @@ Urutan diperbarui agar quota tersedia sebelum AI generation dan admin flow terse
 
 ## Phase 0 - Foundation
 
-Status: `DONE`
+Status: `COMPLETE`
 
 Scope:
 
@@ -36,7 +36,7 @@ Definition of Done:
 
 ## Phase 1 - Authentication and Authorization
 
-Status: `DONE`
+Status: `COMPLETE`
 
 Scope:
 
@@ -58,7 +58,7 @@ Definition of Done:
 
 ## Phase 2 - Material Management
 
-Status: `DONE`
+Status: `COMPLETE`
 
 Technical slices complete:
 
@@ -137,7 +137,7 @@ Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Runtime konsum
 
 ## Phase 4 - AI Question Engine
 
-Status: `PLANNED`
+Status: `PLANNED` (not started)
 
 Scope:
 
@@ -208,8 +208,9 @@ MVP dapat dirilis setelah Phase 0-6 selesai dan:
 - backup serta restore diuji;
 - queue worker dan scheduler termonitor;
 - upload dan AI endpoint memiliki rate limit;
-- smoke test user flow dan admin flow lulus;
-- nilai quota Free/Pro telah diputuskan.
+- smoke test user flow dan admin flow lulus.
+
+Nilai quota Free/Pro sudah diputuskan dan di-seed: Free 50 MiB storage dan 2 generation lifetime; Pro 500 MiB storage dan 100 generation per jendela bulanan entitlement.
 
 ## Phase 7 - WhatsApp CRM
 

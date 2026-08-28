@@ -105,13 +105,15 @@ Aturan aplikasi:
 - FK `user_id` dan `plan_id` memakai `ON DELETE RESTRICT`.
 - Tidak ada hard-delete lifecycle normal. Plan yang sudah direferensikan dinonaktifkan, bukan dihapus.
 - Resolver entitlement: load semua row `status=active`; validasi seluruh antrian current/future (`ends_at > now` OR `starts_at >= now`) sebagai Plan Pro dengan `starts_at < ends_at`; window efektif `[starts_at, ends_at)`; 0 → Free; 1 → Pro; 2+ → error integritas. Data stale historis tidak mengunci akun. Plan Pro inactive tetap dihormati untuk window yang sudah dibayar.
-- Approval upgrade menulis satu baris Subscription `status=active` (termasuk window masa depan berurutan) memakai durasi snapshot permintaan.
+- Approval menulis tepat satu baris Subscription `status=active` memakai durasi snapshot. Satu pembelian (1 atau 3 bulan) = satu baris. Tidak ada status Subscription `scheduled` atau `pending`. Tanpa antrian Pro current/future yang valid: `starts_at` = waktu approval. Jika antrian ada: `starts_at` = `max(ends_at)` antrian itu; `ends_at` = `starts_at` plus `duration_months` dengan no-overflow. Window masa depan tetap `active`.
+- Jika Pro berakhir dan counted storage melebihi limit Free: data dan akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak.
 
 #### `plan_offers`
 
 Offer komersial untuk satu Plan Pro.
 
 - Seed kanonik: `pro_1m` (1 bulan, Rp10.000) dan `pro_3m` (3 bulan, Rp25.000), currency `IDR`, integer Rupiah.
+- Unique `code` (`plan_offers_code_unique`). Index `(plan_id, status, sort_order)` (`plan_offers_plan_status_sort_idx`). FK `plan_id` (`plan_offers_plan_id_fk`) `ON DELETE RESTRICT`.
 - `PlanOfferSeeder` memakai `firstOrCreate` on `code` dan tidak menimpa harga/status yang sudah diubah.
 - Tidak ada offer Free. Status `inactive` menyembunyikan offer dari pembelian baru.
 
@@ -121,7 +123,7 @@ Audit permintaan pembayaran manual. Bukan status Subscription.
 
 - Snapshot: `offer_code`, `offer_name`, `duration_months`, `price_amount`, `currency`, plus `plan_id` / `offer_id`.
 - Status: `pending`, `approved`, `rejected`, `cancelled`.
-- Unique `reference_code`. Unique nullable `approved_subscription_id` (`upgrade_req_approved_sub_unique`).
+- Unique `reference_code` (`upgrade_req_reference_unique`). Unique nullable `approved_subscription_id` (`upgrade_req_approved_sub_unique`).
 - Index `(user_id, status)` **tidak unique**. Satu pending per user ditegakkan dengan kunci baris `users`.
 - FK `restrictOnDelete`. Nama constraint pendek (`upgrade_req_*`) agar <= 64 karakter MySQL.
 - Approval memakai snapshot; Plan/Offer inactive kemudian tidak membatalkan pending yang sudah ada.
@@ -144,7 +146,7 @@ Aturan aplikasi:
 - Kombinasi `(user_id, file_hash)` unique untuk menolak upload duplikat milik user yang sama.
 - Lifecycle owner: `draft|ready -> archived` dan `archived -> ready`.
 - Material Management Phase 2 berdiri sendiri dari dashboard dan tidak memiliki dependency pada question set.
-- Nilai quota storage akun didefinisikan pada catalog `plans` (`storage_limit_bytes`). Enforcement: counted upload usage + ukuran file baru harus `<=` limit Plan efektif (byte persis; sama dengan limit diizinkan). Batas 10 MB per file tetap terpisah. Upload file yang ditolak tidak membuat Material, file permanen, atau job ekstraksi. Text/archive/restore tidak memakai quota upload. Definisi quota generation (limit + jendela) adalah Phase 3.5. Ledger `ai_usage_logs`, reservation, dan konsumsi credit adalah Phase 4.
+- Nilai quota storage akun didefinisikan pada catalog `plans` (`storage_limit_bytes`). Enforcement: counted upload usage + ukuran file baru harus `<=` limit Plan efektif (byte persis; sama dengan limit diizinkan). Batas 10 MB per file tetap terpisah. Upload file yang ditolak tidak membuat Material, file permanen, atau job ekstraksi. Text/archive/restore tidak memakai quota upload. Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak. Definisi quota generation (limit + jendela) adalah Phase 3.5. Ledger `ai_usage_logs`, reservation, dan konsumsi credit adalah Phase 4.
 
 #### `material_topics`
 

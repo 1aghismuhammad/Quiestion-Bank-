@@ -59,11 +59,11 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 
 ## Delivery Stages
 
-- Phase 0: foundation dan dokumentasi.
-- Phase 1: authentication.
-- Phase 2: standalone material management dari dashboard untuk PDF, DOCX, TXT, dan text input.
+- Phase 0: foundation dan dokumentasi (`COMPLETE`).
+- Phase 1: authentication (`COMPLETE`).
+- Phase 2: standalone material management dari dashboard untuk PDF, DOCX, TXT, dan text input (`COMPLETE`).
 - Phase 3: subscription/quota foundation (`COMPLETE`).
-- Phase 4: AI question engine.
+- Phase 4: AI question engine (`PLANNED` / not started).
 - Phase 5: question bank.
 - Phase 6: admin dashboard dan MVP release.
 - Phase 7: WhatsApp CRM.

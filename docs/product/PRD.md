@@ -111,6 +111,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 - FR-MAT-08: Kombinasi user dan file hash wajib unique untuk menolak upload duplikat milik user yang sama.
 - FR-MAT-09: User dapat mengubah material draft/ready menjadi archived dan memulihkan material archived menjadi ready.
 - FR-MAT-10: Phase 2 Material Management dapat digunakan langsung dari dashboard tanpa membuat question set.
+- FR-MAT-11: Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap ada; akses Material existing tetap; create teks, archive, dan restore tetap diizinkan; upload FILE baru ditolak sampai usage kembali di bawah limit entitlement efektif.
 
 ### AI Generation
 
@@ -139,14 +140,15 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 - FR-SUB-02: Subscription menyimpan window Pro berbatas waktu. Paling banyak satu window efektif pada satu instant; unique `(user_id, status)` tidak dipakai. Free bukan baris subscription. Resolver entitlement memakai `[starts_at, ends_at)` dan memvalidasi seluruh antrian `active` current/future sebagai Pro.
 - FR-SUB-03: Penggunaan generation akan dicatat pada `ai_usage_logs` (Phase 4) dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window subscription efektif.
 - FR-SUB-04: Credit generation direservasi sebelum request AI, memiliki waktu kedaluwarsa, ditagihkan saat berhasil, dan dilepas saat gagal atau reservation expired. **Phase 4.** Phase 3.5 hanya mendefinisikan limit dan jendela generation; UI tidak menampilkan used/remaining.
-- FR-SUB-05: User memilih offer Pro 1 bulan atau 3 bulan, membayar via QRIS statis, dan mengonfirmasi via WhatsApp. Admin menyetujui, menolak (alasan wajib), atau membatalkan permintaan. Persetujuan membuat atau menambahkan window Subscription Pro. Subscription itu sendiri tidak berstatus pending/rejected pembayaran.
+- FR-SUB-05: User memilih offer Pro 1 bulan atau 3 bulan, membayar via QRIS statis, dan mengonfirmasi via WhatsApp. Paling banyak satu permintaan upgrade `pending` total per user (bukan per Offer). User tidak dapat membatalkan permintaan pending miliknya. Admin menyetujui, menolak (alasan wajib), atau membatalkan permintaan. Setelah rejected atau cancelled, user boleh membuat pending baru.
+- FR-SUB-06: Persetujuan menulis tepat satu baris Subscription `status=active` memakai snapshot permintaan. Tidak ada status Subscription `scheduled` atau `pending`. Satu pembelian 3 bulan (`pro_3m`) = satu baris yang mencakup 3 bulan kalender. Jika tidak ada antrian Pro current/future yang valid, `starts_at` = waktu approval. Jika antrian itu ada, `starts_at` = akhir antrian berbayar tersebut (`max(ends_at)`). `ends_at` = `starts_at` plus `duration_months` dengan aritmetika kalender no-overflow. Window masa depan tetap `active`.
 
 ### Admin
 
 - FR-ADM-01: Admin dapat mengelola user dan status akun.
 - FR-ADM-02: Admin dapat mengelola question bank.
 - FR-ADM-03: Admin dapat memonitor AI generation dan AI usage.
-- FR-ADM-04: Admin dapat menyetujui atau menolak permintaan pembayaran/upgrade manual. Persetujuan menghasilkan pembuatan atau perpanjangan subscription Pro. Subscription itu sendiri tidak berstatus pending/rejected pembayaran.
+- FR-ADM-04: Admin dapat menyetujui, menolak (alasan wajib), atau membatalkan permintaan pembayaran/upgrade manual. Persetujuan menghasilkan pembuatan atau perpanjangan subscription Pro. Subscription itu sendiri tidak berstatus pending/rejected pembayaran. Verifikasi pembayaran tidak memberi Admin akses global ke Material privat; `MaterialPolicy` tetap owner-only.
 
 ### Post-MVP WhatsApp CRM
 
@@ -189,11 +191,11 @@ Fallback entitlement permanen. Storage 50 MiB (`52428800` bytes). Generation 2 u
 
 ### Pro Plan
 
-Satu Plan entitlement. Storage 500 MiB (`524288000` bytes). Generation 100 per window bulanan yang mengikuti anniversary `starts_at` subscription, bukan tanggal 1 kalender. Reset `monthly`. Window Pro selalu memiliki `ends_at` hingga. Offer komersial: Pro 1 bulan Rp10.000 dan Pro 3 bulan Rp25.000 (`plan_offers`).
+Satu Plan entitlement. Storage 500 MiB (`524288000` bytes). Generation 100 per window bulanan yang mengikuti anniversary `starts_at` subscription, bukan tanggal 1 kalender. Reset `monthly`. Window Pro selalu memiliki `ends_at` hingga. Offer komersial: Pro 1 bulan Rp10.000 dan Pro 3 bulan Rp25.000 (`plan_offers`). Satu pembelian 3 bulan menulis satu baris Subscription, bukan tiga baris.
 
 ### Institution Plan
 
-Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, dan shared ownership belum termasuk dalam 16 entitas database saat ini.
+Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, dan shared ownership belum termasuk dalam 18 entitas database saat ini.
 
 ## MVP Acceptance Criteria
 
