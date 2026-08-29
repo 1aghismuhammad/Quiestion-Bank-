@@ -29,6 +29,7 @@ class MaterialOwnershipTest extends TestCase
         $this->assertTrue($owner->can('view', $material));
         $this->assertTrue($owner->can('update', $material));
         $this->assertTrue($owner->can('manageTopics', $material));
+        $this->assertTrue($owner->can('generate', $material));
         $this->assertTrue($owner->can('viewAny', Material::class));
         $this->assertTrue($owner->can('create', Material::class));
     }
@@ -42,6 +43,7 @@ class MaterialOwnershipTest extends TestCase
         $this->assertFalse($stranger->can('view', $material));
         $this->assertFalse($stranger->can('update', $material));
         $this->assertFalse($stranger->can('manageTopics', $material));
+        $this->assertFalse($stranger->can('generate', $material));
     }
 
     public function test_admin_cannot_access_another_users_material(): void
@@ -56,6 +58,7 @@ class MaterialOwnershipTest extends TestCase
         $this->assertFalse($admin->can('view', $material));
         $this->assertFalse($admin->can('update', $material));
         $this->assertFalse($admin->can('manageTopics', $material));
+        $this->assertFalse($admin->can('generate', $material));
     }
 
     public function test_admin_can_access_own_material(): void
@@ -69,6 +72,36 @@ class MaterialOwnershipTest extends TestCase
         $this->assertTrue($admin->can('view', $material));
         $this->assertTrue($admin->can('update', $material));
         $this->assertTrue($admin->can('manageTopics', $material));
+        $this->assertTrue($admin->can('generate', $material));
+    }
+
+    public function test_owner_generate_policy_allows_soft_deleted_material(): void
+    {
+        $owner = User::factory()->create();
+        $material = Material::factory()->for($owner)->create();
+        $material->delete();
+        $trashed = Material::withTrashed()->findOrFail($material->material_id);
+
+        $this->assertTrue($owner->can('generate', $trashed));
+        $this->assertFalse($owner->can('view', $trashed));
+        $this->assertFalse($owner->can('update', $trashed));
+        $this->assertFalse($owner->can('manageTopics', $trashed));
+    }
+
+    public function test_non_owner_cannot_generate_another_users_soft_deleted_material(): void
+    {
+        $this->seed(RoleSeeder::class);
+
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $admin = User::factory()->create();
+        $admin->roles()->attach(Role::query()->where('role_name', RoleName::ADMIN->value)->firstOrFail());
+        $material = Material::factory()->for($owner)->create();
+        $material->delete();
+        $trashed = Material::withTrashed()->findOrFail($material->material_id);
+
+        $this->assertFalse($stranger->can('generate', $trashed));
+        $this->assertFalse($admin->can('generate', $trashed));
     }
 
     public function test_non_owner_cannot_create_a_topic_for_another_users_material(): void

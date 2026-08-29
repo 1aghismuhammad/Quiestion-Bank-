@@ -77,6 +77,7 @@ app/Services/Subscriptions
 - Pengembangan lokal memakai MySQL 8+ melalui Laragon. Pastikan MySQL Laragon berjalan sebelum `php artisan migrate`, `migrate:status`, atau `migrate --pretend`.
 - `env()` hanya di `config/*.php`. Kredensial pembayaran manual: `config/subscriptions.php` (`SUBSCRIPTION_WHATSAPP_NUMBER`, `SUBSCRIPTION_QRIS_PATH`). QRIS memakai disk `public`, bukan path Blade hard-code.
 - Operasi pembayaran/upgrade mengunci baris `users` terlebih dahulu, lalu request, lalu antrian subscription. Satu pending request per user ditegakkan di aplikasi, bukan unique `(user_id, status)`.
+- Start generation mengunci `users` lalu `materials` (reload by PK). Consume/Release mengunci `users` lalu `ai_generations` lalu `ai_usage_logs`. Consume/Release tidak memanggil `ResolveUserEntitlement` / `ResolveGenerationQuota`.
 - `.env` lokal wajib `DB_CONNECTION=mysql`. SQLite hanya untuk test otomatis melalui `phpunit.xml`.
 - Semua perubahan schema menggunakan migration.
 - `docs/database/AI_QUESTION_BANK.dbml` adalah desain canonical.
@@ -101,7 +102,7 @@ Checklist perubahan schema:
 ## Domain Invariants
 
 - Paling banyak satu subscription efektif untuk user pada satu instant. Beberapa row berstatus `active` boleh ada untuk renewal berurutan selama effective windows `[starts_at, ends_at)` tidak overlap. Unique `(user_id, status)` tidak dipakai. Resolver memvalidasi seluruh antrian `active` current/future sebagai Plan Pro dengan window well-formed; overlap efektif fail-closed. Data stale historis tidak mengunci akun.
-- Credit generation direservasi dengan expiry sebelum job AI (Phase 4), charged hanya setelah valid, dan released ketika gagal/expired. Phase 3.5 hanya mendefinisikan limit dan jendela.
+- Credit generation direservasi saat Start (`reserved`), charged setelah output valid, dan released ketika gagal. Satu request = satu credit. Automatic reservation TTL sengaja ditunda. Phase 3.5 hanya mendefinisikan limit dan jendela.
 - Question count output harus sama dengan request.
 - Multiple choice memiliki minimal empat options dan tepat satu benar.
 - True/false memiliki tepat dua options dan satu benar.
@@ -113,26 +114,23 @@ Checklist perubahan schema:
 
 External call hanya dilakukan melalui kontrak AI internal.
 
-Setiap request AI wajib menyimpan:
+Setiap request AI (Phase 4.3+) wajib menyimpan:
 
 - User
-- Material dan topic
-- Prompt version
+- Material
 - Assessment, difficulty, question type, dan count
-- Provider dan model
-- Token usage
-- Estimated cost
-- Raw response dan parsed output
-- Status, error, attempt, dan timestamps
+- Status, sanitized error, attempt, dan timestamps
+
+Phase 4.3 boleh merancang metadata provider/model/token/cost dan hasil terstruktur yang tervalidasi. Jangan persist raw prompt atau full raw Gemini/provider response secara default.
 
 Additional rules:
 
 - API key hanya dari environment.
-- Request memiliki timeout, rate limit, dan retry terbatas.
-- Retry membuat generation baru, tidak menimpa audit lama.
-- Output divalidasi sebelum persistence ke question bank.
-- Invalid output me-release credit.
-- Log tidak boleh menyimpan OAuth token atau API key.
+- Request memiliki timeout, rate limit, dan automatic retry terbatas pada Generation/reservation yang sama.
+- Manual retry setelah terminal failure membuat Generation baru (`parent_generation_id` opsional); automatic retry tidak membuat child Generation.
+- Output divalidasi sebelum diimpor ke Question Bank (Phase 5). Phase 4 tidak menulis `question_sets`.
+- Invalid output pada terminal failure me-release credit.
+- Log tidak boleh menyimpan OAuth token, API key, atau full raw provider payload.
 
 ## File Upload
 
@@ -174,7 +172,7 @@ Minimum coverage khusus:
 
 - Google OAuth provisioning dan suspended user.
 - Role admin route protection.
-- Phase 4 runtime: quota reservation, charge, release, dan concurrency generation. Phase 3 tidak mengimplementasikan konsumsi generation.
+- Phase 4.1+4.2 runtime: quota reservation, charge, release, ownership vs eligibility, dan concurrency generation. Gemini/prompt/UI bukan bagian 4.1+4.2.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

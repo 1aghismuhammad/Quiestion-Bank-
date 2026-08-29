@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.9.0
+// Version: 0.10.0
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -108,11 +108,6 @@ Enum review_status {
 Enum visibility {
   private
   public
-}
-
-Enum usage_action {
-  generate
-  retry
 }
 
 Enum usage_status {
@@ -345,27 +340,17 @@ Table prompt_versions {
     created_by
   }
 
-  Note: 'Aplikasi memastikan hanya satu prompt version aktif.'
+  Note: 'Planned. Not implemented in Phase 4.1+4.2. Gemini prompt builder belongs to 4.3+.'
 }
 
 Table ai_generations {
   generation_id bigint [pk, increment]
   user_id bigint [not null]
   material_id bigint [not null]
-  topic_id bigint
-  prompt_version_id bigint [not null]
   assessment_type assessment_type [not null]
   difficulty_level difficulty_level [not null]
   question_type question_type [not null]
   question_count int [not null]
-  provider_name varchar(64) [not null, default: 'google_gemini']
-  model_name varchar(100) [not null]
-  temperature decimal(3,2)
-  input_token int [not null, default: 0]
-  output_token int [not null, default: 0]
-  estimated_cost decimal(14,6) [not null, default: 0]
-  raw_response text
-  parsed_output json
   generation_status generation_status [not null, default: 'queued']
   error_message text
   attempt_number int [not null, default: 1]
@@ -377,36 +362,37 @@ Table ai_generations {
   updated_at timestamp
 
   indexes {
-    (user_id, created_at)
-    material_id
-    topic_id
-    generation_status
-    parent_generation_id
+    (user_id, created_at) [name: 'ai_gen_user_created_idx']
+    material_id [name: 'ai_gen_material_id_idx']
+    generation_status [name: 'ai_gen_status_idx']
+    parent_generation_id [name: 'ai_gen_parent_id_idx']
   }
+
+  Note: 'Phase 4.1+4.2 runtime. No topic_id, prompt_version_id, provider, token, raw_response, or parsed_output yet. Those columns may be added in later explicit migrations after Gemini/prompt versions exist. question_count has no product maximum. parent_generation_id is reserved for later manual retry lineage.'
 }
 
 Table ai_usage_logs {
   usage_id bigint [pk, increment]
   user_id bigint [not null]
   plan_id bigint [not null]
-  subscription_id bigint [note: 'Nullable for Free fallback usage; required for Pro window usage']
-  generation_id bigint [not null]
-  action_type usage_action [not null]
-  credit_used int [not null, default: 0]
-  token_used int [not null, default: 0]
-  estimated_cost decimal(14,6) [not null, default: 0]
-  status usage_status [not null]
-  reservation_expires_at timestamp
+  subscription_id bigint [note: 'Null iff Free lifetime reservation; required for Pro window reservation']
+  generation_id bigint [not null, unique]
+  status usage_status [not null, default: 'reserved']
+  window_start timestamp [note: 'Pro window start captured at reservation; null iff Free']
+  window_end timestamp [note: 'Pro exclusive window end captured at reservation; null iff Free']
+  reserved_at timestamp [not null]
+  finalized_at timestamp [note: 'Set when reserved becomes charged or released']
   created_at timestamp
+  updated_at timestamp
 
   indexes {
-    (user_id, created_at)
-    (plan_id, created_at)
-    (subscription_id, created_at)
-    generation_id
+    generation_id [unique, name: 'ai_usage_generation_unique']
+    (user_id, status) [name: 'ai_usage_user_status_idx']
+    (user_id, plan_id, status) [name: 'ai_usage_free_lifetime_idx']
+    (user_id, subscription_id, window_start, status) [name: 'ai_usage_pro_window_idx']
   }
 
-  Note: 'Future generation quota ledger (Phase 4). Not implemented. Phase 3.5 defines generation limits/windows only; it does not consume credits. Free usage: plan_id = Free, subscription_id null. Pro usage: plan_id = Pro, subscription_id = effective Pro window. Charged Free rows count toward lifetime entitlement; charged Pro rows count toward the subscription window.'
+  Note: 'Stateful one-row-per-Generation ledger (UNIQUE generation_id). One Generation request = one credit. reserved occupies capacity; charged permanently consumes one credit; released occupies/consumes zero. Counting is by row/state, not credit_used. Free: plan_id=Free AND subscription_id IS NULL (lifetime; survives Free→Pro→Free). Pro: subscription_id + exact persisted window_start/window_end from Start. Live Plan.generation_limit is allowance. Consume/Release finalize the stored reservation only and must not re-resolve current entitlement. No usage_action, credit_used, or reservation_expires_at. Automatic stale-reservation TTL is deferred.'
 }
 
 //////////////////////////////////////////////////////
@@ -438,7 +424,7 @@ Table question_sets {
     reviewed_by
   }
 
-  Note: 'Dibuat draft sebelum generation. generation_id nullable untuk set manual atau sebelum job diantrekan.'
+  Note: 'Phase 5. Phase 4 generation does not create or require a draft Question Set. generation_id is nullable for manually created Question Sets. Phase 5 may optionally associate or import a completed AI Generation. Detailed Question Set lifecycle remains a Phase 5 design concern.'
 }
 
 Table questions {
@@ -570,16 +556,14 @@ Ref: users.id < materials.user_id
 Ref: materials.material_id < material_topics.material_id [delete: cascade]
 
 Ref: users.id < prompt_versions.created_by
-Ref: users.id < ai_generations.user_id
-Ref: materials.material_id < ai_generations.material_id
-Ref: material_topics.topic_id < ai_generations.topic_id
-Ref: prompt_versions.prompt_version_id < ai_generations.prompt_version_id
-Ref: ai_generations.generation_id < ai_generations.parent_generation_id
+Ref: users.id < ai_generations.user_id [delete: restrict]
+Ref: materials.material_id < ai_generations.material_id [delete: restrict]
+Ref: ai_generations.generation_id < ai_generations.parent_generation_id [delete: restrict]
 
-Ref: users.id < ai_usage_logs.user_id
-Ref: plans.plan_id < ai_usage_logs.plan_id
-Ref: subscriptions.subscription_id < ai_usage_logs.subscription_id
-Ref: ai_generations.generation_id < ai_usage_logs.generation_id
+Ref: users.id < ai_usage_logs.user_id [delete: restrict]
+Ref: plans.plan_id < ai_usage_logs.plan_id [delete: restrict]
+Ref: subscriptions.subscription_id < ai_usage_logs.subscription_id [delete: restrict]
+Ref: ai_generations.generation_id < ai_usage_logs.generation_id [delete: restrict]
 
 Ref: users.id < question_sets.user_id
 Ref: ai_generations.generation_id - question_sets.generation_id

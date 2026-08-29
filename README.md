@@ -15,7 +15,7 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 2.6 - Material Ownership & Authorization: `COMPLETE`
 - Phase 2.7 - Archive / Restore Lifecycle: `COMPLETE`
 - Phase 2.8 - Material Web Management: `COMPLETE`
-- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, Plan catalog, Pro subscription history, entitlement resolver, account storage quota, generation quota definition, Plan Offers, and manual QRIS/WhatsApp upgrade verification
+- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, Plan catalog, Pro subscription history, entitlement resolver, account storage quota, generation quota definition, Plan Offers, manual QRIS/WhatsApp upgrade verification, generation domain foundation, and generation usage/quota runtime
 - Phase 3 - Subscription & Quota Foundation: `COMPLETE`
 - Phase 3.1 - Plan Domain Foundation: `COMPLETE`
 - Phase 3.2 - Subscription Domain Foundation: `COMPLETE`
@@ -23,12 +23,16 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 3.4 - Storage Quota Enforcement: `COMPLETE`
 - Phase 3.5 - Generation Quota Foundation: `COMPLETE`
 - Phase 3.6 - Subscription UI and Manual Payment: `COMPLETE`
-- Next: Phase 4 AI Question Engine (`PLANNED` / not started: Gemini, reservation, `ai_usage_logs` runtime)
-- Documentation version: 0.9.0
+- Phase 4 - AI Question Engine: `IN PROGRESS`
+- Phase 4.1 - AI Generation Domain Foundation: `COMPLETE`
+- Phase 4.2 - Generation Usage & Quota Runtime: `COMPLETE`
+- Phase 4.3 + 4.4 - Gemini + structured output + async orchestration: `NOT IMPLEMENTED`
+- Next: Phase 4.3+ (Gemini). Generation UI and Question Bank are later.
+- Documentation version: 0.10.0
 - MVP target: Phase 0-6
 - Database design: 18 domain entities
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 3 are `COMPLETE`. Phase 4 remains not started.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 3 are `COMPLETE`. Phase 4.1+4.2 are `COMPLETE`. Phase 4 overall is `IN PROGRESS`. Gemini is not implemented.
 
 ## Architecture Decisions
 

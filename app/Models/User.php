@@ -57,6 +57,16 @@ class User extends Authenticatable
         return $this->hasMany(SubscriptionUpgradeRequest::class);
     }
 
+    public function generations(): HasMany
+    {
+        return $this->hasMany(AiGeneration::class);
+    }
+
+    public function usageLogs(): HasMany
+    {
+        return $this->hasMany(AiUsageLog::class);
+    }
+
     public function hasRole(RoleName|string $role): bool
     {
         $roleName = $role instanceof RoleName ? $role->value : $role;

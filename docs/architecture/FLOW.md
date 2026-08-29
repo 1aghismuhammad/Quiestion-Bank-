@@ -50,22 +50,24 @@ flowchart LR
     Archive --> Archived[Material archived]
     Archived --> Restore[Owner restores material]
     Restore --> Ready
-    Dashboard --> Create[Create draft Question Set - Phase 5]
-    Create --> SelectReady[Select ready material]
-    SelectReady --> Config[Configure assessment, difficulty, type, and count]
+    Dashboard --> Config[Configure generation on ready material]
     Config --> ValidConfig{Configuration valid?}
     ValidConfig -- No --> Config
     ValidConfig -- Yes --> Quota{Quota available?}
     Quota -- No --> Upgrade[Show quota and upgrade options]
     Upgrade --> Dashboard
     Quota -- Yes --> Reserve[Reserve generation credit]
-    Reserve --> MarkGenerating[Link generation and mark generating]
-    MarkGenerating --> Queue[Queue Gemini generation]
+    Reserve --> Queue[Queue Gemini generation]
     Queue --> Generate{Generation successful and valid?}
-    Generate -- No --> Release[Release credit and show retry]
+    Generate -- No --> AutoRetry{Automatic retry remaining?}
+    AutoRetry -- Yes --> Queue
+    AutoRetry -- No --> Release[Release credit keep failed generation]
     Release --> Config
     Generate -- Yes --> Charge[Charge credit]
-    Charge --> Review[Review and edit draft questions]
+    Charge --> Preview[Preview generated questions]
+    Preview --> Dashboard
+    Dashboard --> ImportBank[Import completed generation to Question Bank]
+    ImportBank --> Review[Review and edit question set]
     Review --> Save{Save review changes?}
     Save -- No --> Review
     Save -- Yes --> Persist[Save question set in review]
@@ -90,10 +92,10 @@ flowchart LR
 9. Seluruh upload yang belum dihapus tetap dihitung pada storage usage, termasuk archived dan extraction failed.
 10. Owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
 11. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.
-12. Credit direservasi sebelum job dijalankan agar request paralel tidak melewati quota.
-13. Credit hanya ditagihkan setelah output Gemini valid.
-14. Raw response dan failure tetap disimpan untuk audit.
-15. Question set berada pada status review sampai user mengonfirmasi publish.
+12. Credit direservasi pada Start generation (satu request = satu reservation) agar request paralel tidak melewati quota. Generation tidak memerlukan draft `question_sets`.
+13. Credit hanya ditagihkan (`charged`) setelah output valid. Terminal failure me-release reservation.
+14. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` boleh naik; tanpa credit tambahan). Manual retry setelah terminal failure membuat Generation baru dan reservation baru; `parent_generation_id` boleh menunjuk Generation lama.
+15. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview generation adalah Phase 4; Question Bank / `question_sets` adalah Phase 5 dan boleh mengimpor hasil generation yang completed.
 
 ## AI Generation State Flow
 
@@ -102,23 +104,28 @@ stateDiagram-v2
     [*] --> queued
     queued --> processing
     processing --> completed: valid output
-    processing --> failed: provider or validation error
+    processing --> failed: terminal provider or validation error
     queued --> cancelled
-    failed --> queued: retry as new generation
+    processing --> cancelled
     completed --> [*]
+    failed --> [*]
     cancelled --> [*]
 ```
 
-Setiap retry membuat record generation baru melalui `parent_generation_id`; history gagal tidak ditimpa. Draft question set yang sama diperbarui agar menunjuk generation baru dan kembali berstatus generating.
+Automatic provider/job retry stays on the **same** `AiGeneration` and the **same** `AiUsageLog` reservation. `attempt_number` may increase. No extra credit. Do not create a child Generation for automatic retry.
+
+Manual user retry after terminal failure: the old Generation remains `failed`; its reservation is `released`; the user starts a **new** Generation with a new reservation; `parent_generation_id` may link to the old Generation.
+
+Phase 4 does not create or require `question_sets`. It stores generation runtime (and later a preview). Question Bank is Phase 5 and may import an approved completed generation.
 
 ## Question Set State Flow
+
+Question Bank / `question_sets` is Phase 5. It is not a prerequisite of Phase 4 generation.
 
 ```mermaid
 stateDiagram-v2
     [*] --> draft
-    draft --> generating
-    generating --> review: valid AI output
-    generating --> draft: generation failed
+    draft --> review: import completed generation or manual questions
     review --> published: user confirms or admin approves
     published --> archived
     archived --> draft: restore
@@ -232,11 +239,11 @@ File invalid ditolak sebelum disimpan. Extraction failure dapat di-retry tanpa m
 
 ### Quota Failure
 
-Upload yang melebihi `storage_limit_bytes` ditolak. Definisi allowance generation tersedia di Phase 3.5; reservation/`ai_usage_logs` dan “generation gagal tidak mengurangi credit” adalah Phase 4.
+Upload yang melebihi `storage_limit_bytes` ditolak. Allowance generation didefinisikan di Phase 3.5 dan ditegakkan di Phase 4.1+4.2 (`available = allowance - charged - reserved`). Generation gagal me-release credit (Action exists; Gemini job is Phase 4.3+).
 
 ### Gemini Failure
 
-Timeout, provider error, dan invalid JSON menghasilkan status failed, menyimpan audit, serta menawarkan retry.
+Timeout, provider error, dan invalid JSON: automatic retry on the same Generation/reservation until the budget is exhausted; then `failed`, sanitized error metadata, and Release. Manual retry is a new Generation. Do not persist full raw provider responses by default.
 
 ### Broadcast Failure
 

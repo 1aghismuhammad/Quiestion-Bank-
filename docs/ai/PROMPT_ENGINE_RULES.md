@@ -6,7 +6,7 @@ Prompt Engine mengubah materi dan konfigurasi user menjadi request Google Gemini
 
 - Provider MVP: Google Gemini.
 - Prompt source of truth: `prompt_versions`.
-- Database mapping: `ai_generations` dan `ai_usage_logs` (runtime reservation/konsumsi adalah Phase 4).
+- Database mapping: `ai_generations` dan `ai_usage_logs` (reservation/konsumsi runtime adalah Phase 4.1+4.2). Prompt builder, Gemini, dan `prompt_versions` adalah Phase 4.3+.
 - Output harus berupa JSON, bukan Markdown atau prose bebas.
 
 ## Configuration Dimensions
@@ -181,12 +181,12 @@ Validation:
 
 ## Gemini Request Rules
 
-- Model diambil dari configuration dan dicatat ke `ai_generations.model_name`.
+- Model diambil dari configuration. Phase 4.3 boleh mencatat metadata provider/model jika dirancang saat itu; jangan mengasumsikan kolom `model_name` sudah ada.
 - Gunakan structured JSON response bila model mendukungnya.
 - Temperature menggunakan range yang divalidasi aplikasi.
-- Request memiliki timeout dan retry terbatas.
+- Request memiliki timeout. Automatic retry terbatas memakai Generation dan reservation yang sama.
 - API key hanya berasal dari environment.
-- Raw response tidak ditampilkan langsung kepada user.
+- Raw prompt dan full raw Gemini/provider response tidak di-persist secara default dan tidak ditampilkan langsung kepada user.
 
 ## Validation and Retry
 
@@ -194,11 +194,11 @@ Validation:
 2. Validasi common envelope.
 3. Validasi schema berdasarkan `question_type`.
 4. Jalankan quality checks dan duplicate detection.
-5. Jika invalid, simpan raw response dan error.
-6. Retry untuk generation gagal membuat generation baru dengan `parent_generation_id`.
-7. Setelah batas retry tercapai, tandai failed dan release credit.
+5. Jika invalid atau provider error: automatic retry pada Generation dan reservation yang sama (`attempt_number` boleh naik; tanpa credit tambahan). Jangan persist full raw response.
+6. Setelah batas automatic retry tercapai: status `failed`, error/diagnostik disanitasi, reservation di-release.
+7. Manual retry setelah terminal failure: Generation lama tetap `failed`; user memulai Generation baru dengan reservation baru; `parent_generation_id` boleh menunjuk Generation lama.
 
-Output invalid hanya disimpan pada audit `ai_generations`; output tersebut tidak boleh menyimpan generated questions. Sistem hanya boleh mengembalikan lifecycle question set dari generating ke draft.
+Output invalid/partial bukan success. Phase 4 tidak menyimpan generated questions ke Question Bank dan tidak mengembalikan question set ke draft.
 
 ## Versioning
 
@@ -210,16 +210,13 @@ Output invalid hanya disimpan pada audit `ai_generations`; output tersebut tidak
 
 ## Audit Requirements
 
-Setiap generation wajib menyimpan:
+Phase 4.1+4.2 menyimpan user, material, assessment, difficulty, question type, count, status, attempt, error message, dan timestamps.
 
-- user, material, dan topic
-- prompt version
-- assessment, difficulty, question type, dan count
-- provider dan model
-- temperature
-- input/output token
-- estimated cost
-- raw response dan parsed output
-- status, error, attempt, serta timestamps
+Phase 4.3 boleh merancang:
+
+- metadata provider/model/token/cost
+- penyimpanan hasil terstruktur yang sudah divalidasi
+
+Jangan persist raw prompt atau full raw Gemini/provider response secara default. Metadata error/diagnostik wajib disanitasi. Jangan menambahkan kolom `raw_response` / `parsed_output` sekarang.
 
 Requirement database lengkap tersedia di `docs/database/DATABASE_REFERENCE.md`.

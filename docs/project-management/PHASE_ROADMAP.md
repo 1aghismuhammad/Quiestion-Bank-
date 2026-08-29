@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 4 - AI Question Engine (`PLANNED`). Phase 3 is `COMPLETE`.
+Next phase: Phase 4 - AI Question Engine (`IN PROGRESS`). Phase 3 is `COMPLETE`.
 
 Scope:
 
@@ -117,7 +117,7 @@ Technical slices:
   - minimum manual admin verification (`/admin/subscription-upgrades`)
   - no payment gateway
 
-Generation credit reservation, generation usage enforcement, failed-generation credit release, and `ai_usage_logs` runtime belong to **Phase 4**, together with Gemini integration.
+Generation credit reservation, generation usage enforcement, failed-generation credit release, and `ai_usage_logs` runtime are **Phase 4.1+4.2 (`COMPLETE`)**. Gemini integration is Phase 4.3+.
 
 Scope:
 
@@ -133,13 +133,20 @@ Definition of Done:
 - User dapat melihat paket, storage, dan allowance generation (tanpa used/remaining).
 - Upgrade manual dapat disetujui, ditolak (alasan wajib), atau dibatalkan admin; approval menulis window Pro.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Runtime konsumsi generation adalah Phase 4.
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Runtime konsumsi generation Phase 4.1+4.2 sudah ada; Gemini adalah 4.3+.
 
 ## Phase 4 - AI Question Engine
 
-Status: `PLANNED` (not started)
+Status: `IN PROGRESS`
 
-Scope:
+Technical slices:
+
+- Phase 4.1 AI Generation Domain Foundation (`COMPLETE`): `ai_generations` lifecycle, enums, owner-only `MaterialPolicy::generate`, eligibility after authorization.
+- Phase 4.2 Generation Usage & Quota Runtime (`COMPLETE`): stateful one-row-per-Generation `ai_usage_logs` (`reserved|charged|released`); Start reserves; Consume/Release finalize the stored reservation; Free lifetime and Pro window accounting.
+- Phase 4.3 + 4.4 Gemini + structured output + async orchestration (`NOT IMPLEMENTED`)
+- Phase 4.5 + 4.6 generation UI / preview + reliability closure (`NOT IMPLEMENTED`)
+
+Scope (full Phase 4):
 
 - Prompt version management.
 - Google Gemini adapter.
@@ -147,18 +154,27 @@ Scope:
 - Multiple choice, true/false, dan essay.
 - Output schema validation.
 - Token/cost audit.
-- Retry lineage dan failure handling.
+- Retry lineage dan failure handling (automatic retry = same Generation; manual retry = new Generation + optional `parent_generation_id`).
 - `ai_usage_logs` runtime, reservation, charge, dan release.
 - Penegakan limit generation dari `ResolveGenerationQuota`.
 
-Definition of Done:
+Definition of Done (full Phase 4; 4.1+4.2 satisfy reservation/quota items only):
 
 - Ketiga question type menghasilkan JSON valid.
-- Raw response dan parsed output tercatat.
+- Hasil terstruktur yang tervalidasi dapat dirancang di 4.3; raw prompt / full raw provider response tidak di-persist secara default.
 - Timeout, invalid JSON, dan provider failure tertangani.
-- Retry tidak menimpa audit generation sebelumnya.
-- Generation gagal tidak mengurangi credit permanen.
+- Automatic retry memakai Generation dan reservation yang sama; tidak menimpa audit dengan child Generation.
+- Generation gagal (terminal) tidak mengurangi credit permanen (Release).
 - Semua output validator memiliki unit test.
+- Phase 4 tidak membuat `question_sets`. Preview generation belakangan di Phase 4 UI. Question Bank adalah Phase 5.
+
+4.1+4.2 Definition of Done:
+
+- `ai_generations` and unique `ai_usage_logs.generation_id` exist with restrictive FKs.
+- Start locks User then reloads Material; ownership is 403; ineligible owned Material is ValidationException.
+- `available = live Plan.generation_limit - charged - reserved` for current Free lifetime or current Pro window.
+- Consume/Release do not re-resolve current entitlement and nest inside a later outer transaction.
+- No Gemini, no generation UI, no Question Bank.
 
 ## Phase 5 - Question Bank
 
@@ -166,7 +182,7 @@ Status: `PLANNED`
 
 Scope:
 
-- Question set manual dan hasil AI.
+- Question set manual dan import dari generation completed (Phase 4 tidak membuat `question_sets`).
 - Review dan edit oleh user.
 - Draft, publish, dan archive.
 - Optional admin review.

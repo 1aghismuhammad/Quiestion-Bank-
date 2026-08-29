@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.9
+- Version: 0.10
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -133,12 +133,14 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Free adalah fallback jika tidak ada window Pro efektif. Tidak ada baris subscription Free.
 - Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
 - Paling banyak satu window efektif per instant. Resolver memvalidasi seluruh antrian `active` current/future sebagai Pro; overlap efektif fail-closed; data stale historis tidak mengunci akun. Plan Pro inactive tidak mencabut window yang sudah dibayar.
-- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Reservation, konsumsi, dan `ai_usage_logs` adalah Phase 4.
+- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, dan `ai_usage_logs` (Phase 4.1+4.2). Gemini, prompt builder, dan generation UI adalah 4.3+.
 - Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak.
 - UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests`. Approval menulis tepat satu baris `subscriptions` `status=active`: tanpa antrian Pro current/future, `starts_at` = waktu approval; jika antrian ada, `starts_at` = `max(ends_at)` antrian itu. `ends_at` memakai durasi bulan kalender no-overflow. Satu pembelian 3 bulan = satu baris Subscription. Window masa depan tetap `active`; tidak ada status Subscription `scheduled`/`pending`.
 - Verifikasi pembayaran Admin tidak menembus `MaterialPolicy`. Admin tidak memperoleh akses global ke Material privat. Halaman admin user-detail penuh bukan bagian Phase 3.
 
 ### AI Engine
+
+Phase 4.1+4.2 implemented the generation row and usage/quota runtime only. There is no Gemini adapter, prompt builder, queue job, or generation UI yet. The sequence below remains the target for Phase 4.3+.
 
 ```mermaid
 sequenceDiagram
@@ -153,35 +155,38 @@ sequenceDiagram
 
     U->>L: Submit generation configuration
     L->>Q: Validate and reserve credit
-    Q->>D: Create usage reservation
-    L->>D: Link draft question set and mark generating
+    Q->>D: Create queued generation and reserved usage
     L->>J: Dispatch generation
     J->>P: Build versioned prompt
     P->>G: Generate structured output
     G-->>J: JSON response
     J->>V: Validate by question type
     alt Valid
-        V->>D: Save questions and mark question set review
+        V->>D: Store validated structured result
         J->>Q: Charge reserved credit
-    else Invalid or provider failure
-        J->>D: Save failure and return question set to draft
+    else Automatic retry remaining
+        J->>D: Same generation attempt_number plus one
+        J->>P: Retry same reservation
+    else Terminal failure
+        J->>D: Sanitized error keep failed generation
         J->>Q: Release reserved credit
     end
 ```
 
 AI Engine terdiri dari:
 
-- Prompt version management.
-- Gemini client adapter.
-- Queue-based generation.
+- Prompt version management (Phase 4.3+).
+- Gemini client adapter (Phase 4.3+).
+- Queue-based generation (Phase 4.3+).
 - Schema validation per question type.
-- Retry lineage.
-- Token, cost, raw response, dan parsed output audit.
-- Retry hanya berlaku pada generation gagal; draft question set yang sama diarahkan ke generation anak dan kembali berstatus generating.
+- Automatic retry on the same Generation and reservation; manual retry as a new Generation with optional `parent_generation_id`.
+- Provider/model/token/cost metadata may be designed in 4.3. Do not persist raw prompt or full raw Gemini/provider response by default. Diagnostic/error metadata must be sanitized.
+- Phase 4 does not create `question_sets` or save questions into the Question Bank. Preview is Phase 4 UI later. Phase 5 may import an approved completed generation.
 
 ### Question Bank
 
-- Question set manual atau hasil AI.
+- Phase 5. Question set manual atau hasil import dari generation completed.
+- Multiple choice, true/false, dan essay.
 - Multiple choice, true/false, dan essay.
 - User review dan editing.
 - Draft, generating, review, publish, archive.

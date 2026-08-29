@@ -47,9 +47,19 @@ class MaterialPolicy
             && $material->status === MaterialStatus::ARCHIVED;
     }
 
+    public function generate(User $user, Material $material): bool
+    {
+        return $this->ownsMaterial($user, $material);
+    }
+
+    private function ownsMaterial(User $user, Material $material): bool
+    {
+        return (int) $material->user_id === (int) $user->id;
+    }
+
     private function ownsActiveMaterial(User $user, Material $material): bool
     {
         return ! $material->trashed()
-            && (int) $material->user_id === (int) $user->id;
+            && $this->ownsMaterial($user, $material);
     }
 }

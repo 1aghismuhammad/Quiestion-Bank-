@@ -26,6 +26,45 @@ Notes:
 -
 ```
 
+## v0.10.0 Phase 4.1 + 4.2 Generation Domain and Usage Runtime
+
+- Date: 29 August 2026
+- Version: 0.10.0
+- Phase: Phase 4 - AI Question Engine
+- Type: Feature implementation
+
+Added:
+
+- `ai_generations` and one-row-per-Generation `ai_usage_logs` (`UNIQUE generation_id`).
+- Enums: `AssessmentType`, `DifficultyLevel`, `QuestionType`, `GenerationStatus`, `UsageStatus`.
+- `StartQuestionGeneration` (inline reserve), `AssertMaterialEligibleForGeneration`, `ResolveGenerationUsage`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`.
+- Owner-only `MaterialPolicy::generate` (ownership only, including soft-deleted owned rows). Cross-user including Admin is 403. Eligibility (`AssertMaterialEligibleForGeneration`) rejects owned trash/draft/archived/bad extraction with ValidationException.
+- Nested-transaction-safe Consume/Release for future 4.3 atomic finalization.
+
+Changed:
+
+- Phase 4.1 and 4.2 are `COMPLETE`. Phase 4 overall is `IN PROGRESS`. Gemini, prompt builder, generation UI, and Question Bank remain `NOT IMPLEMENTED`.
+- DBML reconciled to the implemented 4.1+4.2 subset (no `topic_id`, `prompt_version_id`, raw AI payload, `credit_used`, `usage_action`, or `reservation_expires_at`).
+- `charged` is the business meaning of consumed. Capacity is `allowance - charged - reserved`.
+
+Fixed:
+
+- Consume/Release finalize the stored reservation window/plan/subscription and do not re-resolve current entitlement after rollover, upgrade, or expiry.
+- `generate` does not treat owner soft-delete as 403; eligibility rejects it with ValidationException.
+- Default `AiGenerationFactory` keeps `generation.user_id` aligned with `material.user_id` unless both keys are set explicitly.
+- Docs: automatic retry = same Generation/Usage; manual retry = new Generation + optional `parent_generation_id`; no default raw payload persistence; Question Bank is Phase 5.
+
+Database Impact:
+
+- New tables `ai_generations` and `ai_usage_logs`. Restrictive FKs. Named MySQL-safe indexes. No speculative columns.
+
+Notes:
+
+- SQLite PHPUnit does not prove row locks. Local MySQL races A–D passed: same-user last credit (1 success + 1 quota reject); different users both succeed; double consume charges once; consume vs release leaves exactly one terminal state. Marker fixtures and race scripts were deleted after QA.
+- No generation controller, route, or Blade.
+- No new Composer dependencies.
+- No Git commit from the implementation agent.
+
 ## v0.9.0 Phase 3.5 + 3.6 Generation Quota, Offers, and Manual Payment
 
 - Date: 28 August 2026

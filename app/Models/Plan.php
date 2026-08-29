@@ -33,6 +33,11 @@ class Plan extends Model
         return $this->hasMany(PlanOffer::class, 'plan_id', 'plan_id');
     }
 
+    public function usageLogs(): HasMany
+    {
+        return $this->hasMany(AiUsageLog::class, 'plan_id', 'plan_id');
+    }
+
     /**
      * @return array<string, string>
      */

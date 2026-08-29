@@ -47,6 +47,11 @@ class Material extends Model
             ->orderBy('topic_id');
     }
 
+    public function generations(): HasMany
+    {
+        return $this->hasMany(AiGeneration::class, 'material_id', 'material_id');
+    }
+
     /**
      * @return array<string, string>
      */

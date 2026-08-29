@@ -8,10 +8,10 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.9.0
+- Version: 0.10.0
 - Domain entities: 18
 - Target implementation: Laravel 13 / MySQL 8+
-- Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, dan `topic_id` mengikuti custom PK
+- Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, dan `usage_id` mengikuti custom PK
 - Timestamp style: `created_at`, `updated_at`, dan `deleted_at` jika diperlukan
 
 Tabel bawaan Laravel seperti sessions, cache, jobs, job batches, dan failed jobs tidak dihitung sebagai domain entity.
@@ -30,8 +30,6 @@ flowchart LR
     Req -.-> Sub
     U --> G[ai_generations]
     M --> G
-    T --> G
-    P[prompt_versions] --> G
     U --> L[ai_usage_logs]
     Pl --> L
     Sub -.-> L
@@ -41,7 +39,7 @@ flowchart LR
     Q --> O[question_options]
 ```
 
-`ai_usage_logs` always belongs to a user and a Plan. Subscription is optional: Free usage is User + Free Plan with `subscription_id` null; Pro usage is User + Pro Plan + the effective Pro window.
+`ai_usage_logs` always belongs to a user and a Plan. Subscription is optional: Free usage is User + Free Plan with `subscription_id` null; Pro usage is User + Pro Plan + the effective Pro window captured at reservation time. `prompt_versions` remains planned and is not referenced by `ai_generations` in Phase 4.1+4.2.
 
 ## Entity Catalog
 
@@ -146,7 +144,7 @@ Aturan aplikasi:
 - Kombinasi `(user_id, file_hash)` unique untuk menolak upload duplikat milik user yang sama.
 - Lifecycle owner: `draft|ready -> archived` dan `archived -> ready`.
 - Material Management Phase 2 berdiri sendiri dari dashboard dan tidak memiliki dependency pada question set.
-- Nilai quota storage akun didefinisikan pada catalog `plans` (`storage_limit_bytes`). Enforcement: counted upload usage + ukuran file baru harus `<=` limit Plan efektif (byte persis; sama dengan limit diizinkan). Batas 10 MB per file tetap terpisah. Upload file yang ditolak tidak membuat Material, file permanen, atau job ekstraksi. Text/archive/restore tidak memakai quota upload. Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak. Definisi quota generation (limit + jendela) adalah Phase 3.5. Ledger `ai_usage_logs`, reservation, dan konsumsi credit adalah Phase 4.
+- Nilai quota storage akun didefinisikan pada catalog `plans` (`storage_limit_bytes`). Enforcement: counted upload usage + ukuran file baru harus `<=` limit Plan efektif (byte persis; sama dengan limit diizinkan). Batas 10 MB per file tetap terpisah. Upload file yang ditolak tidak membuat Material, file permanen, atau job ekstraksi. Text/archive/restore tidak memakai quota upload. Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak. Definisi quota generation (limit + jendela) adalah Phase 3.5. Runtime reservation/charge/release `ai_usage_logs` adalah Phase 4.1+4.2.
 
 #### `material_topics`
 
@@ -160,7 +158,7 @@ Kombinasi material, chapter, sub-chapter, dan topic dibuat unique. Index `(mater
 
 #### `prompt_versions`
 
-Snapshot aturan prompt dan output schema. Version number wajib unique dan hanya satu version boleh active.
+Snapshot aturan prompt dan output schema. Version number wajib unique dan hanya satu version boleh active. **Belum diimplementasikan** (Phase 4.3+).
 
 Satu active prompt version berisi schema diskriminatif untuk ketiga question type.
 
@@ -178,45 +176,42 @@ Komponen:
 
 #### `ai_generations`
 
-Audit satu percobaan generation:
+Audit satu percobaan generation. Implemented in Phase 4.1+4.2:
 
-- actor dan source material
-- topic dan prompt version
-- assessment, difficulty, question type, dan count
-- provider serta model Gemini
-- token dan estimated cost
-- raw response dan parsed output
-- queue timestamps, status, serta error
-- parent generation untuk retry lineage
+- actor (`user_id`) dan source material (`material_id`)
+- assessment, difficulty, question type, dan `question_count` (integer >= 1; no product maximum)
+- `generation_status`: queued, processing, completed, failed, cancelled
+- `error_message`, `attempt_number` (default 1), nullable `parent_generation_id` (**manual** retry lineage later; automatic provider/job retry stays on the same row)
+- `queued_at`, `started_at`, `completed_at`
 
-Status: queued, processing, completed, failed, cancelled.
+Ownership/history FKs use `restrict` delete. No `topic_id`, `prompt_version_id`, provider/model/token, `raw_response`, or `parsed_output` in this phase. Do not persist raw prompt or full raw Gemini/provider response by default. Phase 4.3 may design validated structured result storage and provider/model/token/cost metadata; diagnostic/error metadata must be sanitized.
 
-Retry hanya dibuat untuk generation gagal. Draft question set yang sama memperbarui `generation_id` ke generation anak sebelum job diantrekan; history tetap tersedia melalui `parent_generation_id`. Satu question set hanya menunjuk generation aktif/terakhir.
+Gemini dispatch, prompt builder, and output persistence belong to Phase 4.3+. Status `processing|completed|failed|cancelled` is stored so later finalization can pair with usage transitions in one outer transaction. Automatic retry: same Generation, same Usage reservation, no extra credit, `attempt_number` may increase. Manual retry after terminal failure: old Generation stays `failed`, reservation `released`, new Generation + new reservation, optional `parent_generation_id`.
 
 #### `ai_usage_logs`
 
-Ledger credit dan usage per entitlement. Tabel ini menjadi sumber quota generation runtime pada Phase 4, bukan counter yang dapat ditimpa. **Belum diimplementasikan sebagai migration PHP.** Bukan bagian Phase 3.
+Stateful one-row-per-Generation credit ledger. **Implemented in Phase 4.1+4.2.** `generation_id` is UNIQUE. One Generation request = one credit. Counting is by row/state (`reserved` occupies one capacity; `charged` permanently consumes one; `released` occupies/consumes zero). There is no `credit_used`, `usage_action`/`action_type`, or `reservation_expires_at`.
 
-Setiap baris merujuk Plan wajib. Subscription nullable:
+Each row references a Plan. Subscription is nullable:
 
-- Free: `plan_id` = catalog Free, `subscription_id` null. Charged usage dihitung terhadap lifetime generation Free milik user.
-- Pro: `plan_id` = catalog Pro, `subscription_id` = window Pro efektif. Charged usage dihitung terhadap window `[starts_at, ends_at)` subscription itu.
+- Free: `plan_id` = catalog Free, `subscription_id` null, `window_start`/`window_end` null. Charged and reserved Free rows count toward lifetime capacity. Historical Free usage is not reset by Free → Pro → Free.
+- Pro: `plan_id` = catalog Pro, `subscription_id` and exact `window_start`/`window_end` captured at Start from `ResolveGenerationQuota`. Current admission scopes to user + subscription + exact window + status. Live `Plan.generation_limit` is allowance. A queued future Subscription does not add current allowance.
 
 Lifecycle:
 
-1. Buat log `reserved` sebelum job dikirim.
-2. Ubah menjadi `charged` ketika output valid.
-3. Ubah menjadi `released` ketika generation gagal, dibatalkan, atau melewati `reservation_expires_at`.
+1. `StartQuestionGeneration` inserts `ai_generations` (`queued`) and exactly one `ai_usage_logs` (`reserved`) in the same transaction.
+2. `ConsumeGenerationCredit`: `reserved` → `charged` (idempotent if already charged).
+3. `ReleaseGenerationCredit`: `reserved` → `released` (idempotent if already released). Opposite terminal transition is an integrity exception (no silent refund after charged).
 
-Action ledger hanya `generate` atau `retry`. Validasi output merupakan bagian dari generation dan tidak mengurangi credit terpisah.
+Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Automatic stale-reservation TTL is deferred. Gemini is not implemented; Consume/Release are nestable inside a future 4.3 outer transaction so usage and generation status can commit together.
 
 ### Question Bank
 
 #### `question_sets`
 
-Container question milik user. Question set dibuat sebagai draft sebelum generation, menjadi generating saat job diantrekan, lalu review setelah generated questions valid. Set manual tetap boleh memiliki `generation_id` null.
+Phase 5. Container question milik user. **Tidak dibuat atau diwajibkan oleh Phase 4 generation.** Generation tidak bergantung pada draft question set. Phase 5 boleh mengimpor hasil generation completed yang disetujui, atau membuat question set manual (`generation_id` nullable).
 
-Lifecycle utama: draft, generating, review, published, archived.
+Lifecycle utama: draft, review, published, archived. Status `generating` tidak dipakai untuk mengantrekan job Phase 4.
 
 Admin review menggunakan `review_status`: not_submitted, pending, approved, rejected.
 
@@ -326,6 +321,13 @@ Phase 3 (setelah materials):
 
 Phase 3 tidak menjadi dependency migration untuk materials.
 
+Phase 4.1+4.2 (setelah materials, plans, dan subscriptions):
+
+1. ai_generations
+2. ai_usage_logs
+
+`prompt_versions` remains planned and is not a PHP migration in 4.1+4.2.
+
 Urutan target schema lengkap:
 
 1. users
@@ -356,7 +358,7 @@ Minimum seed:
 - Phase 1 roles: USER, ADMIN.
 - Phase 3 plans: canonical Free dan Pro via `PlanSeeder` (idempotent `updateOrCreate` on `code`). Tidak membuat baris subscription.
 - Phase 3 offers: `pro_1m` / `pro_3m` via `PlanOfferSeeder` (`firstOrCreate` on `code`; tidak menimpa harga/status existing).
-- One active prompt version dengan schema gabungan yang diskriminatif untuk ketiga question type.
+- One active prompt version dengan schema gabungan yang diskriminatif untuk ketiga question type (Phase 4.3+; not seeded in 4.1+4.2).
 
 Institution Plan tidak diaktifkan sebelum organization dan membership model dirancang.
 
