@@ -117,7 +117,7 @@ Technical slices:
   - minimum manual admin verification (`/admin/subscription-upgrades`)
   - no payment gateway
 
-Generation credit reservation, generation usage enforcement, failed-generation credit release, and `ai_usage_logs` runtime are **Phase 4.1+4.2 (`COMPLETE`)**. Gemini integration is Phase 4.3+.
+Generation credit reservation, generation usage enforcement, failed-generation credit release, and `ai_usage_logs` runtime are **Phase 4.1+4.2 (`COMPLETE`)**. Gemini structured MCQ generation and async orchestration are **Phase 4.3+4.4 (`COMPLETE`)**. Generation UI is Phase 4.5+.
 
 Scope:
 
@@ -133,7 +133,7 @@ Definition of Done:
 - User dapat melihat paket, storage, dan allowance generation (tanpa used/remaining).
 - Upgrade manual dapat disetujui, ditolak (alasan wajib), atau dibatalkan admin; approval menulis window Pro.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Runtime konsumsi generation Phase 4.1+4.2 sudah ada; Gemini adalah 4.3+.
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Runtime konsumsi generation Phase 4.1+4.2 sudah ada; Gemini MCQ + job orchestration adalah 4.3+4.4 (`COMPLETE`). Generation UI adalah 4.5+.
 
 ## Phase 4 - AI Question Engine
 
@@ -143,30 +143,37 @@ Technical slices:
 
 - Phase 4.1 AI Generation Domain Foundation (`COMPLETE`): `ai_generations` lifecycle, enums, owner-only `MaterialPolicy::generate`, eligibility after authorization.
 - Phase 4.2 Generation Usage & Quota Runtime (`COMPLETE`): stateful one-row-per-Generation `ai_usage_logs` (`reserved|charged|released`); Start reserves; Consume/Release finalize the stored reservation; Free lifetime and Pro window accounting.
-- Phase 4.3 + 4.4 Gemini + structured output + async orchestration (`NOT IMPLEMENTED`)
+- Phase 4.3 + 4.4 Gemini + structured output + async orchestration (`COMPLETE`)
 - Phase 4.5 + 4.6 generation UI / preview + reliability closure (`NOT IMPLEMENTED`)
 
 Scope (full Phase 4):
 
-- Prompt version management.
+- Prompt identity via config/`McqPromptBuilder::version()` persisted per provider attempt (no `prompt_versions` table in 4.3).
 - Google Gemini adapter.
 - Queue-based generation.
-- Multiple choice, true/false, dan essay.
+- Multiple choice runtime in 4.3+4.4; true/false and essay remain later types.
 - Output schema validation.
-- Token/cost audit.
+- Token metadata where the provider returns it (no monetary cost column).
 - Retry lineage dan failure handling (automatic retry = same Generation; manual retry = new Generation + optional `parent_generation_id`).
 - `ai_usage_logs` runtime, reservation, charge, dan release.
 - Penegakan limit generation dari `ResolveGenerationQuota`.
 
-Definition of Done (full Phase 4; 4.1+4.2 satisfy reservation/quota items only):
+Definition of Done (full Phase 4; 4.1–4.4 satisfy reservation/quota/Gemini/job items; UI remains 4.5):
 
-- Ketiga question type menghasilkan JSON valid.
-- Hasil terstruktur yang tervalidasi dapat dirancang di 4.3; raw prompt / full raw provider response tidak di-persist secara default.
-- Timeout, invalid JSON, dan provider failure tertangani.
-- Automatic retry memakai Generation dan reservation yang sama; tidak menimpa audit dengan child Generation.
+- Runtime 4.3+4.4 menghasilkan JSON MCQ valid (empat opsi A–D, satu jawaban, explanation). True/false dan essay belum dijalankan provider.
+- Hasil terstruktur tervalidasi disimpan di `ai_generations.result_json`; raw prompt / full raw provider response tidak di-persist.
+- Timeout, invalid JSON, dan provider failure tertangani (max 3 HTTP; Job tries terpisah).
+- Automatic retry memakai Generation dan reservation yang sama; `execution_token` membedakan resume vs duplicate Job.
 - Generation gagal (terminal) tidak mengurangi credit permanen (Release).
-- Semua output validator memiliki unit test.
+- Validator MCQ dan Job/attempt memiliki automated tests. MySQL races A–E passed on local MySQL.
 - Phase 4 tidak membuat `question_sets`. Preview generation belakangan di Phase 4 UI. Question Bank adalah Phase 5.
+
+4.3+4.4 Definition of Done:
+
+- Gemini HTTP `generateContent` with server-side MCQ validation and targeted repair.
+- Dedicated `database-generation` connection; existing extraction `retry_after` 90 unchanged.
+- `attempt_number` starts at 0; 1/2/3 means provider HTTP started; never 4.
+- Nullable `output_language` for legacy rows; new Start requires `id`/`en`; Job fail-closed if missing.
 
 4.1+4.2 Definition of Done:
 

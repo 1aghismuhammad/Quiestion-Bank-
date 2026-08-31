@@ -44,6 +44,15 @@ return [
             'after_commit' => false,
         ],
 
+        'database-generation' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => env('GENERATION_QUEUE', 'question-generation'),
+            'retry_after' => (int) env('GENERATION_QUEUE_RETRY_AFTER', 360),
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

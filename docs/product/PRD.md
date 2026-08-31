@@ -117,11 +117,11 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 - FR-AI-01: Sistem memeriksa subscription dan quota sebelum generation.
 - FR-AI-02: User memilih assessment type: formative, summative, atau diagnostic.
 - FR-AI-03: User memilih difficulty: easy, medium, hard, atau HOTS.
-- FR-AI-04: User memilih satu question type per generation: multiple choice, true/false, atau essay.
-- FR-AI-05: Generation dijalankan oleh queue dan memiliki status queued, processing, completed, failed, atau cancelled.
-- FR-AI-06: Generation menyimpan user, material, assessment, difficulty, question type, count, status, attempt, dan timestamps. Phase 4.3 boleh merancang metadata provider/model/token/cost dan penyimpanan hasil terstruktur yang tervalidasi. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Metadata error/diagnostik wajib disanitasi. Jangan menambahkan kolom `raw_response` / `parsed_output` sekarang.
+- FR-AI-04: User memilih satu question type per generation. Runtime Phase 4.3+4.4 mengeksekusi **multiple choice** saja (empat opsi A–D, satu jawaban, explanation wajib). True/false dan essay ditolak di Start sampai provider-nya ada.
+- FR-AI-05: Generation dijalankan oleh queue (`database-generation` / `question-generation`) dan memiliki status queued, processing, completed, failed, atau cancelled.
+- FR-AI-06: Generation menyimpan user, material, assessment, difficulty, question type, count, `output_language`, status, `execution_token`, attempt, `result_json`, provider/token aggregates, sanitized error, dan timestamps. Per-call audit ada di `ai_generation_attempts` termasuk `prompt_version` yang dipakai HTTP itu. Jangan persist raw prompt atau full raw Gemini/provider response. Jangan kolom `raw_response` / `parsed_output`.
 - FR-AI-07: Output yang tidak sesuai schema bukan success. Phase 4 tidak menyimpan generated questions ke Question Bank. Credit di-release pada terminal failure. Tidak ada pengembalian question set ke draft karena generation tidak bergantung pada draft `question_sets`.
-- FR-AI-08: Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` boleh naik; tanpa credit tambahan). Manual retry setelah terminal failure: Generation lama tetap `failed`, reservation di-release, user memulai Generation baru dengan reservation baru; `parent_generation_id` boleh menunjuk Generation lama.
+- FR-AI-08: Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` = HTTP yang sudah started, max 3). Job Laravel `$tries` tidak mengalikan kuota HTTP. Manual retry setelah terminal failure: Generation lama tetap `failed`, reservation di-release, user memulai Generation baru dengan reservation baru; `parent_generation_id` boleh menunjuk Generation lama.
 
 ### Question Bank
 
@@ -201,9 +201,9 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 - User dapat login hanya melalui Google dan masuk ke dashboard.
 - Admin menggunakan login yang sama, tetapi aksesnya dibatasi role.
 - User dapat membuat materi upload atau teks dan memilih topik/fokus.
-- Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2).
-- Gemini dapat menghasilkan ketiga tipe soal dengan schema yang valid. **Belum diimplementasikan** (Phase 4.3+).
-- Failure AI tidak mengurangi credit secara permanen (Release pada terminal failure; Phase 4.3+ will call Release).
+- Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2; Gemini MCQ job Phase 4.3+4.4).
+- Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). True/false dan essay belum dijalankan provider. Generation UI belum ada.
+- Failure AI tidak mengurangi credit secara permanen (Release pada terminal failure via `FinalizeGenerationFailure`).
 - User dapat review, edit, save, dan publish question set (Phase 5; import dari generation completed, bukan draft question set sebelum generate).
 - Admin dapat menjalankan modul Phase 6 pada flow admin; branch broadcast baru wajib pada Phase 7.
 - Semua generation dan penggunaan credit dapat diaudit.

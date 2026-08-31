@@ -340,7 +340,7 @@ Table prompt_versions {
     created_by
   }
 
-  Note: 'Planned. Not implemented in Phase 4.1+4.2. Gemini prompt builder belongs to 4.3+.'
+  Note: 'Planned catalog table. Not implemented. Phase 4.3+4.4 stores prompt identity as ai_generation_attempts.prompt_version from McqPromptBuilder.'
 }
 
 Table ai_generations {
@@ -351,13 +351,22 @@ Table ai_generations {
   difficulty_level difficulty_level [not null]
   question_type question_type [not null]
   question_count int [not null]
+  output_language varchar(8) [note: 'id or en. Nullable for pre-4.3 legacy rows. New Start requires a value.']
   generation_status generation_status [not null, default: 'queued']
+  execution_token varchar(36)
   error_message text
-  attempt_number int [not null, default: 1]
+  error_code varchar(64)
+  attempt_number int [not null, default: 0, note: 'Count of provider HTTP calls started. 0 while queued. Never 4.']
+  result_json json [note: 'Validated MCQ array. Partial after each attempt. Completed length equals question_count.']
+  provider_name varchar(32)
+  model_name varchar(100)
+  input_tokens int
+  output_tokens int
   parent_generation_id bigint
   queued_at timestamp
   started_at timestamp
-  completed_at timestamp
+  completed_at timestamp [note: 'Success only']
+  failed_at timestamp [note: 'Terminal failure']
   created_at timestamp
   updated_at timestamp
 
@@ -368,7 +377,7 @@ Table ai_generations {
     parent_generation_id [name: 'ai_gen_parent_id_idx']
   }
 
-  Note: 'Phase 4.1+4.2 runtime. No topic_id, prompt_version_id, provider, token, raw_response, or parsed_output yet. Those columns may be added in later explicit migrations after Gemini/prompt versions exist. question_count has no product maximum. parent_generation_id is reserved for later manual retry lineage.'
+  Note: 'Phase 4.3+4.4. No topic_id, prompt_version_id, prompt_version, raw_response, or parsed_output. question_count max is configurable (default 10). parent_generation_id is reserved for later manual retry lineage. execution_token is DB-authoritative Job ownership.'
 }
 
 Table ai_usage_logs {
@@ -392,7 +401,37 @@ Table ai_usage_logs {
     (user_id, subscription_id, window_start, status) [name: 'ai_usage_pro_window_idx']
   }
 
-  Note: 'Stateful one-row-per-Generation ledger (UNIQUE generation_id). One Generation request = one credit. reserved occupies capacity; charged permanently consumes one credit; released occupies/consumes zero. Counting is by row/state, not credit_used. Free: plan_id=Free AND subscription_id IS NULL (lifetime; survives Free→Pro→Free). Pro: subscription_id + exact persisted window_start/window_end from Start. Live Plan.generation_limit is allowance. Consume/Release finalize the stored reservation only and must not re-resolve current entitlement. No usage_action, credit_used, or reservation_expires_at. Automatic stale-reservation TTL is deferred.'
+  Note: 'Stateful one-row-per-Generation ledger (UNIQUE generation_id). One Generation request = one credit. reserved occupies capacity; charged permanently consumes one credit; released occupies/consumes zero. Counting is by row/state, not credit_used. Free: plan_id=Free AND subscription_id IS NULL (lifetime; survives Free→Pro→Free). Pro: subscription_id + exact persisted window_start/window_end from Start. Live Plan.generation_limit is allowance. Consume/Release finalize the stored reservation only and must not re-resolve current entitlement. No usage_action, credit_used, or reservation_expires_at. Automatic stale-reservation TTL is deferred to Phase 4.6.'
+}
+
+Table ai_generation_attempts {
+  attempt_id bigint [pk, increment]
+  generation_id bigint [not null]
+  attempt_number int [not null]
+  provider varchar(32) [not null]
+  model varchar(100) [not null]
+  purpose varchar(16) [not null, note: 'initial or repair']
+  prompt_version varchar(32) [not null, note: 'Builder version at HTTP start, not Start-time snapshot']
+  requested_count int [not null]
+  accepted_count int [not null, default: 0]
+  status varchar(16) [not null, note: 'started, succeeded, or failed']
+  input_tokens int
+  output_tokens int
+  total_tokens int
+  latency_ms int
+  finish_reason varchar(32)
+  safe_error_code varchar(64)
+  started_at timestamp [not null]
+  finished_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (generation_id, attempt_number) [unique, name: 'ai_gen_attempt_unique']
+    generation_id [name: 'ai_gen_attempt_gen_idx']
+  }
+
+  Note: 'One row per provider HTTP call. Inserted before HTTP. No raw prompt or raw response.'
 }
 
 //////////////////////////////////////////////////////
@@ -564,6 +603,7 @@ Ref: users.id < ai_usage_logs.user_id [delete: restrict]
 Ref: plans.plan_id < ai_usage_logs.plan_id [delete: restrict]
 Ref: subscriptions.subscription_id < ai_usage_logs.subscription_id [delete: restrict]
 Ref: ai_generations.generation_id < ai_usage_logs.generation_id [delete: restrict]
+Ref: ai_generations.generation_id < ai_generation_attempts.generation_id [delete: restrict]
 
 Ref: users.id < question_sets.user_id
 Ref: ai_generations.generation_id - question_sets.generation_id

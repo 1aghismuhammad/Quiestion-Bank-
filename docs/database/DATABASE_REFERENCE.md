@@ -39,7 +39,7 @@ flowchart LR
     Q --> O[question_options]
 ```
 
-`ai_usage_logs` always belongs to a user and a Plan. Subscription is optional: Free usage is User + Free Plan with `subscription_id` null; Pro usage is User + Pro Plan + the effective Pro window captured at reservation time. `prompt_versions` remains planned and is not referenced by `ai_generations` in Phase 4.1+4.2.
+`ai_usage_logs` always belongs to a user and a Plan. Subscription is optional: Free usage is User + Free Plan with `subscription_id` null; Pro usage is User + Pro Plan + the effective Pro window captured at reservation time. `prompt_versions` remains planned and is **not** implemented. Prompt identity in 4.3+4.4 is `ai_generation_attempts.prompt_version` (config/builder string).
 
 ## Entity Catalog
 
@@ -158,7 +158,7 @@ Kombinasi material, chapter, sub-chapter, dan topic dibuat unique. Index `(mater
 
 #### `prompt_versions`
 
-Snapshot aturan prompt dan output schema. Version number wajib unique dan hanya satu version boleh active. **Belum diimplementasikan** (Phase 4.3+).
+Snapshot aturan prompt dan output schema. Version number wajib unique dan hanya satu version boleh active. **Tidak diimplementasikan.** Phase 4.3+4.4 memakai string `generation.prompt_version` pada `McqPromptBuilder` dan menyimpannya per HTTP call di `ai_generation_attempts.prompt_version`.
 
 Satu active prompt version berisi schema diskriminatif untuk ketiga question type.
 
@@ -176,17 +176,26 @@ Komponen:
 
 #### `ai_generations`
 
-Audit satu percobaan generation. Implemented in Phase 4.1+4.2:
+Audit satu Generation request. Phase 4.1+4.2 created the table; Phase 4.3+4.4 added provider columns:
 
 - actor (`user_id`) dan source material (`material_id`)
-- assessment, difficulty, question type, dan `question_count` (integer >= 1; no product maximum)
+- assessment, difficulty, question type, dan `question_count` (integer 1..configurable max, default 10; runtime 4.3 is MCQ only)
+- `output_language` (`id`/`en`, **nullable** for pre-4.3 rows; new Start requires a value; Job fail-closed if null/unsupported)
 - `generation_status`: queued, processing, completed, failed, cancelled
-- `error_message`, `attempt_number` (default 1), nullable `parent_generation_id` (**manual** retry lineage later; automatic provider/job retry stays on the same row)
-- `queued_at`, `started_at`, `completed_at`
+- `execution_token` (nullable UUID; set on claim; DB-authoritative execution ownership)
+- `error_message`, `error_code` (sanitized), `attempt_number` (default **0**; 1/2/3 = provider HTTP started)
+- `result_json` (validated MCQ array; partial after each attempt; completed must equal `question_count`)
+- `provider_name`, `model_name`, `input_tokens`, `output_tokens` (aggregates)
+- nullable `parent_generation_id` (**manual** retry lineage later)
+- `queued_at`, `started_at`, `completed_at` (success only), `failed_at` (terminal failure)
 
-Ownership/history FKs use `restrict` delete. No `topic_id`, `prompt_version_id`, provider/model/token, `raw_response`, or `parsed_output` in this phase. Do not persist raw prompt or full raw Gemini/provider response by default. Phase 4.3 may design validated structured result storage and provider/model/token/cost metadata; diagnostic/error metadata must be sanitized.
+Ownership/history FKs use `restrict` delete. No `topic_id`, `prompt_version_id`, `prompt_version`, `raw_response`, or `parsed_output`. Do not persist raw prompt or full raw Gemini response.
 
-Gemini dispatch, prompt builder, and output persistence belong to Phase 4.3+. Status `processing|completed|failed|cancelled` is stored so later finalization can pair with usage transitions in one outer transaction. Automatic retry: same Generation, same Usage reservation, no extra credit, `attempt_number` may increase. Manual retry after terminal failure: old Generation stays `failed`, reservation `released`, new Generation + new reservation, optional `parent_generation_id`.
+Gemini dispatch, prompt builder, and output persistence are implemented in Phase 4.3+4.4. Automatic retry: same Generation, same Usage reservation, no extra credit. Competing Jobs with a different `execution_token` must not call the provider. Manual retry after terminal failure: old Generation stays `failed`, reservation `released`, new Generation + new reservation, optional `parent_generation_id`.
+
+#### `ai_generation_attempts`
+
+Per provider HTTP call. UNIQUE `(generation_id, attempt_number)`. Columns: provider, model, purpose (`initial|repair`), **`prompt_version` actually used**, requested/accepted counts, status (`started|succeeded|failed`), optional token/latency/finish/safe_error, `started_at`/`finished_at`. No raw payload. Inserted in a short transaction **before** HTTP while the Job still owns `processing` + `execution_token`.
 
 #### `ai_usage_logs`
 
@@ -203,7 +212,7 @@ Lifecycle:
 2. `ConsumeGenerationCredit`: `reserved` → `charged` (idempotent if already charged).
 3. `ReleaseGenerationCredit`: `reserved` → `released` (idempotent if already released). Opposite terminal transition is an integrity exception (no silent refund after charged).
 
-Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Automatic stale-reservation TTL is deferred. Gemini is not implemented; Consume/Release are nestable inside a future 4.3 outer transaction so usage and generation status can commit together.
+Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Automatic stale-reservation TTL is deferred (Phase 4.6). `FinalizeGenerationSuccess` / `FinalizeGenerationFailure` wrap Consume/Release so usage and generation status commit together. Gemini HTTP is never inside that transaction.
 
 ### Question Bank
 
@@ -326,7 +335,12 @@ Phase 4.1+4.2 (setelah materials, plans, dan subscriptions):
 1. ai_generations
 2. ai_usage_logs
 
-`prompt_versions` remains planned and is not a PHP migration in 4.1+4.2.
+Phase 4.3+4.4:
+
+1. alter `ai_generations` (language, execution_token, result_json, aggregates, failed_at; attempt_number default 0)
+2. ai_generation_attempts
+
+`prompt_versions` remains planned and is not a PHP migration.
 
 Urutan target schema lengkap:
 
@@ -339,15 +353,16 @@ Urutan target schema lengkap:
 7. subscription_upgrade_requests
 8. materials
 9. material_topics
-10. prompt_versions
+10. prompt_versions (planned; not migrated)
 11. ai_generations
 12. ai_usage_logs
-13. question_sets
-14. questions
-15. question_options
-16. whatsapp_contacts
-17. broadcast_campaigns
-18. broadcast_logs
+13. ai_generation_attempts
+14. question_sets
+15. questions
+16. question_options
+17. whatsapp_contacts
+18. broadcast_campaigns
+19. broadcast_logs
 
 Self-reference `ai_generations.parent_generation_id` dapat ditambahkan setelah tabel dibuat jika database membutuhkan langkah terpisah.
 
@@ -358,7 +373,7 @@ Minimum seed:
 - Phase 1 roles: USER, ADMIN.
 - Phase 3 plans: canonical Free dan Pro via `PlanSeeder` (idempotent `updateOrCreate` on `code`). Tidak membuat baris subscription.
 - Phase 3 offers: `pro_1m` / `pro_3m` via `PlanOfferSeeder` (`firstOrCreate` on `code`; tidak menimpa harga/status existing).
-- One active prompt version dengan schema gabungan yang diskriminatif untuk ketiga question type (Phase 4.3+; not seeded in 4.1+4.2).
+- Prompt identity: config `generation.prompt_version` / `McqPromptBuilder::version()`, audited per attempt (not seeded as `prompt_versions` rows).
 
 Institution Plan tidak diaktifkan sebelum organization dan membership model dirancang.
 

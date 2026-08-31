@@ -26,6 +26,52 @@ Notes:
 -
 ```
 
+## v0.11.0 Phase 4.3 + 4.4 Gemini Provider and Async Orchestration
+
+- Date: 31 August 2026
+- Version: 0.11.0
+- Phase: Phase 4 - AI Question Engine
+- Type: Feature implementation
+
+Added:
+
+- Laravel HTTP Client Gemini `generateContent` provider (`GeminiQuestionGenerationProvider`) with JSON schema MCQ output. No Gemini Composer SDK.
+- `McqPromptBuilder` (config `generation.prompt_version`) and `GeminiModelSelector` (attempt 1–2 primary, attempt 3 fallback when eligible).
+- `GenerateQuestionsJob` on dedicated queue connection `database-generation` / queue `question-generation` (`retry_after` 360). Job `$tries=3`, `$timeout=270`, `$failOnTimeout=false`.
+- DB-authoritative `execution_token` claim/resume. Same serialized token resumes `processing`; a different token exits without HTTP.
+- `ai_generation_attempts` per-call audit including `prompt_version` actually used for that HTTP call.
+- Validated `result_json` on `ai_generations` with partial persist across crash/resume. Targeted repair keeps valid slots.
+- `FinalizeGenerationSuccess` / `FinalizeGenerationFailure` wrap stored Consume/Release (User → Generation → Usage). `failed_at` / `error_code`.
+- `OutputLanguage` `id`/`en` required on new Start. Legacy `output_language` remains nullable; Job fail-closed with no HTTP.
+
+Changed:
+
+- Phase 4.3 and 4.4 are `COMPLETE`. Phase 4 overall remains `IN PROGRESS`. 4.5/4.6, generation UI, and Question Bank are not implemented.
+- `StartQuestionGeneration` requires `OutputLanguage`, MCQ only, configurable max questions (default 10), `attempt_number=0`, and dispatches `GenerateQuestionsJob` after the reservation transaction.
+- Existing `database` queue connection `retry_after` stays 90 (`DB_QUEUE_RETRY_AFTER`). Composer `dev` adds a separate generation listener; extraction listener is unchanged.
+- Prompt version is not stored on `ai_generations` and there is no `prompt_versions` table.
+- Production/example Gemini defaults are `gemini-3.5-flash-lite` (primary) and `gemini-3.7-flash` (fallback). Local runtime model remains environment-controlled.
+
+Fixed:
+
+- Provider HTTP is hard-capped at 3 attempts even if `generation.max_provider_attempts` is set above 3. The env knob was removed.
+- Same-token Job resume restores the latest persisted attempt error (`GenerationErrorCode::isPermanent()` / fallback-eligible / `incomplete_output`) instead of resetting `previousError`.
+- Successful provider responses persist attempt terminal metadata and merged `result_json` in one transaction (`FinishGenerationAttempt`). Persistence errors bubble.
+- Gemini 3.x `generationConfig` no longer sends `temperature`, `top_p`, or `top_k`. Unexpected non-transport exceptions are not classified as transient provider errors.
+- MCQ options A–D must be four distinct normalized texts. Stored `question_type` / `question_count` fail closed before HTTP. No backoff after attempt 3.
+
+Database Impact:
+
+- Alter `ai_generations`: `output_language` nullable, `execution_token`, `result_json`, provider/model/token aggregates, `failed_at`, `error_code`; backfill `attempt_number` to 0 and default 0.
+- New table `ai_generation_attempts` with UNIQUE `(generation_id, attempt_number)`. Restrictive FK. No raw prompt/response columns.
+
+Notes:
+
+- SQLite PHPUnit does not prove row locks. Local MySQL races passed: (A) two different tokens → one owner; (B) same token resume preserves Generation/Usage/attempt budget; (C) two success finalizers → one completed+charged; (D) success vs failure → completed+charged; (E) concurrent begin-attempt → unique sequential identity, never 4. Marker fixtures and the race script were deleted after QA.
+- No generation controller, route, or Blade. No `question_sets`.
+- No new Composer dependencies.
+- No Git commit from the implementation agent.
+
 ## v0.10.0 Phase 4.1 + 4.2 Generation Domain and Usage Runtime
 
 - Date: 29 August 2026

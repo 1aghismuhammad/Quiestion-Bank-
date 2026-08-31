@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.10
+- Version: 0.11
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -133,55 +133,51 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Free adalah fallback jika tidak ada window Pro efektif. Tidak ada baris subscription Free.
 - Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
 - Paling banyak satu window efektif per instant. Resolver memvalidasi seluruh antrian `active` current/future sebagai Pro; overlap efektif fail-closed; data stale historis tidak mengunci akun. Plan Pro inactive tidak mencabut window yang sudah dibayar.
-- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, dan `ai_usage_logs` (Phase 4.1+4.2). Gemini, prompt builder, dan generation UI adalah 4.3+.
+- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, dan `ai_usage_logs`. Gemini MCQ + `GenerateQuestionsJob` are Phase 4.3+4.4. Generation UI is 4.5+.
 - Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak.
 - UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests`. Approval menulis tepat satu baris `subscriptions` `status=active`: tanpa antrian Pro current/future, `starts_at` = waktu approval; jika antrian ada, `starts_at` = `max(ends_at)` antrian itu. `ends_at` memakai durasi bulan kalender no-overflow. Satu pembelian 3 bulan = satu baris Subscription. Window masa depan tetap `active`; tidak ada status Subscription `scheduled`/`pending`.
 - Verifikasi pembayaran Admin tidak menembus `MaterialPolicy`. Admin tidak memperoleh akses global ke Material privat. Halaman admin user-detail penuh bukan bagian Phase 3.
 
 ### AI Engine
 
-Phase 4.1+4.2 implemented the generation row and usage/quota runtime only. There is no Gemini adapter, prompt builder, queue job, or generation UI yet. The sequence below remains the target for Phase 4.3+.
+Phase 4.3+4.4 implemented Gemini structured MCQ generation and async orchestration on the 4.1+4.2 reservation foundation. There is still no generation UI. True/false and essay are not provider-executed in this slice.
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant L as Livewire
-    participant Q as Quota Service
-    participant J as Queue Job
-    participant P as Prompt Builder
-    participant G as Gemini
-    participant V as Output Validator
-    participant D as Database
+    participant Start as StartQuestionGeneration
+    participant DB as Database
+    participant Job as GenerateQuestionsJob
+    participant P as McqPromptBuilder
+    participant G as GeminiHTTP
+    participant V as McqValidator
+    participant Fin as FinalizeActions
 
-    U->>L: Submit generation configuration
-    L->>Q: Validate and reserve credit
-    Q->>D: Create queued generation and reserved usage
-    L->>J: Dispatch generation
-    J->>P: Build versioned prompt
-    P->>G: Generate structured output
-    G-->>J: JSON response
-    J->>V: Validate by question type
-    alt Valid
-        V->>D: Store validated structured result
-        J->>Q: Charge reserved credit
-    else Automatic retry remaining
-        J->>D: Same generation attempt_number plus one
-        J->>P: Retry same reservation
-    else Terminal failure
-        J->>D: Sanitized error keep failed generation
-        J->>Q: Release reserved credit
+    Start->>DB: lock User then Material reserve queued attempt_number 0
+    Start->>Job: dispatch afterCommit with executionToken
+    Job->>DB: claim queued or resume same token
+    Job->>P: build current prompt version
+    loop up to 3 HTTP
+        Job->>DB: begin attempt then commit
+        Job->>G: generate or repair
+        Job->>V: validate and merge
+        Job->>DB: persist partial result_json
+    end
+    alt exact valid count
+        Fin->>DB: Consume stored usage plus completed
+    else terminal
+        Fin->>DB: Release stored usage plus failed
     end
 ```
 
-AI Engine terdiri dari:
+AI Engine consists of:
 
-- Prompt version management (Phase 4.3+).
-- Gemini client adapter (Phase 4.3+).
-- Queue-based generation (Phase 4.3+).
-- Schema validation per question type.
-- Automatic retry on the same Generation and reservation; manual retry as a new Generation with optional `parent_generation_id`.
-- Provider/model/token/cost metadata may be designed in 4.3. Do not persist raw prompt or full raw Gemini/provider response by default. Diagnostic/error metadata must be sanitized.
-- Phase 4 does not create `question_sets` or save questions into the Question Bank. Preview is Phase 4 UI later. Phase 5 may import an approved completed generation.
+- Prompt identity: `McqPromptBuilder::version()` from config, persisted on each `ai_generation_attempts.prompt_version`. No `prompt_versions` table. No `ai_generations.prompt_version`.
+- Gemini HTTP client adapter (`generateContent`, JSON schema, 60s timeout). Primary/fallback models configurable.
+- Queue-based generation on connection `database-generation` / queue `question-generation`. Existing Material extraction connection `retry_after` 90 is unchanged.
+- MCQ schema validation and deterministic duplicate detection. Targeted repair requests only missing/invalid slots.
+- Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry remains a future new Generation with optional `parent_generation_id`.
+- Provider/model/token metadata on attempts and optional Generation aggregates. Do not persist raw prompt or full raw Gemini response. Diagnostic/error metadata is sanitized.
+- Phase 4 does not create `question_sets`. Preview is Phase 4.5. Phase 5 may import an approved completed generation.
 
 ### Question Bank
 
@@ -238,19 +234,24 @@ GOOGLE_REDIRECT_URI=
 SUBSCRIPTION_WHATSAPP_NUMBER=
 SUBSCRIPTION_QRIS_PATH=payment/qris.png
 GEMINI_API_KEY=
-GEMINI_MODEL=
+GEMINI_PRIMARY_MODEL=gemini-3.5-flash-lite
+GEMINI_FALLBACK_MODEL=gemini-3.7-flash
+GENERATION_QUEUE_CONNECTION=database-generation
+GENERATION_QUEUE=question-generation
+GENERATION_QUEUE_RETRY_AFTER=360
 ```
 
-Nama model Gemini disimpan pada konfigurasi aplikasi dan dicatat pada setiap generation.
+Nama model Gemini disimpan pada `config/generation.php` (primary + fallback) dan dicatat per provider attempt. Production membutuhkan worker terpisah untuk `database-generation` / `question-generation` (timeout ~300) di samping worker extraction yang ada.
 
 ## Deployment Topology
 
 MVP membutuhkan:
 
 1. Web application Laravel.
-2. Queue worker.
-3. Scheduler.
-4. Relational database.
-5. File storage lokal atau object storage.
+2. Queue worker for `material-extraction,default` (existing `retry_after` 90).
+3. Queue worker for `database-generation` / `question-generation` (`retry_after` 360, timeout ~300).
+4. Scheduler.
+5. Relational database.
+6. File storage lokal atau object storage.
 
 Production dapat menambahkan Redis untuk queue/cache, object storage, monitoring, dan multiple workers tanpa mengubah domain model.

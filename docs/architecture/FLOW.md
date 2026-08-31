@@ -94,7 +94,7 @@ flowchart LR
 11. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.
 12. Credit direservasi pada Start generation (satu request = satu reservation) agar request paralel tidak melewati quota. Generation tidak memerlukan draft `question_sets`.
 13. Credit hanya ditagihkan (`charged`) setelah output valid. Terminal failure me-release reservation.
-14. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` boleh naik; tanpa credit tambahan). Manual retry setelah terminal failure membuat Generation baru dan reservation baru; `parent_generation_id` boleh menunjuk Generation lama.
+14. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` counts started HTTP calls, 0 at queue, max 3). Manual retry setelah terminal failure membuat Generation baru dan reservation baru; `parent_generation_id` boleh menunjuk Generation lama. `execution_token` membedakan resume Job yang sama vs Job kompetitor.
 15. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview generation adalah Phase 4; Question Bank / `question_sets` adalah Phase 5 dan boleh mengimpor hasil generation yang completed.
 
 ## AI Generation State Flow
@@ -112,7 +112,9 @@ stateDiagram-v2
     cancelled --> [*]
 ```
 
-Automatic provider/job retry stays on the **same** `AiGeneration` and the **same** `AiUsageLog` reservation. `attempt_number` may increase. No extra credit. Do not create a child Generation for automatic retry.
+Automatic provider/job retry stays on the **same** `AiGeneration` and the **same** `AiUsageLog` reservation. `attempt_number` is the count of provider HTTP calls started (0 while queued). No extra credit. Same Job `execution_token` may resume `processing`; a different token must not call the provider. Do not create a child Generation for automatic retry.
+
+Phase 4.3+4.4 persist validated MCQ `result_json` (partial after each attempt) and per-call `ai_generation_attempts` (including the prompt version actually used). Preview of completed results is Phase 4.5. Question Bank is Phase 5.
 
 Manual user retry after terminal failure: the old Generation remains `failed`; its reservation is `released`; the user starts a **new** Generation with a new reservation; `parent_generation_id` may link to the old Generation.
 
@@ -239,11 +241,11 @@ File invalid ditolak sebelum disimpan. Extraction failure dapat di-retry tanpa m
 
 ### Quota Failure
 
-Upload yang melebihi `storage_limit_bytes` ditolak. Allowance generation didefinisikan di Phase 3.5 dan ditegakkan di Phase 4.1+4.2 (`available = allowance - charged - reserved`). Generation gagal me-release credit (Action exists; Gemini job is Phase 4.3+).
+Upload yang melebihi `storage_limit_bytes` ditolak. Allowance generation didefinisikan di Phase 3.5 dan ditegakkan di Phase 4.1+4.2 (`available = allowance - charged - reserved`). Terminal generation failure me-release credit via `FinalizeGenerationFailure`.
 
 ### Gemini Failure
 
-Timeout, provider error, dan invalid JSON: automatic retry on the same Generation/reservation until the budget is exhausted; then `failed`, sanitized error metadata, and Release. Manual retry is a new Generation. Do not persist full raw provider responses by default.
+Timeout, provider error, dan invalid JSON: automatic retry on the same Generation/reservation until the 3-HTTP budget is exhausted; then `failed`, sanitized error metadata, and Release. Job worker timeout is retryable (`failOnTimeout` false) and resumes with the same `execution_token`. Manual retry is a new Generation. Do not persist full raw provider responses. Oversize/empty Material and missing `output_language` fail closed with no HTTP.
 
 ### Broadcast Failure
 

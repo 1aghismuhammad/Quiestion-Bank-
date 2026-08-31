@@ -10,6 +10,7 @@ use App\Enums\DifficultyLevel;
 use App\Enums\ExtractionStatus;
 use App\Enums\GenerationStatus;
 use App\Enums\MaterialStatus;
+use App\Enums\OutputLanguage;
 use App\Enums\QuestionType;
 use App\Enums\RoleName;
 use App\Enums\SourceType;
@@ -17,6 +18,7 @@ use App\Enums\UsageStatus;
 use App\Exceptions\Subscriptions\AmbiguousEntitlementException;
 use App\Exceptions\Subscriptions\InvalidEntitlementException;
 use App\Exceptions\Subscriptions\InvalidGenerationQuotaException;
+use App\Jobs\GenerateQuestionsJob;
 use App\Models\AiGeneration;
 use App\Models\AiUsageLog;
 use App\Models\Material;
@@ -27,6 +29,7 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
@@ -62,15 +65,16 @@ class StartQuestionGenerationTest extends TestCase
             questionCount: 7,
             assessmentType: AssessmentType::SUMMATIVE,
             difficultyLevel: DifficultyLevel::HOTS,
-            questionType: QuestionType::ESSAY,
+            questionType: QuestionType::MULTIPLE_CHOICE,
         );
 
         $this->assertSame(GenerationStatus::QUEUED, $generation->generation_status);
         $this->assertSame(7, $generation->question_count);
         $this->assertSame(AssessmentType::SUMMATIVE, $generation->assessment_type);
         $this->assertSame(DifficultyLevel::HOTS, $generation->difficulty_level);
-        $this->assertSame(QuestionType::ESSAY, $generation->question_type);
-        $this->assertSame(1, $generation->attempt_number);
+        $this->assertSame(QuestionType::MULTIPLE_CHOICE, $generation->question_type);
+        $this->assertSame(0, $generation->attempt_number);
+        $this->assertSame(OutputLanguage::ID, $generation->output_language);
         $this->assertNull($generation->parent_generation_id);
         $this->assertTrue($generation->queued_at?->equalTo($this->now));
         $this->assertNull($generation->started_at);
@@ -89,15 +93,46 @@ class StartQuestionGenerationTest extends TestCase
         $this->assertSame(1, AiUsageLog::query()->count());
     }
 
-    public function test_question_count_one_is_allowed_and_has_no_product_maximum(): void
+    public function test_question_count_one_is_allowed_and_configured_maximum_is_enforced(): void
     {
         $user = User::factory()->create();
         $this->proWindow($user, $this->now->copy()->subDay(), $this->now->copy()->addMonth());
 
-        $generation = $this->startGeneration($user, questionCount: 500);
+        $generation = $this->startGeneration($user, questionCount: 10);
 
-        $this->assertSame(500, $generation->question_count);
+        $this->assertSame(10, $generation->question_count);
         $this->assertSame(1, $this->startGeneration($user, questionCount: 1)->question_count);
+
+        try {
+            $this->startGeneration($user, questionCount: 11);
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('question_count', $exception->errors());
+        }
+    }
+
+    public function test_non_mcq_question_type_is_rejected_without_rows(): void
+    {
+        $user = User::factory()->create();
+        $material = Material::factory()->text()->for($user)->create();
+
+        try {
+            $this->starter()->handle(
+                $user,
+                $material,
+                AssessmentType::FORMATIVE,
+                DifficultyLevel::MEDIUM,
+                QuestionType::ESSAY,
+                5,
+                OutputLanguage::ID,
+            );
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('question_type', $exception->errors());
+        }
+
+        $this->assertSame(0, AiGeneration::query()->count());
+        $this->assertSame(0, AiUsageLog::query()->count());
     }
 
     public function test_question_count_below_one_is_rejected_without_rows(): void
@@ -113,6 +148,7 @@ class StartQuestionGenerationTest extends TestCase
                 DifficultyLevel::MEDIUM,
                 QuestionType::MULTIPLE_CHOICE,
                 0,
+                OutputLanguage::ID,
             );
             $this->fail('Expected ValidationException');
         } catch (ValidationException $exception) {
@@ -167,6 +203,7 @@ class StartQuestionGenerationTest extends TestCase
             DifficultyLevel::MEDIUM,
             QuestionType::MULTIPLE_CHOICE,
             5,
+            OutputLanguage::ID,
         );
     }
 
@@ -186,6 +223,7 @@ class StartQuestionGenerationTest extends TestCase
                 DifficultyLevel::MEDIUM,
                 QuestionType::MULTIPLE_CHOICE,
                 5,
+                OutputLanguage::ID,
             );
             $this->fail('Expected AuthorizationException');
         } catch (AuthorizationException) {
@@ -229,6 +267,7 @@ class StartQuestionGenerationTest extends TestCase
                 DifficultyLevel::MEDIUM,
                 QuestionType::MULTIPLE_CHOICE,
                 5,
+                OutputLanguage::ID,
             );
             $this->fail('Expected AuthorizationException');
         } catch (AuthorizationException) {
@@ -383,5 +422,19 @@ class StartQuestionGenerationTest extends TestCase
 
         $this->expectException(InvalidGenerationQuotaException::class);
         $this->startGeneration($user);
+    }
+
+    public function test_start_dispatches_generation_job_after_reservation(): void
+    {
+        $user = User::factory()->create();
+        $generation = $this->startGeneration($user);
+
+        Queue::assertPushed(GenerateQuestionsJob::class, 1);
+        Queue::assertPushed(GenerateQuestionsJob::class, function (GenerateQuestionsJob $job) use ($generation): bool {
+            return $job->generationId === (int) $generation->generation_id
+                && $job->executionToken !== ''
+                && $job->connection === 'database-generation'
+                && $job->queue === 'question-generation';
+        });
     }
 }

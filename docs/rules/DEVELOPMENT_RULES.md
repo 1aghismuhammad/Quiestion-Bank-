@@ -77,7 +77,8 @@ app/Services/Subscriptions
 - Pengembangan lokal memakai MySQL 8+ melalui Laragon. Pastikan MySQL Laragon berjalan sebelum `php artisan migrate`, `migrate:status`, atau `migrate --pretend`.
 - `env()` hanya di `config/*.php`. Kredensial pembayaran manual: `config/subscriptions.php` (`SUBSCRIPTION_WHATSAPP_NUMBER`, `SUBSCRIPTION_QRIS_PATH`). QRIS memakai disk `public`, bukan path Blade hard-code.
 - Operasi pembayaran/upgrade mengunci baris `users` terlebih dahulu, lalu request, lalu antrian subscription. Satu pending request per user ditegakkan di aplikasi, bukan unique `(user_id, status)`.
-- Start generation mengunci `users` lalu `materials` (reload by PK). Consume/Release mengunci `users` lalu `ai_generations` lalu `ai_usage_logs`. Consume/Release tidak memanggil `ResolveUserEntitlement` / `ResolveGenerationQuota`.
+- Start generation mengunci `users` lalu `materials` (reload by PK). Claim/begin-attempt/finish-attempt/partial persist mengunci `users` lalu `ai_generations` dan menuntut `processing` + matching `execution_token`. Finalize success/failure mengunci `users` lalu `ai_generations` lalu `ai_usage_logs`. Consume/Release tidak memanggil `ResolveUserEntitlement` / `ResolveGenerationQuota`. Gemini HTTP tidak di dalam transaksi DB.
+- Queue generation memakai connection `database-generation` (`GENERATION_QUEUE_RETRY_AFTER` 360). Jangan mengubah `database.retry_after` / `DB_QUEUE_RETRY_AFTER` (extraction tetap 90). Production membutuhkan worker generation terpisah.
 - `.env` lokal wajib `DB_CONNECTION=mysql`. SQLite hanya untuk test otomatis melalui `phpunit.xml`.
 - Semua perubahan schema menggunakan migration.
 - `docs/database/AI_QUESTION_BANK.dbml` adalah desain canonical.
@@ -114,23 +115,26 @@ Checklist perubahan schema:
 
 External call hanya dilakukan melalui kontrak AI internal.
 
-Setiap request AI (Phase 4.3+) wajib menyimpan:
+Setiap request AI wajib menyimpan:
 
 - User
 - Material
 - Assessment, difficulty, question type, dan count
-- Status, sanitized error, attempt, dan timestamps
+- Output language (`id`/`en` on new Start)
+- Status, sanitized error, attempt, timestamps
+- Per-call attempt audit (`ai_generation_attempts`) including prompt version, model, and token metadata when available
+- Validated `result_json` (partial allowed until success)
 
-Phase 4.3 boleh merancang metadata provider/model/token/cost dan hasil terstruktur yang tervalidasi. Jangan persist raw prompt atau full raw Gemini/provider response secara default.
+Jangan persist raw prompt atau full raw Gemini/provider response. API key hanya dari environment. Log tidak boleh berisi Material, prompt, atau full provider body.
 
 Additional rules:
 
-- API key hanya dari environment.
-- Request memiliki timeout, rate limit, dan automatic retry terbatas pada Generation/reservation yang sama.
-- Manual retry setelah terminal failure membuat Generation baru (`parent_generation_id` opsional); automatic retry tidak membuat child Generation.
+- External call hanya melalui `QuestionGenerationProvider`.
+- HTTP timeout 60s; Job timeout 270s is retryable (`failOnTimeout` false).
+- Automatic retry terbatas pada Generation/reservation yang sama (max 3 HTTP).
+- Manual retry setelah terminal failure membuat Generation baru (`parent_generation_id` opsional).
 - Output divalidasi sebelum diimpor ke Question Bank (Phase 5). Phase 4 tidak menulis `question_sets`.
 - Invalid output pada terminal failure me-release credit.
-- Log tidak boleh menyimpan OAuth token, API key, atau full raw provider payload.
 
 ## File Upload
 

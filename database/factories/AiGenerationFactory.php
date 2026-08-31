@@ -7,6 +7,7 @@ namespace Database\Factories;
 use App\Enums\AssessmentType;
 use App\Enums\DifficultyLevel;
 use App\Enums\GenerationStatus;
+use App\Enums\OutputLanguage;
 use App\Enums\QuestionType;
 use App\Models\AiGeneration;
 use App\Models\Material;
@@ -28,13 +29,18 @@ class AiGenerationFactory extends Factory
             'difficulty_level' => DifficultyLevel::MEDIUM,
             'question_type' => QuestionType::MULTIPLE_CHOICE,
             'question_count' => 5,
+            'output_language' => OutputLanguage::ID,
             'generation_status' => GenerationStatus::QUEUED,
+            'execution_token' => null,
             'error_message' => null,
-            'attempt_number' => 1,
+            'error_code' => null,
+            'attempt_number' => 0,
+            'result_json' => null,
             'parent_generation_id' => null,
             'queued_at' => now(),
             'started_at' => null,
             'completed_at' => null,
+            'failed_at' => null,
         ];
     }
 
@@ -55,5 +61,21 @@ class AiGenerationFactory extends Factory
                 ])->material_id;
             }
         });
+    }
+
+    public function processing(?string $executionToken = null): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'generation_status' => GenerationStatus::PROCESSING,
+            'execution_token' => $executionToken ?? (string) fake()->uuid(),
+            'started_at' => now(),
+        ]);
+    }
+
+    public function withoutOutputLanguage(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'output_language' => null,
+        ]);
     }
 }

@@ -55,6 +55,15 @@ class PhaseFourGenerationSchemaTest extends TestCase
             'completed_at',
             'created_at',
             'updated_at',
+            'output_language',
+            'execution_token',
+            'result_json',
+            'provider_name',
+            'model_name',
+            'input_tokens',
+            'output_tokens',
+            'failed_at',
+            'error_code',
         ]));
     }
 
@@ -62,10 +71,9 @@ class PhaseFourGenerationSchemaTest extends TestCase
     {
         $this->assertFalse(Schema::hasColumn('ai_generations', 'topic_id'));
         $this->assertFalse(Schema::hasColumn('ai_generations', 'prompt_version_id'));
+        $this->assertFalse(Schema::hasColumn('ai_generations', 'prompt_version'));
         $this->assertFalse(Schema::hasColumn('ai_generations', 'raw_response'));
         $this->assertFalse(Schema::hasColumn('ai_generations', 'parsed_output'));
-        $this->assertFalse(Schema::hasColumn('ai_generations', 'provider_name'));
-        $this->assertFalse(Schema::hasColumn('ai_generations', 'model_name'));
     }
 
     public function test_ai_usage_logs_has_expected_columns(): void
@@ -231,6 +239,12 @@ class PhaseFourGenerationSchemaTest extends TestCase
 
     public function test_rolling_back_phase_four_drops_only_generation_tables(): void
     {
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_08_31_140002_create_ai_generation_attempts_table.php',
+        ])->assertSuccessful();
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_08_31_140001_add_phase_four_three_columns_to_ai_generations_table.php',
+        ])->assertSuccessful();
         $this->artisan('migrate:rollback', [
             '--path' => 'database/migrations/2026_08_29_100002_create_ai_usage_logs_table.php',
         ])->assertSuccessful();
