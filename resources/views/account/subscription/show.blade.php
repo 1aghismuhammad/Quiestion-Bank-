@@ -6,6 +6,7 @@
     @php
         $entitlement = $page->entitlement();
         $quota = $page->generationQuota;
+        $usage = $page->generationUsage;
         $subscription = $entitlement->subscription;
     @endphp
 
@@ -27,6 +28,9 @@
                 {{ $quota->limit }} per jendela bulanan paket
             @endif
         </p>
+        <p><strong>Terpakai:</strong> {{ $usage->consumed }}</p>
+        <p><strong>Diproses:</strong> {{ $usage->reserved }}</p>
+        <p><strong>Tersedia:</strong> {{ $usage->displayedAvailable() }}</p>
         @if ($entitlement->isPro() && $subscription)
             <p>
                 <strong>Masa berlaku Pro:</strong>

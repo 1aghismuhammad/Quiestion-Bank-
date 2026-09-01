@@ -12,4 +12,9 @@ final readonly class GenerationUsageSnapshot
         public int $reserved,
         public int $available,
     ) {}
+
+    public function displayedAvailable(): int
+    {
+        return max(0, $this->available);
+    }
 }

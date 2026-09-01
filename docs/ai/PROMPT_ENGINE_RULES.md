@@ -7,7 +7,7 @@ Prompt Engine mengubah materi dan konfigurasi user menjadi request Google Gemini
 - Provider MVP: Google Gemini (Laravel HTTP Client, `generateContent`, JSON schema).
 - Prompt source of truth: `McqPromptBuilder` in code. Version string from `config('generation.prompt_version')` via `McqPromptBuilder::version()`.
 - Database mapping: `ai_generations`, `ai_usage_logs`, and `ai_generation_attempts`. There is no `prompt_versions` table. Prompt version is stored **per attempt**, not on Start/`ai_generations`.
-- Runtime Phase 4.3+4.4: multiple choice only. Output harus berupa JSON, bukan Markdown atau prose bebas.
+- Runtime Phase 4: multiple choice only. Output harus berupa JSON, bukan Markdown atau prose bebas. Preview UI merender `result_json` hanya ketika `generation_status=completed`.
 - Bahasa output dipilih user (`id`/`en`), bukan bahasa Material.
 
 ## Configuration Dimensions
@@ -167,7 +167,7 @@ Validation:
 4. Targeted repair: minta hanya jumlah slot yang masih invalid/missing; jangan regenerate seluruh set.
 5. Jika invalid atau provider error: automatic retry pada Generation dan reservation yang sama sampai 3 HTTP started. Jangan persist full raw response. Persist `result_json` partial yang valid.
 6. Setelah batas tercapai: status `failed`, `failed_at`, error/diagnostik disanitasi, reservation di-release.
-7. Manual retry setelah terminal failure: Generation lama tetap `failed`; user memulai Generation baru dengan reservation baru; `parent_generation_id` boleh menunjuk Generation lama.
+7. Manual retry setelah terminal `failed`: Generation lama tetap `failed`; `RetryFailedQuestionGeneration` memulai Generation baru dengan reservation baru; `parent_generation_id` ditulis dalam transaksi Start. Start menolak parent yang bukan milik user yang sama, bukan `failed`, atau Usage-nya bukan `released`. Parameter assessment/difficulty/type/count/language disalin, tidak diedit.
 
 Output invalid/partial bukan success. Phase 4 tidak menyimpan generated questions ke Question Bank dan tidak mengembalikan question set ke draft.
 
@@ -180,7 +180,7 @@ Output invalid/partial bukan success. Phase 4 tidak menyimpan generated question
 
 ## Audit Requirements
 
-Phase 4.3+4.4 menyimpan user, material, assessment, difficulty, question type, count, `output_language`, status, `execution_token`, attempt, sanitized error, timestamps, `result_json`, dan aggregate provider/token. Setiap HTTP call diaudit di `ai_generation_attempts` termasuk `prompt_version`, model, purpose, tokens, dan latency.
+Phase 4 menyimpan user, material, assessment, difficulty, question type, count, `output_language`, status, `execution_token`, attempt, sanitized error, timestamps, `result_json`, dan aggregate provider/token. Setiap HTTP call diaudit di `ai_generation_attempts` termasuk `prompt_version`, model, purpose, tokens, dan latency. UI preview tidak menampilkan raw prompt, raw response, token eksekusi, atau attempt internals.
 
 Jangan persist raw prompt atau full raw Gemini/provider response. Jangan kolom `raw_response` / `parsed_output`.
 

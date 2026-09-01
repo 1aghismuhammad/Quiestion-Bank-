@@ -26,6 +26,83 @@ Notes:
 -
 ```
 
+## v0.12.1 Phase 4.5 + 4.6 Architect source-audit corrective pass
+
+- Date: 1 September 2026
+- Version: 0.12.1
+- Phase: Phase 4 - AI Question Engine
+- Type: Fix
+
+Added:
+
+- Runtime stale floor `max(1800, configured stale_after_seconds)` in `RecoverStaleGenerations`. Operators may raise the threshold; values below 1800 cannot recover healthy jobs.
+- Start-transaction parent lineage: same user, `failed`, stored Usage `released` before inserting a child Generation.
+
+Changed:
+
+- Scheduler overlap mutex is `withoutOverlapping(10)` (10-minute expiry) in `routes/console.php`.
+- Generation show poll reloads the page when `generation_status` changes (queued → processing) as well as on terminal status. Payload remains `{ generation_status, terminal }`.
+- `DEVELOPMENT_RULES` / `DESIGN` rate-limit wording matches Phase 4: no dedicated generation/retry HTTP limiter.
+- `FLOW` current-runtime diagram no longer shows `queued|processing → cancelled` as live behavior (Cancel remains deferred).
+
+Fixed:
+
+- Config `stale_after_seconds=30` can no longer recover a 120-second-old queued or processing row.
+- Foreign, completed, failed+reserved, failed+charged, and missing-usage parents cannot create a child Generation.
+
+Database Impact:
+
+- None. No schema migration. Recovery lock order remains User → Generation → Usage.
+
+Notes:
+
+- Intended documentation reconciliation may still say Phase 4 `COMPLETE`. That is not staging authorization.
+- Owner real-browser QA is still pending.
+- No Git commit from the corrective-pass agent.
+
+## v0.12.0 Phase 4.5 + 4.6 Generation UI and Stale Recovery
+
+- Date: 1 September 2026
+- Version: 0.12.0
+- Phase: Phase 4 - AI Question Engine
+- Type: Feature implementation
+
+Added:
+
+- Owner Blade generation flow: `GET/POST /materials/{material}/generations`, `GET /generations`, `GET /generations/{generation}`, `GET /generations/{generation}/status`, `POST /generations/{generation}/retry`.
+- `GenerationController`, `StoreGenerationRequest`, `AiGenerationPolicy` (owner-only; no Admin bypass). Cross-user Generation IDs 404 via owner-scoped lookup.
+- Create form exposes implemented runtime choices only (formative/summative/diagnostic, easy/medium/hard/hots, multiple_choice, count 1..max, id/en). Defaults question_count=5 and output_language=id.
+- Quota summary Terpakai/Diproses/Tersedia from existing `GenerationUsageSnapshot` (`ResolveCurrentGenerationUsage` / coherent entitlement→quota→usage). Display clamp `max(0, available)`.
+- Queued/processing poll (~5s vanilla JS, `aria-live="polite"`, noscript reload). Completed preview renders validated MCQ. Failed shows safe `error_message` and Retry. Partial `result_json` is not rendered before completed.
+- `RetryFailedQuestionGeneration`: failed only; new Generation + new reservation; `parent_generation_id` written in the Start transaction; copies assessment/difficulty/type/count/language; re-checks ownership, eligibility, and quota.
+- `RecoverStaleGenerations` + `generations:recover-stale` scheduled every minute `withoutOverlapping(10)` from `routes/console.php`. Config `GENERATION_STALE_AFTER_SECONDS` (1800 is the minimum safe floor; operators may configure a higher threshold) and optional batch 50.
+- `GenerationErrorCode::StaleRecovery` (`stale_recovery`), permanent, safe user message.
+
+Changed:
+
+- Phase 4.5, Phase 4.6, and Phase 4 overall are `COMPLETE`. Next is Phase 5 Question Bank.
+- `StartQuestionGeneration` accepts optional `parentGenerationId` and writes it in the same create transaction.
+- Account subscription page shows Terpakai/Diproses/Tersedia from the same snapshot (Indonesian labels; English `used`/`remaining` remain hidden).
+- Dashboard Generate Question links to materials; History links to `/generations`. Question Bank stays a placeholder.
+
+Fixed:
+
+- Candidate stale scan does not lock. Per-ID recovery locks User → Generation → Usage and re-checks status, usage, and timestamps (`queued_at` vs `updated_at`).
+- Recovery leaves processing `execution_token` and does not modify STARTED attempt rows. Old workers cannot persist/finalize after recovery.
+- Duplicate recovery is idempotent (`failed` + `released`). No provider HTTP and no Job redispatch.
+
+Database Impact:
+
+- None. No `reservation_expires_at`. No new tables or applied-migration rewrites.
+
+Notes:
+
+- SQLite PHPUnit does not prove row locks. Local MySQL races A–E passed: success vs recovery (one legal terminal pair); failure vs recovery (`failed`+`released`); two recovery workers (one transition); two retries at quota boundary (one child, quota reject); status/usage reads during finalization observed no illegal pair. Marker fixtures and the race script were deleted after QA.
+- Real Gemini smoke (1 MCQ, short text Material, `database-generation` worker) completed, charged once, one attempt audit row, no API key in logs, no raw prompt/response columns.
+- No Livewire/React/Vue/websockets. No Cancel. No Question Bank persist/import.
+- No Git commit from the implementation agent.
+- Owner real-browser QA is still pending. Do not treat documentation `COMPLETE` as staging authorization.
+
 ## v0.11.0 Phase 4.3 + 4.4 Gemini Provider and Async Orchestration
 
 - Date: 31 August 2026

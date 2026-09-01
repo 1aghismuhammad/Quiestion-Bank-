@@ -75,6 +75,10 @@
                     <button class="button" type="submit">Pulihkan</button>
                 </form>
             @endcan
+
+            @if ($canGenerate)
+                <a class="button" href="{{ route('generations.create', $material) }}">Generate Questions</a>
+            @endif
         </div>
     </div>
 
@@ -84,6 +88,36 @@
             <div class="content-block">{{ $material->content }}</div>
         @else
             <p class="muted">Belum ada konten teks.</p>
+        @endif
+    </div>
+
+    <div class="card" style="margin-bottom: 20px;">
+        <h2>Generasi terbaru</h2>
+        @if ($recentGenerations->isEmpty())
+            <p class="muted">Belum ada generasi dari materi ini.</p>
+        @else
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Jumlah soal</th>
+                        <th>Bahasa</th>
+                        <th>Antrian</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($recentGenerations as $generation)
+                        <tr>
+                            <td>
+                                <a href="{{ route('generations.show', $generation) }}">{{ $generation->generation_status->value }}</a>
+                            </td>
+                            <td>{{ $generation->question_count }}</td>
+                            <td>{{ $generation->output_language?->value }}</td>
+                            <td class="muted">{{ $generation->queued_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
         @endif
     </div>
 

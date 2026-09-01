@@ -38,6 +38,7 @@ class StartQuestionGeneration
         QuestionType $questionType,
         int $questionCount,
         OutputLanguage $outputLanguage,
+        ?int $parentGenerationId = null,
     ): AiGeneration {
         if ($questionType !== QuestionType::MULTIPLE_CHOICE) {
             throw ValidationException::withMessages([
@@ -69,8 +70,11 @@ class StartQuestionGeneration
             $questionType,
             $questionCount,
             $outputLanguage,
+            $parentGenerationId,
         ): AiGeneration {
             $owner = User::query()->whereKey($actor->id)->lockForUpdate()->firstOrFail();
+
+            $this->assertRetryableParent($owner, $parentGenerationId);
 
             $lockedMaterial = Material::withTrashed()
                 ->whereKey($materialKey)
@@ -104,7 +108,7 @@ class StartQuestionGeneration
                 'error_message' => null,
                 'error_code' => null,
                 'attempt_number' => 0,
-                'parent_generation_id' => null,
+                'parent_generation_id' => $parentGenerationId,
                 'queued_at' => now(),
                 'started_at' => null,
                 'completed_at' => null,
@@ -129,5 +133,39 @@ class StartQuestionGeneration
         GenerateQuestionsJob::dispatch((int) $generation->generation_id);
 
         return $generation;
+    }
+
+    private function assertRetryableParent(User $owner, ?int $parentGenerationId): void
+    {
+        if ($parentGenerationId === null) {
+            return;
+        }
+
+        $parent = AiGeneration::query()
+            ->whereKey($parentGenerationId)
+            ->where('user_id', $owner->id)
+            ->lockForUpdate()
+            ->first();
+
+        if ($parent === null || $parent->generation_status !== GenerationStatus::FAILED) {
+            throw ValidationException::withMessages([
+                'generation' => 'Hanya generasi yang gagal yang dapat dicoba ulang.',
+            ]);
+        }
+
+        $parentUsage = AiUsageLog::query()
+            ->where('generation_id', $parent->generation_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (
+            $parentUsage === null
+            || (int) $parentUsage->user_id !== (int) $owner->id
+            || $parentUsage->status !== UsageStatus::RELEASED
+        ) {
+            throw ValidationException::withMessages([
+                'generation' => 'Hanya generasi yang gagal yang dapat dicoba ulang.',
+            ]);
+        }
     }
 }

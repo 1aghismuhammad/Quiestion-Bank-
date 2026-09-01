@@ -12,6 +12,17 @@ use Illuminate\Validation\ValidationException;
 
 class AssertMaterialEligibleForGeneration
 {
+    public function passes(Material $material): bool
+    {
+        try {
+            $this->handle($material);
+
+            return true;
+        } catch (ValidationException) {
+            return false;
+        }
+    }
+
     public function handle(Material $material): void
     {
         if ($material->trashed()) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Subscriptions;
 
+use App\Actions\Generations\ResolveGenerationUsage;
 use App\Data\Subscriptions\SubscriptionPageData;
 use App\Enums\PlanCode;
 use App\Enums\PlanOfferStatus;
@@ -24,6 +25,7 @@ class BuildSubscriptionPage
 {
     public function __construct(
         private ResolveGenerationQuota $resolveGenerationQuota,
+        private ResolveGenerationUsage $resolveGenerationUsage,
         private MaterialUsageCalculator $usageCalculator,
         private QrisPublicAsset $qris,
         private WhatsAppConfirmationUrl $whatsApp,
@@ -32,6 +34,7 @@ class BuildSubscriptionPage
     public function handle(User $user): SubscriptionPageData
     {
         $generationQuota = $this->resolveGenerationQuota->handle($user);
+        $generationUsage = $this->resolveGenerationUsage->handle($user, $generationQuota);
         $now = now();
         $qrisUrl = $this->qris->url();
         $whatsappConfigured = $this->whatsApp->isConfigured();
@@ -70,6 +73,7 @@ class BuildSubscriptionPage
 
         return new SubscriptionPageData(
             $generationQuota,
+            $generationUsage,
             $this->usageCalculator->usageInBytes($user),
             Subscription::query()
                 ->where('user_id', $user->id)

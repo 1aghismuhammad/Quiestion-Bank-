@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.10.0
+- Version: 0.12.0
 - Domain entities: 18
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, dan `usage_id` mengikuti custom PK
@@ -186,12 +186,12 @@ Audit satu Generation request. Phase 4.1+4.2 created the table; Phase 4.3+4.4 ad
 - `error_message`, `error_code` (sanitized), `attempt_number` (default **0**; 1/2/3 = provider HTTP started)
 - `result_json` (validated MCQ array; partial after each attempt; completed must equal `question_count`)
 - `provider_name`, `model_name`, `input_tokens`, `output_tokens` (aggregates)
-- nullable `parent_generation_id` (**manual** retry lineage later)
+- nullable `parent_generation_id` (manual retry lineage; written in the Start transaction)
 - `queued_at`, `started_at`, `completed_at` (success only), `failed_at` (terminal failure)
 
 Ownership/history FKs use `restrict` delete. No `topic_id`, `prompt_version_id`, `prompt_version`, `raw_response`, or `parsed_output`. Do not persist raw prompt or full raw Gemini response.
 
-Gemini dispatch, prompt builder, and output persistence are implemented in Phase 4.3+4.4. Automatic retry: same Generation, same Usage reservation, no extra credit. Competing Jobs with a different `execution_token` must not call the provider. Manual retry after terminal failure: old Generation stays `failed`, reservation `released`, new Generation + new reservation, optional `parent_generation_id`.
+Gemini dispatch, prompt builder, and output persistence are implemented in Phase 4.3+4.4. Owner Blade UI (create/show/history/status/retry) is Phase 4.5: `result_json` is rendered only when `generation_status=completed`. Automatic retry: same Generation, same Usage reservation, no extra credit. Competing Jobs with a different `execution_token` must not call the provider. Manual retry after terminal `failed`: old Generation stays `failed`, reservation `released`, new Generation + new reservation, `parent_generation_id` in the Start transaction. Cross-user Generation IDs 404 (owner-scoped lookup; no Admin bypass).
 
 #### `ai_generation_attempts`
 
@@ -212,7 +212,7 @@ Lifecycle:
 2. `ConsumeGenerationCredit`: `reserved` → `charged` (idempotent if already charged).
 3. `ReleaseGenerationCredit`: `reserved` → `released` (idempotent if already released). Opposite terminal transition is an integrity exception (no silent refund after charged).
 
-Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Automatic stale-reservation TTL is deferred (Phase 4.6). `FinalizeGenerationSuccess` / `FinalizeGenerationFailure` wrap Consume/Release so usage and generation status commit together. Gemini HTTP is never inside that transaction.
+Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Stale queued/processing reserved orphans are recovered by `RecoverStaleGenerations` to `failed` + `released` with `error_code=stale_recovery`. Runtime TTL is `max(1800, configured generation.stale_after_seconds)`: 1800 seconds is the minimum safe floor; operators may configure a higher threshold. Candidate scan is unlocked; each ID uses User → Generation → Usage locks and re-checks timestamps (`queued_at` for queued, `updated_at` for processing). There is no `reservation_expires_at`. `FinalizeGenerationSuccess` / `FinalizeGenerationFailure` wrap Consume/Release so usage and generation status commit together. Gemini HTTP is never inside that transaction. Recovery does not call the provider or redispatch Jobs.
 
 ### Question Bank
 
@@ -339,6 +339,8 @@ Phase 4.3+4.4:
 
 1. alter `ai_generations` (language, execution_token, result_json, aggregates, failed_at; attempt_number default 0)
 2. ai_generation_attempts
+
+Phase 4.5+4.6: no schema migration.
 
 `prompt_versions` remains planned and is not a PHP migration.
 

@@ -30,4 +30,10 @@ return [
 
     'queue' => env('GENERATION_QUEUE', 'question-generation'),
 
+    // 1800 is the minimum safe floor. Operators may configure a higher threshold;
+    // runtime recovery raises any lower value to 1800 seconds.
+    'stale_after_seconds' => (int) env('GENERATION_STALE_AFTER_SECONDS', 1800),
+
+    'stale_recovery_batch' => (int) env('GENERATION_STALE_RECOVERY_BATCH', 50),
+
 ];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Generations\AssertMaterialEligibleForGeneration;
 use App\Actions\Materials\ArchiveMaterial;
 use App\Actions\Materials\CreateTextMaterial;
 use App\Actions\Materials\CreateUploadMaterial;
@@ -92,13 +93,31 @@ class MaterialController extends Controller
             ->with('success', 'Materi berhasil diunggah dan menunggu ekstraksi.');
     }
 
-    public function show(Request $request, Material $material, ListMaterialTopics $listMaterialTopics): View
-    {
+    public function show(
+        Request $request,
+        Material $material,
+        ListMaterialTopics $listMaterialTopics,
+        AssertMaterialEligibleForGeneration $assertEligible,
+    ): View {
         $this->authorize('view', $material);
 
         return view('materials.show', [
             'material' => $material,
             'topics' => $listMaterialTopics->handle($request->user(), $material),
+            'canGenerate' => $assertEligible->passes($material),
+            'recentGenerations' => $request->user()
+                ->generations()
+                ->where('material_id', $material->material_id)
+                ->latest('queued_at')
+                ->latest('generation_id')
+                ->limit(5)
+                ->get([
+                    'generation_id',
+                    'generation_status',
+                    'question_count',
+                    'output_language',
+                    'queued_at',
+                ]),
         ]);
     }
 

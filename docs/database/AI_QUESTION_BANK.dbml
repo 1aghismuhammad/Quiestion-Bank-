@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.10.0
+// Version: 0.12.0
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -377,7 +377,7 @@ Table ai_generations {
     parent_generation_id [name: 'ai_gen_parent_id_idx']
   }
 
-  Note: 'Phase 4.3+4.4. No topic_id, prompt_version_id, prompt_version, raw_response, or parsed_output. question_count max is configurable (default 10). parent_generation_id is reserved for later manual retry lineage. execution_token is DB-authoritative Job ownership.'
+  Note: 'Phase 4.3–4.6. No topic_id, prompt_version_id, prompt_version, raw_response, or parsed_output. question_count max is configurable (default 10). parent_generation_id is manual retry lineage written in the Start transaction. execution_token is DB-authoritative Job ownership. No reservation_expires_at.'
 }
 
 Table ai_usage_logs {
@@ -401,7 +401,7 @@ Table ai_usage_logs {
     (user_id, subscription_id, window_start, status) [name: 'ai_usage_pro_window_idx']
   }
 
-  Note: 'Stateful one-row-per-Generation ledger (UNIQUE generation_id). One Generation request = one credit. reserved occupies capacity; charged permanently consumes one credit; released occupies/consumes zero. Counting is by row/state, not credit_used. Free: plan_id=Free AND subscription_id IS NULL (lifetime; survives Free→Pro→Free). Pro: subscription_id + exact persisted window_start/window_end from Start. Live Plan.generation_limit is allowance. Consume/Release finalize the stored reservation only and must not re-resolve current entitlement. No usage_action, credit_used, or reservation_expires_at. Automatic stale-reservation TTL is deferred to Phase 4.6.'
+  Note: 'Stateful one-row-per-Generation ledger (UNIQUE generation_id). One Generation request = one credit. reserved occupies capacity; charged permanently consumes one credit; released occupies/consumes zero. Counting is by row/state, not credit_used. Free: plan_id=Free AND subscription_id IS NULL (lifetime; survives Free→Pro→Free). Pro: subscription_id + exact persisted window_start/window_end from Start. Live Plan.generation_limit is allowance. Consume/Release finalize the stored reservation only and must not re-resolve current entitlement. No usage_action, credit_used, or reservation_expires_at. Stale reserved queued/processing rows are recovered to failed+released (stale_recovery) without reservation_expires_at.'
 }
 
 Table ai_generation_attempts {

@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.10
-- Updated: 29 August 2026
-- Status: Phase 0 through Phase 3 are complete. Phase 4.1+4.2 (generation domain + usage/quota runtime) are complete. Phase 4 overall is in progress. Gemini, generation UI, and Question Bank are not implemented.
+- Version: 0.12
+- Updated: 1 September 2026
+- Status: Phase 0 through Phase 4 are complete. Next is Phase 5 Question Bank.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -121,7 +121,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 - FR-AI-05: Generation dijalankan oleh queue (`database-generation` / `question-generation`) dan memiliki status queued, processing, completed, failed, atau cancelled.
 - FR-AI-06: Generation menyimpan user, material, assessment, difficulty, question type, count, `output_language`, status, `execution_token`, attempt, `result_json`, provider/token aggregates, sanitized error, dan timestamps. Per-call audit ada di `ai_generation_attempts` termasuk `prompt_version` yang dipakai HTTP itu. Jangan persist raw prompt atau full raw Gemini/provider response. Jangan kolom `raw_response` / `parsed_output`.
 - FR-AI-07: Output yang tidak sesuai schema bukan success. Phase 4 tidak menyimpan generated questions ke Question Bank. Credit di-release pada terminal failure. Tidak ada pengembalian question set ke draft karena generation tidak bergantung pada draft `question_sets`.
-- FR-AI-08: Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` = HTTP yang sudah started, max 3). Job Laravel `$tries` tidak mengalikan kuota HTTP. Manual retry setelah terminal failure: Generation lama tetap `failed`, reservation di-release, user memulai Generation baru dengan reservation baru; `parent_generation_id` boleh menunjuk Generation lama.
+- FR-AI-08: Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` = HTTP yang sudah started, max 3). Job Laravel `$tries` tidak mengalikan kuota HTTP. Manual retry setelah terminal `failed`: Generation lama tetap `failed`, reservation `released`, user memulai Generation baru dengan reservation baru; `parent_generation_id` ditulis dalam transaksi Start yang sama.
 
 ### Question Bank
 
@@ -138,7 +138,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 - FR-SUB-01: Plan mendefinisikan entitlement: `storage_limit_bytes`, `generation_limit`, dan `generation_reset_strategy` (`lifetime` atau `monthly`). Plan bukan harga atau durasi komersial.
 - FR-SUB-02: Subscription menyimpan window Pro berbatas waktu. Paling banyak satu window efektif pada satu instant; unique `(user_id, status)` tidak dipakai. Free bukan baris subscription. Resolver entitlement memakai `[starts_at, ends_at)` dan memvalidasi seluruh antrian `active` current/future sebagai Pro.
 - FR-SUB-03: Penggunaan generation dicatat pada `ai_usage_logs` dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window yang di-snapshot saat reservasi.
-- FR-SUB-04: Credit generation direservasi saat Start (`reserved`), ditagihkan saat Consume (`charged` ≡ consumed), dan dilepas saat Release (`released`). Satu request = satu credit. `available = allowance - charged - reserved`. Tidak ada HTTP idempotency key. Automatic stale-reservation TTL sengaja ditunda; tidak ada `reservation_expires_at`.
+- FR-SUB-04: Credit generation direservasi saat Start (`reserved`), ditagihkan saat Consume (`charged` ≡ consumed), dan dilepas saat Release (`released`). Satu request = satu credit. `available = allowance - charged - reserved`. Tidak ada HTTP idempotency key. Stale queued/processing reservations are recovered to `failed` + `released` with `error_code=stale_recovery` (minimum safe floor 1800s; operators may configure a higher threshold; no `reservation_expires_at`). User cancellation remains deferred.
 - FR-SUB-05: User memilih offer Pro 1 bulan atau 3 bulan, membayar via QRIS statis, dan mengonfirmasi via WhatsApp. Paling banyak satu permintaan upgrade `pending` total per user (bukan per Offer). User tidak dapat membatalkan permintaan pending miliknya. Admin menyetujui, menolak (alasan wajib), atau membatalkan permintaan. Setelah rejected atau cancelled, user boleh membuat pending baru.
 - FR-SUB-06: Persetujuan menulis tepat satu baris Subscription `status=active` memakai snapshot permintaan. Tidak ada status Subscription `scheduled` atau `pending`. Satu pembelian 3 bulan (`pro_3m`) = satu baris yang mencakup 3 bulan kalender. Jika tidak ada antrian Pro current/future yang valid, `starts_at` = waktu approval. Jika antrian itu ada, `starts_at` = akhir antrian berbayar tersebut (`max(ends_at)`). `ends_at` = `starts_at` plus `duration_months` dengan aritmetika kalender no-overflow. Window masa depan tetap `active`.
 
@@ -201,9 +201,9 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 - User dapat login hanya melalui Google dan masuk ke dashboard.
 - Admin menggunakan login yang sama, tetapi aksesnya dibatasi role.
 - User dapat membuat materi upload atau teks dan memilih topik/fokus.
-- Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2; Gemini MCQ job Phase 4.3+4.4).
-- Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). True/false dan essay belum dijalankan provider. Generation UI belum ada.
-- Failure AI tidak mengurangi credit secara permanen (Release pada terminal failure via `FinalizeGenerationFailure`).
+- Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2; Gemini MCQ job Phase 4.3+4.4; owner UI Phase 4.5).
+- Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). True/false dan essay belum dijalankan provider. Owner dapat mengonfigurasi generasi, memantau queued/processing, melihat pratinjau completed, dan retry failed.
+- Failure AI tidak mengurangi credit secara permanen (Release pada terminal failure via `FinalizeGenerationFailure` atau stale recovery).
 - User dapat review, edit, save, dan publish question set (Phase 5; import dari generation completed, bukan draft question set sebelum generate).
 - Admin dapat menjalankan modul Phase 6 pada flow admin; branch broadcast baru wajib pada Phase 7.
 - Semua generation dan penggunaan credit dapat diaudit.

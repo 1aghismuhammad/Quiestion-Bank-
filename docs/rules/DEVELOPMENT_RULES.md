@@ -10,6 +10,7 @@ Keputusan stack:
 - Laravel 13
 - Blade + Livewire + Tailwind CSS
 - Phase 2 Material Management wajib Blade/controller dan tidak menambahkan Livewire dependency atau component
+- Phase 4.5 generation UI wajib Blade/controller + vanilla JS; jangan Livewire, React, Vue, Alpine (kecuali sudah ada), atau websockets
 - Google OAuth melalui Laravel Socialite
 - Google Gemini melalui service/adapter internal
 - Queue untuk AI generation, extraction, serta broadcast ketika Phase 7 dimulai
@@ -132,9 +133,9 @@ Additional rules:
 - External call hanya melalui `QuestionGenerationProvider`.
 - HTTP timeout 60s; Job timeout 270s is retryable (`failOnTimeout` false).
 - Automatic retry terbatas pada Generation/reservation yang sama (max 3 HTTP).
-- Manual retry setelah terminal failure membuat Generation baru (`parent_generation_id` opsional).
-- Output divalidasi sebelum diimpor ke Question Bank (Phase 5). Phase 4 tidak menulis `question_sets`.
-- Invalid output pada terminal failure me-release credit.
+- Manual retry setelah terminal `failed` membuat Generation baru (`parent_generation_id` wajib pada retry Action, ditulis dalam transaksi Start).
+- Output divalidasi sebelum diimpor ke Question Bank (Phase 5). Phase 4 tidak menulis `question_sets`. Preview completed `result_json` hanya pada UI ketika status `completed`.
+- Invalid output pada terminal failure me-release credit. Stale queued/processing reserved orphans recover to `failed` + `released` (`stale_recovery`) without provider HTTP.
 
 ## File Upload
 
@@ -156,9 +157,9 @@ Additional rules:
 ## Security
 
 - Gunakan CSRF protection untuk semua form.
-- Gunakan policy untuk material, question set, subscription action, dan admin action.
+- Gunakan policy untuk material, generation (owner-only, no Admin bypass), question set, subscription action, dan admin action.
 - Escape output pada Blade; HTML harus disanitasi jika benar-benar diperlukan.
-- Rate limit login callback, generation, retry, upload, dan broadcast.
+- Rate limit Google OAuth redirect/callback and subscription confirm (`throttle:10,1`). Phase 4 generation create/retry does not add a dedicated HTTP limiter; capacity is enforced by quota reservation. Broadcast rate limits belong to Phase 7.
 - Jangan commit `.env`, credentials, token, atau provider response yang sensitif.
 - Admin destructive action harus memiliki confirmation.
 
@@ -176,7 +177,8 @@ Minimum coverage khusus:
 
 - Google OAuth provisioning dan suspended user.
 - Role admin route protection.
-- Phase 4.1+4.2 runtime: quota reservation, charge, release, ownership vs eligibility, dan concurrency generation. Gemini/prompt/UI bukan bagian 4.1+4.2.
+- Phase 4.1+4.2 runtime: quota reservation, charge, release, ownership vs eligibility, dan concurrency generation.
+- Phase 4.5+4.6: generation owner UI/preview, status JSON, manual retry, dan stale recovery. Jangan mengklaim SQLite membuktikan row lock.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

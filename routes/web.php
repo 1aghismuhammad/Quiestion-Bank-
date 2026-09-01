@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\SubscriptionUpgradeController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\MaterialTopicController;
 use App\Http\Controllers\ProfileSetupController;
@@ -80,6 +81,19 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
         Route::post('/materials/upload', [MaterialController::class, 'storeUpload'])
             ->name('materials.store-upload');
 
+        Route::get('/generations', [GenerationController::class, 'index'])
+            ->name('generations.index');
+
+        Route::whereNumber('generation')
+            ->group(function (): void {
+                Route::get('/generations/{generation}', [GenerationController::class, 'show'])
+                    ->name('generations.show');
+                Route::get('/generations/{generation}/status', [GenerationController::class, 'status'])
+                    ->name('generations.status');
+                Route::post('/generations/{generation}/retry', [GenerationController::class, 'retry'])
+                    ->name('generations.retry');
+            });
+
         Route::scopeBindings()
             ->whereNumber('material')
             ->whereNumber('topic')
@@ -94,6 +108,11 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('materials.archive');
                 Route::post('/materials/{material}/restore', [MaterialController::class, 'restore'])
                     ->name('materials.restore');
+
+                Route::get('/materials/{material}/generations/create', [GenerationController::class, 'create'])
+                    ->name('generations.create');
+                Route::post('/materials/{material}/generations', [GenerationController::class, 'store'])
+                    ->name('generations.store');
 
                 Route::post('/materials/{material}/topics', [MaterialTopicController::class, 'store'])
                     ->name('materials.topics.store');

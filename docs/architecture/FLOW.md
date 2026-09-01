@@ -8,6 +8,7 @@ Dokumen ini menerjemahkan rancangan flowchart user dan admin ke alur implementas
 - Admin dan user menggunakan login yang sama serta dibedakan role.
 - Blade + Livewire untuk UI.
 - Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
+- Phase 4.5 generation UI menggunakan Blade/controller dan vanilla JS polling, tanpa Livewire/React/Vue/websockets.
 - Google Gemini melalui queue untuk generation.
 - Database canonical: `docs/database/AI_QUESTION_BANK.dbml`.
 - Phase 3.1 + 3.2: Plan catalog Free/Pro dan riwayat window Pro. Phase 3.3 + 3.4: resolver entitlement dan quota storage akun pada upload. Phase 3.5: definisi quota generation. Phase 3.6: Plan Offers, QRIS/WhatsApp, dan verifikasi admin.
@@ -94,8 +95,9 @@ flowchart LR
 11. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.
 12. Credit direservasi pada Start generation (satu request = satu reservation) agar request paralel tidak melewati quota. Generation tidak memerlukan draft `question_sets`.
 13. Credit hanya ditagihkan (`charged`) setelah output valid. Terminal failure me-release reservation.
-14. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` counts started HTTP calls, 0 at queue, max 3). Manual retry setelah terminal failure membuat Generation baru dan reservation baru; `parent_generation_id` boleh menunjuk Generation lama. `execution_token` membedakan resume Job yang sama vs Job kompetitor.
-15. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview generation adalah Phase 4; Question Bank / `question_sets` adalah Phase 5 dan boleh mengimpor hasil generation yang completed.
+14. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` counts started HTTP calls, 0 at queue, max 3). Manual retry setelah terminal `failed` membuat Generation baru dan reservation baru; `parent_generation_id` ditulis dalam transaksi Start. `execution_token` membedakan resume Job yang sama vs Job kompetitor.
+15. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview completed `result_json` adalah Phase 4.5 (read-only). Question Bank / `question_sets` adalah Phase 5 dan boleh mengimpor hasil generation yang completed.
+16. Stale queued (`queued_at`) atau processing (`updated_at`) + reserved di-recover ke `failed` + `released` (`stale_recovery`) tanpa HTTP provider. User cancel ditunda.
 
 ## AI Generation State Flow
 
@@ -104,21 +106,25 @@ stateDiagram-v2
     [*] --> queued
     queued --> processing
     processing --> completed: valid output
-    processing --> failed: terminal provider or validation error
-    queued --> cancelled
-    processing --> cancelled
+    processing --> failed: terminal provider, validation, or stale recovery
+    queued --> failed: stale recovery
     completed --> [*]
     failed --> [*]
-    cancelled --> [*]
 ```
+
+Current Phase 4 runtime never writes `cancelled`. User-initiated `queued|processing → cancelled` is deferred and is not current behavior. The enum value remains for a future Cancel feature.
 
 Automatic provider/job retry stays on the **same** `AiGeneration` and the **same** `AiUsageLog` reservation. `attempt_number` is the count of provider HTTP calls started (0 while queued). No extra credit. Same Job `execution_token` may resume `processing`; a different token must not call the provider. Do not create a child Generation for automatic retry.
 
-Phase 4.3+4.4 persist validated MCQ `result_json` (partial after each attempt) and per-call `ai_generation_attempts` (including the prompt version actually used). Preview of completed results is Phase 4.5. Question Bank is Phase 5.
+Phase 4.3+4.4 persist validated MCQ `result_json` (partial after each attempt) and per-call `ai_generation_attempts` (including the prompt version actually used). Phase 4.5 renders completed `result_json` only; queued/processing/failed HTML must not leak partial results, tokens, or provider internals. Status JSON is `{ generation_status, terminal }` only. Question Bank is Phase 5.
 
-Manual user retry after terminal failure: the old Generation remains `failed`; its reservation is `released`; the user starts a **new** Generation with a new reservation; `parent_generation_id` may link to the old Generation.
+Manual user retry after terminal `failed`: the old Generation remains `failed`; its reservation is `released`; `RetryFailedQuestionGeneration` starts a **new** Generation with a new reservation and `parent_generation_id` in the same Start transaction. When `parentGenerationId` is set, Start validates inside the same transaction (after the User lock, before insert) that the parent exists, belongs to the same User, is `failed`, has stored Usage, and that Usage is `released`. Foreign, non-failed, failed+reserved, failed+charged, and missing-usage parents are rejected.
 
-Phase 4 does not create or require `question_sets`. It stores generation runtime (and later a preview). Question Bank is Phase 5 and may import an approved completed generation.
+Phase 4.5 polling: vanilla JS captures the initial `generation_status` and reloads the page on any observed status change (including queued → processing) as well as terminal status. Status JSON remains `{ generation_status, terminal }` only.
+
+Stale recovery (`RecoverStaleGenerations`, scheduled every minute `withoutOverlapping(10)` from `routes/console.php`) scans candidate IDs without locks, then per ID locks User → Generation → Usage, re-checks timestamps, and terminalizes stale reserved orphans. Queued clock is `queued_at`; processing clock is `updated_at`. Runtime TTL is `max(1800, configured stale_after_seconds)`: 1800 is the minimum safe floor; operators may configure a higher threshold. Leave `execution_token` on processing rows. Do not touch STARTED attempt rows.
+
+Phase 4 does not create or require `question_sets`. Preview is read-only. Question Bank is Phase 5 and may import an approved completed generation.
 
 ## Question Set State Flow
 
@@ -245,7 +251,7 @@ Upload yang melebihi `storage_limit_bytes` ditolak. Allowance generation didefin
 
 ### Gemini Failure
 
-Timeout, provider error, dan invalid JSON: automatic retry on the same Generation/reservation until the 3-HTTP budget is exhausted; then `failed`, sanitized error metadata, and Release. Job worker timeout is retryable (`failOnTimeout` false) and resumes with the same `execution_token`. Manual retry is a new Generation. Do not persist full raw provider responses. Oversize/empty Material and missing `output_language` fail closed with no HTTP.
+Timeout, provider error, dan invalid JSON: automatic retry on the same Generation/reservation until the 3-HTTP budget is exhausted; then `failed`, sanitized error metadata, and Release. Job worker timeout is retryable (`failOnTimeout` false) and resumes with the same `execution_token`. Manual retry is a new Generation. Stale queued/processing reservations recover to `failed` + `released` without HTTP. Do not persist full raw provider responses. Oversize/empty Material and missing `output_language` fail closed with no HTTP.
 
 ### Broadcast Failure
 

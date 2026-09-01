@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Data\Subscriptions;
 
+use App\Data\Generations\GenerationUsageSnapshot;
 use App\Models\PlanOffer;
 use App\Models\Subscription;
 use App\Models\SubscriptionUpgradeRequest;
@@ -18,6 +19,7 @@ final readonly class SubscriptionPageData
      */
     public function __construct(
         public ResolvedGenerationQuota $generationQuota,
+        public GenerationUsageSnapshot $generationUsage,
         public int $storageUsedBytes,
         public Collection $queuedRenewals,
         public Collection $offers,

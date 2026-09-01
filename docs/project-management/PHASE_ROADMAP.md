@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 4 - AI Question Engine (`IN PROGRESS`). Phase 3 is `COMPLETE`.
+Next phase: Phase 5 Question Bank (`PLANNED`). Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -117,7 +117,7 @@ Technical slices:
   - minimum manual admin verification (`/admin/subscription-upgrades`)
   - no payment gateway
 
-Generation credit reservation, generation usage enforcement, failed-generation credit release, and `ai_usage_logs` runtime are **Phase 4.1+4.2 (`COMPLETE`)**. Gemini structured MCQ generation and async orchestration are **Phase 4.3+4.4 (`COMPLETE`)**. Generation UI is Phase 4.5+.
+Generation credit reservation, generation usage enforcement, failed-generation credit release, and `ai_usage_logs` runtime are **Phase 4.1+4.2 (`COMPLETE`)**. Gemini structured MCQ generation and async orchestration are **Phase 4.3+4.4 (`COMPLETE`)**. Generation UI and stale recovery are **Phase 4.5+4.6 (`COMPLETE`)**.
 
 Scope:
 
@@ -130,21 +130,22 @@ Definition of Done:
 
 - Entitlement efektif: Pro window valid atau fallback Free.
 - Concurrent file-upload request tidak dapat melewati quota storage. (verified on local MySQL)
-- User dapat melihat paket, storage, dan allowance generation (tanpa used/remaining).
+- User dapat melihat paket, storage, dan allowance generation. Phase 4.5 menampilkan Terpakai (charged), Diproses (reserved), dan Tersedia (`max(0, available)`) tanpa DTO kuota kedua.
 - Upgrade manual dapat disetujui, ditolak (alasan wajib), atau dibatalkan admin; approval menulis window Pro.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Runtime konsumsi generation Phase 4.1+4.2 sudah ada; Gemini MCQ + job orchestration adalah 4.3+4.4 (`COMPLETE`). Generation UI adalah 4.5+.
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 4 generation runtime, UI, dan stale recovery sudah `COMPLETE`. Question Bank adalah Phase 5.
 
 ## Phase 4 - AI Question Engine
 
-Status: `IN PROGRESS`
+Status: `COMPLETE`
 
 Technical slices:
 
 - Phase 4.1 AI Generation Domain Foundation (`COMPLETE`): `ai_generations` lifecycle, enums, owner-only `MaterialPolicy::generate`, eligibility after authorization.
 - Phase 4.2 Generation Usage & Quota Runtime (`COMPLETE`): stateful one-row-per-Generation `ai_usage_logs` (`reserved|charged|released`); Start reserves; Consume/Release finalize the stored reservation; Free lifetime and Pro window accounting.
 - Phase 4.3 + 4.4 Gemini + structured output + async orchestration (`COMPLETE`)
-- Phase 4.5 + 4.6 generation UI / preview + reliability closure (`NOT IMPLEMENTED`)
+- Phase 4.5 Generation Web UI / Result Preview (`COMPLETE`): owner Blade create/show/history; JSON status poll ~5s; completed MCQ preview; failed Retry.
+- Phase 4.6 Reliability / Stale Recovery / Phase Closure (`COMPLETE`): `generations:recover-stale` every minute `withoutOverlapping(10)`; runtime stale floor 1800s; `stale_recovery`; no schema change.
 
 Scope (full Phase 4):
 
@@ -154,11 +155,11 @@ Scope (full Phase 4):
 - Multiple choice runtime in 4.3+4.4; true/false and essay remain later types.
 - Output schema validation.
 - Token metadata where the provider returns it (no monetary cost column).
-- Retry lineage dan failure handling (automatic retry = same Generation; manual retry = new Generation + optional `parent_generation_id`).
+- Retry lineage dan failure handling (automatic retry = same Generation; manual retry = new Generation + `parent_generation_id` in Start).
 - `ai_usage_logs` runtime, reservation, charge, dan release.
 - Penegakan limit generation dari `ResolveGenerationQuota`.
 
-Definition of Done (full Phase 4; 4.1–4.4 satisfy reservation/quota/Gemini/job items; UI remains 4.5):
+Definition of Done (full Phase 4):
 
 - Runtime 4.3+4.4 menghasilkan JSON MCQ valid (empat opsi A–D, satu jawaban, explanation). True/false dan essay belum dijalankan provider.
 - Hasil terstruktur tervalidasi disimpan di `ai_generations.result_json`; raw prompt / full raw provider response tidak di-persist.
@@ -166,7 +167,19 @@ Definition of Done (full Phase 4; 4.1–4.4 satisfy reservation/quota/Gemini/job
 - Automatic retry memakai Generation dan reservation yang sama; `execution_token` membedakan resume vs duplicate Job.
 - Generation gagal (terminal) tidak mengurangi credit permanen (Release).
 - Validator MCQ dan Job/attempt memiliki automated tests. MySQL races A–E passed on local MySQL.
-- Phase 4 tidak membuat `question_sets`. Preview generation belakangan di Phase 4 UI. Question Bank adalah Phase 5.
+- Phase 4 tidak membuat `question_sets`. Preview generation adalah read-only Phase 4.5. Question Bank adalah Phase 5.
+- Owner-only generation routes; cross-user Generation ID adalah 404; Material 403 tidak diubah.
+- Stale queued/processing reserved orphans recover to `failed` + `released` without provider HTTP. Runtime TTL is `max(1800, configured)`; 1800s is the minimum safe floor and operators may raise it. Scheduler `generations:recover-stale` every minute `withoutOverlapping(10)`.
+- No Phase 4.5/4.6 schema migration.
+
+4.5+4.6 Definition of Done:
+
+- Owner Blade flow: Material → create form (MCQ only; defaults `question_count=5`, `output_language=id`) → Start → show queued/processing/completed/failed.
+- Global owner-only `GET /generations` (15 per page). Status JSON is exactly `generation_status` + `terminal`. Vanilla poll ~5s reloads on any status change. No Cancel.
+- Manual Retry: failed only; new Generation + new reservation; `parent_generation_id` in Start TX after proving parent is same-user `failed` + Usage `released`; re-check ownership, eligibility, quota.
+- Stale recovery for queued (`queued_at`) and processing (`updated_at`) reserved orphans; `error_code=stale_recovery`; leave processing `execution_token`; do not modify STARTED attempts.
+- Quota UI reuses `GenerationUsageSnapshot`. Display clamp `max(0, available)` only.
+- No schema migration. No Question Bank persist/import.
 
 4.3+4.4 Definition of Done:
 

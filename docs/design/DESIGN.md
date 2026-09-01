@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.11
+- Version: 0.12
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -133,14 +133,14 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Free adalah fallback jika tidak ada window Pro efektif. Tidak ada baris subscription Free.
 - Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
 - Paling banyak satu window efektif per instant. Resolver memvalidasi seluruh antrian `active` current/future sebagai Pro; overlap efektif fail-closed; data stale historis tidak mengunci akun. Plan Pro inactive tidak mencabut window yang sudah dibayar.
-- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, dan `ai_usage_logs`. Gemini MCQ + `GenerateQuestionsJob` are Phase 4.3+4.4. Generation UI is 4.5+.
+- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, dan `ai_usage_logs`. Gemini MCQ + `GenerateQuestionsJob` are Phase 4.3+4.4. Owner Blade generation UI, quota Terpakai/Diproses/Tersedia, and manual retry are Phase 4.5. Stale recovery is Phase 4.6.
 - Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak.
 - UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests`. Approval menulis tepat satu baris `subscriptions` `status=active`: tanpa antrian Pro current/future, `starts_at` = waktu approval; jika antrian ada, `starts_at` = `max(ends_at)` antrian itu. `ends_at` memakai durasi bulan kalender no-overflow. Satu pembelian 3 bulan = satu baris Subscription. Window masa depan tetap `active`; tidak ada status Subscription `scheduled`/`pending`.
 - Verifikasi pembayaran Admin tidak menembus `MaterialPolicy`. Admin tidak memperoleh akses global ke Material privat. Halaman admin user-detail penuh bukan bagian Phase 3.
 
 ### AI Engine
 
-Phase 4.3+4.4 implemented Gemini structured MCQ generation and async orchestration on the 4.1+4.2 reservation foundation. There is still no generation UI. True/false and essay are not provider-executed in this slice.
+Phase 4.3+4.4 implemented Gemini structured MCQ generation and async orchestration on the 4.1+4.2 reservation foundation. Phase 4.5 adds owner-only Blade generation create/show/history/status/retry. Phase 4.6 recovers stale queued/processing reservations. True/false and essay are not provider-executed in this phase.
 
 ```mermaid
 sequenceDiagram
@@ -175,9 +175,10 @@ AI Engine consists of:
 - Gemini HTTP client adapter (`generateContent`, JSON schema, 60s timeout). Primary/fallback models configurable.
 - Queue-based generation on connection `database-generation` / queue `question-generation`. Existing Material extraction connection `retry_after` 90 is unchanged.
 - MCQ schema validation and deterministic duplicate detection. Targeted repair requests only missing/invalid slots.
-- Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry remains a future new Generation with optional `parent_generation_id`.
+- Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry after `failed` creates a new Generation with `parent_generation_id` written in the Start transaction.
 - Provider/model/token metadata on attempts and optional Generation aggregates. Do not persist raw prompt or full raw Gemini response. Diagnostic/error metadata is sanitized.
-- Phase 4 does not create `question_sets`. Preview is Phase 4.5. Phase 5 may import an approved completed generation.
+- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5 may import an approved completed generation.
+- Stale queued (`queued_at`) or processing (`updated_at`) reserved generations are terminalized to `failed` + `released` with `stale_recovery` by `generations:recover-stale` (every minute, without overlapping). No provider HTTP and no Job redispatch.
 
 ### Question Bank
 
@@ -218,7 +219,7 @@ Tabel infrastruktur Laravel seperti sessions, cache, jobs, job batches, dan fail
 - Role middleware untuk route admin.
 - Policy untuk material, question set, dan generation. Admin payment review tidak mengubah `MaterialPolicy` owner-only.
 - MIME, extension, dan size validation pada upload.
-- Rate limit untuk login callback, generation, serta broadcast mulai Phase 7.
+- Rate limit untuk Google OAuth redirect/callback dan konfirmasi langganan (`throttle:10,1`). Phase 4 generation create/retry tidak menambah HTTP limiter terpisah; kapasitas ditegakkan oleh reservation kuota. Broadcast mulai Phase 7.
 - Environment secret untuk Google dan Gemini.
 - Sanitasi output ketika dirender pada Blade.
 - Admin action dan AI request harus dapat diaudit.
@@ -239,7 +240,11 @@ GEMINI_FALLBACK_MODEL=gemini-3.7-flash
 GENERATION_QUEUE_CONNECTION=database-generation
 GENERATION_QUEUE=question-generation
 GENERATION_QUEUE_RETRY_AFTER=360
+GENERATION_STALE_AFTER_SECONDS=1800
+GENERATION_STALE_RECOVERY_BATCH=50
 ```
+
+`GENERATION_STALE_AFTER_SECONDS` default and runtime floor is 1800 seconds; operators may configure a higher threshold. Runtime recovery uses `max(1800, configured)`.
 
 Nama model Gemini disimpan pada `config/generation.php` (primary + fallback) dan dicatat per provider attempt. Production membutuhkan worker terpisah untuk `database-generation` / `question-generation` (timeout ~300) di samping worker extraction yang ada.
 

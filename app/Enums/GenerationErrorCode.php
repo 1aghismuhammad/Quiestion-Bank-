@@ -20,6 +20,7 @@ enum GenerationErrorCode: string
     case MissingOutputLanguage = 'missing_output_language';
     case UnsupportedOutputLanguage = 'unsupported_output_language';
     case JobFailed = 'job_failed';
+    case StaleRecovery = 'stale_recovery';
 
     public function userMessage(): string
     {
@@ -32,6 +33,7 @@ enum GenerationErrorCode: string
             self::UnsupportedQuestionType => 'Tipe soal ini belum didukung.',
             self::InvalidQuestionCount => 'Jumlah soal tidak valid.',
             self::MalformedOutput, self::IncompleteOutput => 'Gagal menghasilkan soal yang lengkap.',
+            self::StaleRecovery => 'Generasi tidak selesai tepat waktu. Silakan coba lagi.',
             default => 'Gagal menghasilkan soal. Silakan coba lagi.',
         };
     }
@@ -58,7 +60,8 @@ enum GenerationErrorCode: string
             self::MissingOutputLanguage,
             self::UnsupportedOutputLanguage,
             self::UnsupportedQuestionType,
-            self::InvalidQuestionCount => true,
+            self::InvalidQuestionCount,
+            self::StaleRecovery => true,
             default => false,
         };
     }

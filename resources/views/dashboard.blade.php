@@ -19,15 +19,21 @@
             <strong>Material Management</strong>
             <span class="muted">Kelola materi, topik, dan arsip.</span>
         </a>
+        <a class="card placeholder" href="{{ route('materials.index') }}" style="text-decoration: none;">
+            <strong>Generate Question</strong>
+            <span class="muted">Pilih materi siap, lalu atur dan mulai generasi soal.</span>
+        </a>
+        <a class="card placeholder" href="{{ route('generations.index') }}" style="text-decoration: none;">
+            <strong>History</strong>
+            <span class="muted">Lihat riwayat generasi soal Anda.</span>
+        </a>
         <a class="card placeholder" href="{{ route('account.subscription.show') }}" style="text-decoration: none;">
             <strong>Subscription</strong>
             <span class="muted">Paket, kuota penyimpanan, dan upgrade.</span>
         </a>
-        @foreach (['Generate Question', 'Question Bank', 'History'] as $menu)
-            <div class="card placeholder">
-                <strong>{{ $menu }}</strong>
-                <span class="muted">Segera hadir pada phase berikutnya.</span>
-            </div>
-        @endforeach
+        <div class="card placeholder">
+            <strong>Question Bank</strong>
+            <span class="muted">Segera hadir pada phase berikutnya.</span>
+        </div>
     </div>
 @endsection
