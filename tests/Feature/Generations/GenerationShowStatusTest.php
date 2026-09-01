@@ -61,7 +61,8 @@ class GenerationShowStatusTest extends TestCase
             ->assertSee('data.generation_status !== initialStatus', false)
             ->assertDontSee(self::PARTIAL_MARKER)
             ->assertDontSee('secret-execution-token')
-            ->assertDontSee('Coba lagi');
+            ->assertDontSee('Coba lagi')
+            ->assertDontSee('Simpan ke Question Bank');
 
         $this->actingAs($owner)
             ->get(route('generations.show', $completed))
@@ -71,6 +72,7 @@ class GenerationShowStatusTest extends TestCase
             ->assertSee('Option A for Visible completed stem')
             ->assertSee('Jawaban benar')
             ->assertSee('Penjelasan')
+            ->assertSee('Simpan ke Question Bank')
             ->assertDontSee('data.generation_status !== initialStatus', false)
             ->assertDontSee(self::PARTIAL_MARKER)
             ->assertDontSee('Coba lagi');
@@ -82,7 +84,8 @@ class GenerationShowStatusTest extends TestCase
             ->assertSee('Generasi gagal aman.')
             ->assertSee('Coba lagi')
             ->assertDontSee(self::PARTIAL_MARKER)
-            ->assertDontSee('provider-debug-stack');
+            ->assertDontSee('provider-debug-stack')
+            ->assertDontSee('Simpan ke Question Bank');
     }
 
     public function test_cross_user_generation_show_and_status_are_not_found(): void

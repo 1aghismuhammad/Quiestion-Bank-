@@ -8,10 +8,10 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.12.0
+- Version: 0.13.0
 - Domain entities: 18
 - Target implementation: Laravel 13 / MySQL 8+
-- Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, dan `usage_id` mengikuti custom PK
+- Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, dan `option_id` mengikuti custom PK
 - Timestamp style: `created_at`, `updated_at`, dan `deleted_at` jika diperlukan
 
 Tabel bawaan Laravel seperti sessions, cache, jobs, job batches, dan failed jobs tidak dihitung sebagai domain entity.
@@ -218,11 +218,9 @@ Consume/Release finalize the **stored** reservation only. They must not re-resol
 
 #### `question_sets`
 
-Phase 5. Container question milik user. **Tidak dibuat atau diwajibkan oleh Phase 4 generation.** Generation tidak bergantung pada draft question set. Phase 5 boleh mengimpor hasil generation completed yang disetujui, atau membuat question set manual (`generation_id` nullable).
+Phase 5. Container question milik user. **Tidak dibuat oleh job generasi Phase 4.** Persistensi Batch 1 hanya melalui import eksplisit generation completed MCQ. Satu `generation_id` paling banyak satu Question Set (`UNIQUE`, nullable untuk set manual di masa depan). Import menulis `status=draft`, `visibility=private`, `review_status=not_submitted`. Lifecycle produk yang dikunci adalah `draft → published`; publish belum diimplementasikan. Enum schema tetap memuat `generating` / `review` / `archived` / `published` tanpa transisi Batch 1 ke nilai itu.
 
-Lifecycle utama: draft, review, published, archived. Status `generating` tidak dipakai untuk mengantrekan job Phase 4.
-
-Admin review menggunakan `review_status`: not_submitted, pending, approved, rejected.
+Admin review menggunakan `review_status` (default `not_submitted`). Tidak dijalankan di Batch 1.
 
 #### `questions`
 
@@ -341,6 +339,12 @@ Phase 4.3+4.4:
 2. ai_generation_attempts
 
 Phase 4.5+4.6: no schema migration.
+
+Phase 5.1 (setelah `ai_generation_attempts`):
+
+1. question_sets
+2. questions
+3. question_options
 
 `prompt_versions` remains planned and is not a PHP migration.
 

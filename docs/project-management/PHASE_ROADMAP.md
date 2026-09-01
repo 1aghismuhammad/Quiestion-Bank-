@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 5 Question Bank (`PLANNED`). Phase 3 and Phase 4 are `COMPLETE`.
+Next phase: Phase 5 Question Bank. Phase 5.1–5.3 are implemented pending review/approval. Phase 3 and Phase 4 are `COMPLETE`. Editing and publish are Batch 2.
 
 Scope:
 
@@ -133,7 +133,7 @@ Definition of Done:
 - User dapat melihat paket, storage, dan allowance generation. Phase 4.5 menampilkan Terpakai (charged), Diproses (reserved), dan Tersedia (`max(0, available)`) tanpa DTO kuota kedua.
 - Upgrade manual dapat disetujui, ditolak (alasan wajib), atau dibatalkan admin; approval menulis window Pro.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 4 generation runtime, UI, dan stale recovery sudah `COMPLETE`. Question Bank adalah Phase 5.
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 4 generation runtime, UI, dan stale recovery sudah `COMPLETE`. Question Bank Phase 5.1–5.3 implemented pending review; Batch 2 (edit/publish) belum.
 
 ## Phase 4 - AI Question Engine
 
@@ -167,7 +167,7 @@ Definition of Done (full Phase 4):
 - Automatic retry memakai Generation dan reservation yang sama; `execution_token` membedakan resume vs duplicate Job.
 - Generation gagal (terminal) tidak mengurangi credit permanen (Release).
 - Validator MCQ dan Job/attempt memiliki automated tests. MySQL races A–E passed on local MySQL.
-- Phase 4 tidak membuat `question_sets`. Preview generation adalah read-only Phase 4.5. Question Bank adalah Phase 5.
+- Phase 4 tidak membuat `question_sets`. Preview generation adalah read-only Phase 4.5. Question Bank persistensi adalah Phase 5 import eksplisit.
 - Owner-only generation routes; cross-user Generation ID adalah 404; Material 403 tidak diubah.
 - Stale queued/processing reserved orphans recover to `failed` + `released` without provider HTTP. Runtime TTL is `max(1800, configured)`; 1800s is the minimum safe floor and operators may raise it. Scheduler `generations:recover-stale` every minute `withoutOverlapping(10)`.
 - No Phase 4.5/4.6 schema migration.
@@ -198,23 +198,26 @@ Definition of Done (full Phase 4):
 
 ## Phase 5 - Question Bank
 
-Status: `PLANNED`
+Status: `IN PROGRESS` (Batch 1: 5.1–5.3 implemented pending review; Batch 2: 5.4–5.6 not implemented)
 
 Scope:
 
-- Question set manual dan import dari generation completed (Phase 4 tidak membuat `question_sets`).
-- Review dan edit oleh user.
-- Draft, publish, dan archive.
-- Optional admin review.
-- Private/public visibility.
-- Export format pertama setelah format diputuskan.
+- Batch 1: schema + models + ownership; import completed MCQ Generation → draft Question Set; owner list/detail.
+- Batch 2: edit questions/options; publish (`draft → published`); integrity; QA/docs closure.
+- Manual question sets, archive, admin review, export: later / not Batch 1.
 
-Definition of Done:
+Definition of Done (full Phase 5):
 
 - User dapat menyimpan dan mengedit ketiga tipe soal.
 - Invariant options dan jawaban benar tervalidasi.
 - Policy ownership aktif pada seluruh mutation.
 - Lifecycle question set memiliki feature test.
+
+Batch 1 (5.1–5.3) delivered in source:
+
+- `UNIQUE(question_sets.generation_id)`; import is explicit; job generation does not insert Question Sets.
+- Import writes `draft` / `private` / `not_submitted` only. No publish/edit/delete/archive.
+- Owner-scoped 404 including Admin. No Admin bypass.
 
 ## Phase 6 - Admin Dashboard
 

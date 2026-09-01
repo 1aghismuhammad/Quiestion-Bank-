@@ -10,6 +10,7 @@ use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\MaterialTopicController;
 use App\Http\Controllers\ProfileSetupController;
+use App\Http\Controllers\QuestionSetController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -84,6 +85,15 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
         Route::get('/generations', [GenerationController::class, 'index'])
             ->name('generations.index');
 
+        Route::get('/question-sets', [QuestionSetController::class, 'index'])
+            ->name('question-sets.index');
+
+        Route::whereNumber('questionSet')
+            ->group(function (): void {
+                Route::get('/question-sets/{questionSet}', [QuestionSetController::class, 'show'])
+                    ->name('question-sets.show');
+            });
+
         Route::whereNumber('generation')
             ->group(function (): void {
                 Route::get('/generations/{generation}', [GenerationController::class, 'show'])
@@ -92,6 +102,8 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('generations.status');
                 Route::post('/generations/{generation}/retry', [GenerationController::class, 'retry'])
                     ->name('generations.retry');
+                Route::post('/generations/{generation}/question-sets', [QuestionSetController::class, 'storeFromGeneration'])
+                    ->name('question-sets.import');
             });
 
         Route::scopeBindings()

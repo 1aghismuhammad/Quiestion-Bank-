@@ -31,9 +31,9 @@
             <strong>Subscription</strong>
             <span class="muted">Paket, kuota penyimpanan, dan upgrade.</span>
         </a>
-        <div class="card placeholder">
+        <a class="card placeholder" href="{{ route('question-sets.index') }}" style="text-decoration: none;">
             <strong>Question Bank</strong>
-            <span class="muted">Segera hadir pada phase berikutnya.</span>
-        </div>
+            <span class="muted">Simpan dan lihat soal dari generasi yang selesai.</span>
+        </a>
     </div>
 @endsection

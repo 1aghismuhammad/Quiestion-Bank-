@@ -79,6 +79,11 @@ class AiGeneration extends Model
             ->orderBy('attempt_number');
     }
 
+    public function questionSet(): HasOne
+    {
+        return $this->hasOne(QuestionSet::class, 'generation_id', 'generation_id');
+    }
+
     /**
      * @return array<string, string>
      */

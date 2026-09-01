@@ -26,6 +26,35 @@ Notes:
 -
 ```
 
+## v0.13.0 Phase 5.1–5.3 Question Bank schema, import, and owner UI
+
+- Date: 1 September 2026
+- Version: 0.13.0
+- Phase: Phase 5 - Question Bank
+- Type: Feature implementation
+
+Added:
+
+- Canonical tables `question_sets`, `questions`, `question_options` with `UNIQUE(generation_id)` (nullable).
+- Owner Blade Question Bank index/show and explicit import `POST /generations/{generation}/question-sets`.
+- `ImportCompletedGenerationIntoQuestionSet`: completed owned MCQ only; draft snapshot; Generation `result_json`/usage unchanged.
+
+Changed:
+
+- Dashboard and nav Question Bank links are active. Generation completed show offers Simpan / Lihat di Question Bank.
+- Docs: Phase 5 is split Batch 1 (5.1–5.3 implemented pending review) and Batch 2 (edit/publish not implemented). Import writes `draft` only.
+
+Database Impact:
+
+- New tables `question_sets`, `questions`, `question_options`. No change to `ai_generations` or usage schema.
+
+Notes:
+
+- One completed Generation → at most one Question Set. SQLite tests do not prove MySQL row locks.
+- Local MySQL concurrent duplicate import: two processes imported the same completed Generation; both resolved `OK` to the same `question_set_id`; exactly one Question Set, two Questions, eight Options; `result_json` unchanged; usage remained `charged` with one row. Race script was not committed.
+- No Git commit from the implementation agent.
+- Owner real-browser QA is still pending. Do not treat Batch 1 as Phase 5 COMPLETE.
+
 ## v0.12.1 Phase 4.5 + 4.6 Architect source-audit corrective pass
 
 - Date: 1 September 2026

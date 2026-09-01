@@ -22,6 +22,9 @@ use App\Models\AiGeneration;
 use App\Models\AiGenerationAttempt;
 use App\Models\AiUsageLog;
 use App\Models\Material;
+use App\Models\Question;
+use App\Models\QuestionOption;
+use App\Models\QuestionSet;
 use App\Models\User;
 use Database\Seeders\PlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -84,6 +87,7 @@ class GenerateQuestionsJobTest extends TestCase
         $this->assertTrue($seen);
         $this->assertSame(GenerationStatus::COMPLETED, $generation->fresh()->generation_status);
         $this->assertSame(UsageStatus::CHARGED, $generation->fresh()->usageLog->status);
+        $this->assertSame(0, QuestionSet::query()->count());
     }
 
     public function test_same_execution_token_processing_may_resume(): void
@@ -621,8 +625,20 @@ class GenerateQuestionsJobTest extends TestCase
 
     public function test_job_does_not_create_question_sets(): void
     {
-        $this->assertFalse(Schema::hasTable('question_sets'));
-        $this->assertFalse(Schema::hasTable('questions'));
+        $generation = $this->startGeneration(User::factory()->create(), questionCount: 1);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::questions(1)),
+                200,
+            ),
+        ]);
+
+        $this->runJob($generation);
+
+        $this->assertSame(GenerationStatus::COMPLETED, $generation->fresh()->generation_status);
+        $this->assertSame(0, QuestionSet::query()->count());
+        $this->assertSame(0, Question::query()->count());
+        $this->assertSame(0, QuestionOption::query()->count());
     }
 
     public function test_start_still_dispatches_on_the_generation_queue(): void

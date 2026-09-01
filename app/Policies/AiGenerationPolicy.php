@@ -26,6 +26,12 @@ class AiGenerationPolicy
             && $generation->generation_status === GenerationStatus::FAILED;
     }
 
+    public function import(User $user, AiGeneration $generation): bool
+    {
+        return $this->owns($user, $generation)
+            && $generation->generation_status === GenerationStatus::COMPLETED;
+    }
+
     private function owns(User $user, AiGeneration $generation): bool
     {
         return (int) $generation->user_id === (int) $user->id;

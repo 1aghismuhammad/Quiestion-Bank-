@@ -87,6 +87,7 @@ class GenerationHistoryTest extends TestCase
             ->assertSee('History')
             ->assertSee(route('generations.index', absolute: false), false)
             ->assertSee('Question Bank')
-            ->assertSee('Segera hadir pada phase berikutnya.');
+            ->assertSee(route('question-sets.index', absolute: false), false)
+            ->assertDontSee('Segera hadir pada phase berikutnya.');
     }
 }

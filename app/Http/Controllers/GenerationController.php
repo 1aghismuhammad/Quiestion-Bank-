@@ -107,7 +107,7 @@ class GenerationController extends Controller
             : [];
 
         return view('generations.show', [
-            'generation' => $model->load('material'),
+            'generation' => $model->load(['material', 'questionSet']),
             'questions' => $questions,
             'isTerminal' => $isTerminal,
             'usage' => $this->resolveUsage->handle($request->user()),

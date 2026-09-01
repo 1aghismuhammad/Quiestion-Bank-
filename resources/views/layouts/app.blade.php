@@ -58,6 +58,7 @@
                     <a href="{{ route('dashboard') }}">Dashboard</a>
                     <a href="{{ route('materials.index') }}">Materi</a>
                     <a href="{{ route('generations.index') }}">Generasi</a>
+                    <a href="{{ route('question-sets.index') }}">Bank soal</a>
                     <a href="{{ route('account.subscription.show') }}">Langganan</a>
                     <span class="muted">{{ auth()->user()->name }}</span>
                     <form method="POST" action="{{ route('logout') }}">

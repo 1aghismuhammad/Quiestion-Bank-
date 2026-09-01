@@ -78,6 +78,25 @@
         @error('material')
             <div class="error-text">{{ $message }}</div>
         @enderror
+        @error('question_type')
+            <div class="error-text">{{ $message }}</div>
+        @enderror
+        @error('result')
+            <div class="error-text">{{ $message }}</div>
+        @enderror
+
+        @if ($status->value === 'completed')
+            @if ($generation->questionSet)
+                <p>
+                    <a class="button" href="{{ route('question-sets.show', $generation->questionSet) }}">Lihat di Question Bank</a>
+                </p>
+            @else
+                <form method="POST" action="{{ route('question-sets.import', $generation) }}">
+                    @csrf
+                    <button class="button" type="submit">Simpan ke Question Bank</button>
+                </form>
+            @endif
+        @endif
     </div>
 
     @if ($status->value === 'completed' && count($questions) > 0)

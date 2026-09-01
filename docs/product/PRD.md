@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.12
+- Version: 0.13
 - Updated: 1 September 2026
-- Status: Phase 0 through Phase 4 are complete. Next is Phase 5 Question Bank.
+- Status: Phase 0 through Phase 4 are complete. Phase 5.1–5.3 (Question Bank schema, import, list/detail) are implemented pending review. Editing and publish remain Batch 2.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -71,7 +71,7 @@ Pengelola platform yang memonitor user, question bank, penggunaan AI, dan subscr
 4. Sistem memvalidasi materi, konfigurasi, dan quota, lalu mereservasi satu generation credit.
 5. Sistem mengantrekan generation dan memanggil Google Gemini. Automatic retry memakai Generation dan reservation yang sama.
 6. Output valid ditagihkan (`charged`) dan disimpan sebagai hasil runtime generation (preview Phase 4). Invalid/partial output bukan success; credit di-release pada terminal failure.
-7. Phase 5: user dapat mengimpor generation completed yang disetujui ke question set, meninjau, mengedit, menyimpan, lalu mempublish.
+7. Phase 5 Batch 1 (5.1–5.3): user dapat mengimpor generation completed MCQ ke Question Set `draft` dan melihat daftar/detail milik sendiri. Meninjau/mengedit/publish adalah Batch 2.
 
 Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 
@@ -125,13 +125,14 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Pemilihan mat
 
 ### Question Bank
 
-- FR-QB-01: Question Bank adalah Phase 5. Generation Phase 4 tidak membuat atau memerlukan draft `question_sets`. Phase 5 boleh mengimpor hasil generation completed yang disetujui, atau membuat question set manual, lalu meninjau sebelum publish.
-- FR-QB-02: User dapat meninjau dan mengedit pertanyaan sebelum publish.
-- FR-QB-03: User dapat membuat question set manual tanpa AI.
-- FR-QB-04: Question set mendukung status draft, generating, review, published, dan archived.
-- FR-QB-05: Question set bersifat private secara default dan hanya dapat dibuat public melalui aksi eksplisit pemilik.
-- FR-QB-06: Admin dapat melihat, membuat, memperbarui, menghapus, dan mereview question bank sesuai policy.
-- FR-QB-07: Submission admin review mengubah `review_status` menjadi pending tanpa mengubah lifecycle status `review`.
+- FR-QB-01: Question Bank adalah Phase 5. Generation Phase 4 tidak membuat atau memerlukan draft `question_sets`. Phase 5.1–5.3: owner mengimpor generation **completed** MCQ menjadi Question Set `draft` (satu Generation → paling banyak satu Question Set, `UNIQUE(generation_id)`). Persistensi adalah snapshot terpisah; `result_json` generasi tidak dipindah atau dihapus. Pembuatan manual, edit, dan publish adalah Batch 2.
+- FR-QB-02: User dapat meninjau dan mengedit pertanyaan sebelum publish. (Batch 2; not implemented)
+- FR-QB-03: User dapat membuat question set manual tanpa AI. (Batch 2 / later; not implemented)
+- FR-QB-04: Schema may store `draft`, `generating`, `review`, `published`, and `archived`. Locked product lifecycle is `draft → published`. Batch 1 writes `draft` only; `generating` / `review` / `archived` are not active Batch 1 behavior. Publish is Batch 2.
+- FR-QB-05: Question set bersifat private secara default. Public visibility is not a Batch 1 control.
+- FR-QB-06: Admin dapat melihat, membuat, memperbarui, menghapus, dan mereview question bank sesuai policy. (not Batch 1; Admin has no ownership bypass)
+- FR-QB-07: Submission admin review mengubah `review_status` menjadi pending tanpa mengubah lifecycle status `review`. (not Batch 1)
+
 
 ### Subscription and Quota
 
@@ -204,7 +205,7 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 - Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2; Gemini MCQ job Phase 4.3+4.4; owner UI Phase 4.5).
 - Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). True/false dan essay belum dijalankan provider. Owner dapat mengonfigurasi generasi, memantau queued/processing, melihat pratinjau completed, dan retry failed.
 - Failure AI tidak mengurangi credit secara permanen (Release pada terminal failure via `FinalizeGenerationFailure` atau stale recovery).
-- User dapat review, edit, save, dan publish question set (Phase 5; import dari generation completed, bukan draft question set sebelum generate).
+- User dapat mengimpor generation completed MCQ ke Question Set `draft` dan melihat Question Bank milik sendiri (Phase 5.1–5.3). Review, edit, dan publish adalah Batch 2.
 - Admin dapat menjalankan modul Phase 6 pada flow admin; branch broadcast baru wajib pada Phase 7.
 - Semua generation dan penggunaan credit dapat diaudit.
 

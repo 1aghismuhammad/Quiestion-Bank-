@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.12
+- Version: 0.13
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -177,18 +177,15 @@ AI Engine consists of:
 - MCQ schema validation and deterministic duplicate detection. Targeted repair requests only missing/invalid slots.
 - Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry after `failed` creates a new Generation with `parent_generation_id` written in the Start transaction.
 - Provider/model/token metadata on attempts and optional Generation aggregates. Do not persist raw prompt or full raw Gemini response. Diagnostic/error metadata is sanitized.
-- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5 may import an approved completed generation.
+- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5.1–5.3 import an owned completed MCQ Generation into a draft Question Set without modifying Generation runtime data.
 - Stale queued (`queued_at`) or processing (`updated_at`) reserved generations are terminalized to `failed` + `released` with `stale_recovery` by `generations:recover-stale` (every minute, without overlapping). No provider HTTP and no Job redispatch.
 
 ### Question Bank
 
-- Phase 5. Question set manual atau hasil import dari generation completed.
-- Multiple choice, true/false, dan essay.
-- Multiple choice, true/false, dan essay.
-- User review dan editing.
-- Draft, generating, review, publish, archive.
-- Optional admin review.
-- Private visibility secara default; public membutuhkan aksi eksplisit pemilik.
+- Phase 5.1–5.3 implemented (pending review): owner Blade index/show; explicit import from completed MCQ Generation; `UNIQUE(generation_id)`; snapshot rows in `question_sets` / `questions` / `question_options`.
+- Batch 1 writes `status=draft`, `visibility=private`, `review_status=not_submitted` only. Locked lifecycle is `draft → published`; publish/edit/manual create are Batch 2.
+- Schema preserves canonical enum values (`generating`, `review`, `published`, `archived`) but Batch 1 does not transition into them.
+- Optional admin review and public visibility remain later (Phase 6 / Batch 2).
 
 ### Admin Dashboard
 

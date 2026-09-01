@@ -62,6 +62,11 @@ class User extends Authenticatable
         return $this->hasMany(AiGeneration::class);
     }
 
+    public function questionSets(): HasMany
+    {
+        return $this->hasMany(QuestionSet::class);
+    }
+
     public function usageLogs(): HasMany
     {
         return $this->hasMany(AiUsageLog::class);
