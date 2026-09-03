@@ -26,6 +26,36 @@ Notes:
 -
 ```
 
+## v0.14.1 Phase 5 Question Bank closure
+
+- Date: 3 September 2026
+- Version: 0.14.1
+- Phase: Phase 5 - Question Bank
+- Type: Documentation / phase closure
+
+Added:
+
+- None. Application code was already complete through Phase 5.1–5.6.
+
+Changed:
+
+- Phase 5.1–5.3 Batch 1 and Phase 5.4–5.6 Batch 2 are `COMPLETE`. Phase 5 overall is `COMPLETE`.
+- Delivered Phase 5 MVP is documented as MCQ-only. The older full-Phase-5 DoD wording about editing all three question types is reconciled: true/false and essay Question Bank are deferred to a later explicitly scoped phase.
+- Next phase is Phase 6 Admin Dashboard (`PLANNED`).
+
+Database Impact:
+
+- None. No migration or schema change. `AI_QUESTION_BANK.dbml` received a documentation-note-only update; table, field, index, and relationship definitions are unchanged. Phase 5 Batch 2 did not add a migration.
+
+Notes:
+
+- Automated tests passed.
+- MySQL concurrency QA passed.
+- Owner real-browser QA passed.
+- Source review passed.
+- Commits were pushed and remotely verified (`8360833` `feat: add question bank edit and publish`).
+- Phase 5 is `COMPLETE`.
+
 ## v0.14.0 Phase 5.4–5.6 draft MCQ edit and publish
 
 - Date: 1 September 2026
@@ -41,7 +71,7 @@ Added:
 
 Changed:
 
-- Docs: Phase 5 remains `IN PROGRESS`. Batch 1 is complete. 5.4–5.6 implemented pending review. FLOW user path is edit-draft then publish, not persist-in-review.
+- Docs at ship time: Phase 5 remained `IN PROGRESS`. Batch 1 was complete. 5.4–5.6 implemented pending review. FLOW user path is edit-draft then publish, not persist-in-review. Closed in v0.14.1.
 - Correct answer remains `question_options.is_correct`; `questions.correct_answer` stays null for MCQ.
 
 Database Impact:
@@ -53,7 +83,7 @@ Notes:
 - SQLite PHPUnit does not prove row locks.
 - Local MySQL races passed: (1) two concurrent edits → one consistent snapshot; (2) overlapping edit vs publish → published, losing edit did not apply; (3) two concurrent publishes → one published row, both resolved. Race script was deleted after QA.
 - No Git commit from the implementation agent.
-- Owner real-browser QA is still pending. Do not treat Phase 5 as COMPLETE.
+- Later closed in v0.14.1: owner browser QA, remote commit verification, and Phase 5 `COMPLETE`.
 
 ## v0.13.0 Phase 5.1–5.3 Question Bank schema, import, and owner UI
 
@@ -71,7 +101,7 @@ Added:
 Changed:
 
 - Dashboard and nav Question Bank links are active. Generation completed show offers Simpan / Lihat di Question Bank.
-- Docs: Phase 5 is split Batch 1 (5.1–5.3 implemented pending review) and Batch 2 (edit/publish not implemented). Import writes `draft` only.
+- Docs at ship time: Phase 5 was split Batch 1 (5.1–5.3 implemented pending review) and Batch 2 (edit/publish not implemented). Import writes `draft` only. Closed in v0.14.1.
 
 Database Impact:
 
@@ -82,7 +112,7 @@ Notes:
 - One completed Generation → at most one Question Set. SQLite tests do not prove MySQL row locks.
 - Local MySQL concurrent duplicate import: two processes imported the same completed Generation; both resolved `OK` to the same `question_set_id`; exactly one Question Set, two Questions, eight Options; `result_json` unchanged; usage remained `charged` with one row. Race script was not committed.
 - No Git commit from the implementation agent.
-- Owner real-browser QA is still pending. Do not treat Batch 1 as Phase 5 COMPLETE.
+- Later closed in v0.14.1: Batch 1 plus Batch 2 are `COMPLETE`; Phase 5 overall is `COMPLETE`.
 
 ## v0.12.1 Phase 4.5 + 4.6 Architect source-audit corrective pass
 

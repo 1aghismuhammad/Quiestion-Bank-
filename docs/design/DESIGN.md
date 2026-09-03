@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.14
+- Version: 0.14.1
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -182,9 +182,11 @@ AI Engine consists of:
 
 ### Question Bank
 
-- Phase 5.1–5.6 implemented (pending review): owner Blade index/show/edit; explicit import from completed MCQ Generation; atomic draft MCQ save; publish `draft → published` after persisted integrity checks; `UNIQUE(generation_id)`; snapshot rows in `question_sets` / `questions` / `question_options`.
-- Import writes `status=draft`, `visibility=private`, `review_status=not_submitted`. Publish changes only `status` to `published`. Locked lifecycle is `draft → published`. Manual create, unpublish, archive, and TF/essay are later.
-- Schema preserves canonical enum values (`generating`, `review`, `archived`) but Batch 2 does not transition into them.
+- Phase 5.1–5.6 `COMPLETE`: owner Blade index/show/edit; explicit import from completed MCQ Generation; atomic draft MCQ save; publish `draft → published` after persisted integrity checks; `UNIQUE(generation_id)`; snapshot rows in `question_sets` / `questions` / `question_options`.
+- Import writes `status=draft`, `visibility=private`, `review_status=not_submitted`. Publish changes only `status` to `published`. Locked lifecycle is `draft → published`.
+- Owner-only; foreign IDs 404; Admin has no ownership bypass. Generation `result_json` is unchanged. Edit/publish do not charge quota and do not call Gemini. No Phase 5 Batch 2 migration.
+- Manual create, add/delete/reorder, unpublish, archive, delete/restore, public visibility, admin review, and TF/essay Question Bank are later.
+- Schema preserves canonical enum values (`generating`, `review`, `archived`) but Phase 5 does not transition into them.
 - Optional admin review and public visibility remain later (Phase 6).
 
 ### Admin Dashboard

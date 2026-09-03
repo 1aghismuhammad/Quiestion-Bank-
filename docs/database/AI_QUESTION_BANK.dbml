@@ -463,7 +463,7 @@ Table question_sets {
     reviewed_by
   }
 
-  Note: 'Phase 5. Phase 4 generation jobs do not create Question Sets. Import creates a draft snapshot from one completed MCQ Generation. generation_id is UNIQUE and nullable (future manual sets). Edit updates draft content only. Publish writes status=published only. Locked product lifecycle is draft to published. generating/review/archived are not active paths.'
+  Note: 'Phase 5 COMPLETE (MCQ-only). Phase 4 generation jobs do not create Question Sets. Import creates a draft snapshot from one completed MCQ Generation. generation_id is UNIQUE and nullable (future manual sets). Edit updates draft MCQ content only. Publish writes status=published only. Locked product lifecycle is draft to published. generating/review/archived are not active paths. True/false and essay Question Bank are later.'
 }
 
 Table questions {

@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 5 Question Bank. Phase 5.1–5.6 are implemented pending review/approval. Phase 5 remains `IN PROGRESS`. Phase 3 and Phase 4 are `COMPLETE`.
+Next phase: Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -133,7 +133,7 @@ Definition of Done:
 - User dapat melihat paket, storage, dan allowance generation. Phase 4.5 menampilkan Terpakai (charged), Diproses (reserved), dan Tersedia (`max(0, available)`) tanpa DTO kuota kedua.
 - Upgrade manual dapat disetujui, ditolak (alasan wajib), atau dibatalkan admin; approval menulis window Pro.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 4 generation runtime, UI, dan stale recovery sudah `COMPLETE`. Question Bank Phase 5.1–5.6 implemented pending review; Phase 5 is not `COMPLETE`.
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 4 generation runtime, UI, dan stale recovery sudah `COMPLETE`. Question Bank Phase 5 is `COMPLETE` (MCQ-only MVP).
 
 ## Phase 4 - AI Question Engine
 
@@ -198,32 +198,48 @@ Definition of Done (full Phase 4):
 
 ## Phase 5 - Question Bank
 
-Status: `IN PROGRESS` (Batch 1: 5.1–5.3 complete; Batch 2: 5.4–5.6 implemented pending review)
+Status: `COMPLETE`
 
-Scope:
+Technical slices:
 
-- Batch 1: schema + models + ownership; import completed MCQ Generation → draft Question Set; owner list/detail.
-- Batch 2: edit draft MCQ questions/options; publish (`draft → published`); integrity; QA/docs (Phase 5 not marked COMPLETE until owner QA/commit/push).
-- Manual question sets, archive, admin review, export, TF/essay: later.
+- Phase 5.1–5.3 Batch 1 (`COMPLETE`): schema + models + ownership; explicit import of a completed MCQ Generation into a draft Question Set; owner list/detail.
+- Phase 5.4–5.6 Batch 2 (`COMPLETE`): draft MCQ edit; atomic whole-set save; publish `draft → published`; published read-only; integrity; QA/docs.
 
-Definition of Done (full Phase 5):
+Delivered MVP scope (MCQ-only):
 
-- User dapat menyimpan dan mengedit ketiga tipe soal.
-- Invariant options dan jawaban benar tervalidasi.
-- Policy ownership aktif pada seluruh mutation.
-- Lifecycle question set memiliki feature test.
+- Explicit import of a completed MCQ Generation into a draft Question Set (one Generation → at most one Question Set, `UNIQUE(generation_id)`).
+- Owner list/detail.
+- Draft MCQ edit on one page (title, stems, A–D, correct letter via `question_options.is_correct`, explanation).
+- Atomic whole-set save of existing questions only.
+- Publish `draft → published` after persisted MCQ integrity. Repeat publish is idempotent.
+- Published sets are read-only.
+- Owner-only; foreign IDs 404; Admin has no ownership bypass.
+- Generation `result_json` unchanged.
+- No additional generation quota charge.
+- No Gemini calls during edit/publish.
+- No Phase 5 Batch 2 migration.
 
-Batch 1 (5.1–5.3) delivered:
+Out of scope (deferred to a later explicitly scoped phase; not part of Phase 5 DoD):
 
-- `UNIQUE(question_sets.generation_id)`; import is explicit; job generation does not insert Question Sets.
-- Import writes `draft` / `private` / `not_submitted` only.
-- Owner-scoped 404 including Admin. No Admin bypass.
+- Manual question creation.
+- Add/delete/reorder questions.
+- True/false and essay Question Bank support.
+- Unpublish / archive / delete / restore.
+- Public visibility and admin review.
 
-Batch 2 (5.4–5.6) delivered in source (pending review):
+Definition of Done (delivered Phase 5 MVP):
 
-- Owner edits draft MCQ on one page (title, stems, A–D, correct letter, explanation); atomic save; no add/delete/reorder.
-- Publish validates persisted MCQ then `draft → published`. Visibility and review_status unchanged. Repeat publish is idempotent.
-- Published sets are read-only. No unpublish/delete/archive. No Gemini/quota mutation.
+- Owner can import a completed MCQ Generation into a draft Question Set.
+- Owner can list and view owned Question Sets.
+- Owner can edit draft MCQ content and save atomically.
+- Owner can publish `draft → published`; published is read-only.
+- Persisted questions must be `multiple_choice` with canonical A–D options and exactly one correct option before edit mutation and before publish.
+- Ownership policy is active on mutations; foreign IDs including Admin are 404.
+- Question Set lifecycle has feature tests. Automated tests, MySQL concurrency QA, and owner browser QA passed.
+
+The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
+
+Next phase: Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 6 - Admin Dashboard
 

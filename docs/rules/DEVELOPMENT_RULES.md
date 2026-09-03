@@ -179,7 +179,7 @@ Minimum coverage khusus:
 - Role admin route protection.
 - Phase 4.1+4.2 runtime: quota reservation, charge, release, ownership vs eligibility, dan concurrency generation.
 - Phase 4.5+4.6: generation owner UI/preview, status JSON, manual retry, dan stale recovery. Jangan mengklaim SQLite membuktikan row lock.
-- Phase 5.1–5.6: import completed MCQ ke Question Set draft, edit draf atomik, publish `draft → published`, unique `generation_id`, ownership 404, dan UI index/show/edit. Jangan mengklaim SQLite membuktikan row lock.
+- Phase 5.1–5.6 (`COMPLETE`, MCQ-only): import completed MCQ ke Question Set draft, edit draf atomik, publish `draft → published`, unique `generation_id`, ownership 404, dan UI index/show/edit. Jangan mengklaim SQLite membuktikan row lock.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

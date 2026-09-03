@@ -64,8 +64,8 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 - Phase 2: standalone material management dari dashboard untuk PDF, DOCX, TXT, dan text input (`COMPLETE`).
 - Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine (`COMPLETE`; 4.1–4.6 including owner generation UI and stale recovery).
-- Phase 5: question bank (`IN PROGRESS`; 5.1–5.6 schema/import/list-detail/edit/publish implemented pending review).
-- Phase 6: admin dashboard dan MVP release.
+- Phase 5: question bank (`COMPLETE`; MCQ-only MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). True/false and essay Question Bank remain later.
+- Phase 6: admin dashboard dan MVP release (`PLANNED`).
 - Phase 7: WhatsApp CRM.
 - Phase 8: optimization dan scaling.
 

@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.14.0
+- Version: 0.14.1
 - Domain entities: 18
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, dan `option_id` mengikuti custom PK
@@ -218,7 +218,7 @@ Consume/Release finalize the **stored** reservation only. They must not re-resol
 
 #### `question_sets`
 
-Phase 5. Container question milik user. **Tidak dibuat oleh job generasi Phase 4.** Persistensi hanya melalui import eksplisit generation completed MCQ. Satu `generation_id` paling banyak satu Question Set (`UNIQUE`, nullable untuk set manual di masa depan). Import menulis `status=draft`, `visibility=private`, `review_status=not_submitted`. Owner boleh mengedit draf (judul, teks, opsi A–D, jawaban benar via `is_correct`, penjelasan). Publish memvalidasi snapshot tersimpan lalu `draft → published` tanpa mengubah visibility atau review_status. Published read-only. Enum schema tetap memuat `generating` / `review` / `archived` tanpa transisi aktif ke nilai itu.
+Phase 5 (`COMPLETE`). Container question milik user. **Tidak dibuat oleh job generasi Phase 4.** Persistensi hanya melalui import eksplisit generation completed MCQ. Satu `generation_id` paling banyak satu Question Set (`UNIQUE`, nullable untuk set manual di masa depan). Import menulis `status=draft`, `visibility=private`, `review_status=not_submitted`. Owner boleh mengedit draf MCQ (judul, teks, opsi A–D, jawaban benar via `is_correct`, penjelasan) dengan simpan atomik. Publish memvalidasi snapshot tersimpan lalu `draft → published` tanpa mengubah visibility atau review_status. Published read-only. Edit/publish tidak memanggil Gemini dan tidak menagih kuota generation. `result_json` generasi tidak diubah. Tidak ada migrasi Batch 2. Enum schema tetap memuat `generating` / `review` / `archived` tanpa transisi aktif ke nilai itu. True/false, essay, create manual, add/delete/reorder, unpublish, archive, visibilitas publik, dan admin review bukan Phase 5.
 
 Admin review menggunakan `review_status` (default `not_submitted`). Tidak dijalankan di Phase 5.
 
@@ -226,11 +226,13 @@ Admin review menggunakan `review_status` (default `not_submitted`). Tidak dijala
 
 Menyimpan question text, type, difficulty, answer, explanation, rubric, dan points.
 
-Question type:
+Question type (schema):
 
 - `multiple_choice`
 - `true_false`
 - `essay`
+
+Schema dapat menyimpan ketiga tipe. Question Bank Phase 5 hanya mengimpor, mengedit, dan menerbitkan **multiple choice**. True/false dan essay di Question Bank ditunda ke fase yang di-scope secara eksplisit.
 
 Nomor question wajib unique dalam satu question set.
 
