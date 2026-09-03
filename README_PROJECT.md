@@ -64,7 +64,7 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 - Phase 2: standalone material management dari dashboard untuk PDF, DOCX, TXT, dan text input (`COMPLETE`).
 - Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine (`COMPLETE`; 4.1–4.6 including owner generation UI and stale recovery).
-- Phase 5: question bank (`IN PROGRESS`; 5.1–5.3 schema/import/list-detail implemented pending review; edit/publish are Batch 2).
+- Phase 5: question bank (`IN PROGRESS`; 5.1–5.6 schema/import/list-detail/edit/publish implemented pending review).
 - Phase 6: admin dashboard dan MVP release.
 - Phase 7: WhatsApp CRM.
 - Phase 8: optimization dan scaling.

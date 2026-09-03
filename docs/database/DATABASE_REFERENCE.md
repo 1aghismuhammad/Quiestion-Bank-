@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.13.0
+- Version: 0.14.0
 - Domain entities: 18
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, dan `option_id` mengikuti custom PK
@@ -218,9 +218,9 @@ Consume/Release finalize the **stored** reservation only. They must not re-resol
 
 #### `question_sets`
 
-Phase 5. Container question milik user. **Tidak dibuat oleh job generasi Phase 4.** Persistensi Batch 1 hanya melalui import eksplisit generation completed MCQ. Satu `generation_id` paling banyak satu Question Set (`UNIQUE`, nullable untuk set manual di masa depan). Import menulis `status=draft`, `visibility=private`, `review_status=not_submitted`. Lifecycle produk yang dikunci adalah `draft → published`; publish belum diimplementasikan. Enum schema tetap memuat `generating` / `review` / `archived` / `published` tanpa transisi Batch 1 ke nilai itu.
+Phase 5. Container question milik user. **Tidak dibuat oleh job generasi Phase 4.** Persistensi hanya melalui import eksplisit generation completed MCQ. Satu `generation_id` paling banyak satu Question Set (`UNIQUE`, nullable untuk set manual di masa depan). Import menulis `status=draft`, `visibility=private`, `review_status=not_submitted`. Owner boleh mengedit draf (judul, teks, opsi A–D, jawaban benar via `is_correct`, penjelasan). Publish memvalidasi snapshot tersimpan lalu `draft → published` tanpa mengubah visibility atau review_status. Published read-only. Enum schema tetap memuat `generating` / `review` / `archived` tanpa transisi aktif ke nilai itu.
 
-Admin review menggunakan `review_status` (default `not_submitted`). Tidak dijalankan di Batch 1.
+Admin review menggunakan `review_status` (default `not_submitted`). Tidak dijalankan di Phase 5.
 
 #### `questions`
 

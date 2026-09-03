@@ -26,6 +26,35 @@ Notes:
 -
 ```
 
+## v0.14.0 Phase 5.4–5.6 draft MCQ edit and publish
+
+- Date: 1 September 2026
+- Version: 0.14.0
+- Phase: Phase 5 - Question Bank
+- Type: Feature implementation
+
+Added:
+
+- Owner Blade edit page and atomic `UpdateDraftQuestionSet` for draft MCQ (title, stems, A–D, correct letter, explanation).
+- `PublishQuestionSet`: persisted MCQ integrity then `draft → published`. Repeat publish is idempotent.
+- Show CTAs: Edit + Terbitkan on draft only.
+
+Changed:
+
+- Docs: Phase 5 remains `IN PROGRESS`. Batch 1 is complete. 5.4–5.6 implemented pending review. FLOW user path is edit-draft then publish, not persist-in-review.
+- Correct answer remains `question_options.is_correct`; `questions.correct_answer` stays null for MCQ.
+
+Database Impact:
+
+- No migration. Existing `question_sets.status` and option rows are updated in place.
+
+Notes:
+
+- SQLite PHPUnit does not prove row locks.
+- Local MySQL races passed: (1) two concurrent edits → one consistent snapshot; (2) overlapping edit vs publish → published, losing edit did not apply; (3) two concurrent publishes → one published row, both resolved. Race script was deleted after QA.
+- No Git commit from the implementation agent.
+- Owner real-browser QA is still pending. Do not treat Phase 5 as COMPLETE.
+
 ## v0.13.0 Phase 5.1–5.3 Question Bank schema, import, and owner UI
 
 - Date: 1 September 2026

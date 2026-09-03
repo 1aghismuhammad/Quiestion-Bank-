@@ -1,4 +1,6 @@
 @php
+    use App\Enums\QuestionSetStatus;
+
     $statusLabels = [
         'draft' => 'Draf',
         'generating' => 'Menghasilkan',
@@ -6,6 +8,7 @@
         'published' => 'Terbit',
         'archived' => 'Arsip',
     ];
+    $isDraft = $questionSet->status === QuestionSetStatus::DRAFT;
 @endphp
 
 @extends('layouts.app')
@@ -18,10 +21,30 @@
         @if ($questionSet->generation)
             <a href="{{ route('generations.show', $questionSet->generation) }}">Lihat generasi sumber</a>
         @endif
+        @if ($isDraft)
+            <a class="button" href="{{ route('question-sets.edit', $questionSet) }}">Edit</a>
+            <form method="POST" action="{{ route('question-sets.publish', $questionSet) }}" onsubmit="return confirm('Terbitkan soal ini? Setelah terbit, soal tidak dapat diedit.')">
+                @csrf
+                <button class="button" type="submit">Terbitkan</button>
+            </form>
+        @endif
     </div>
 
     <p class="muted">QUESTION BANK</p>
     <h1>{{ $questionSet->title }}</h1>
+
+    @error('status')
+        <div class="error-text">{{ $message }}</div>
+    @enderror
+    @error('questions')
+        <div class="error-text">{{ $message }}</div>
+    @enderror
+    @error('total_question')
+        <div class="error-text">{{ $message }}</div>
+    @enderror
+    @error('question_type')
+        <div class="error-text">{{ $message }}</div>
+    @enderror
 
     <div class="card" style="margin-bottom: 20px;">
         <p>

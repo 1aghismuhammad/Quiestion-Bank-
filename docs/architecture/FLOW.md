@@ -68,10 +68,10 @@ flowchart LR
     Charge --> Preview[Preview generated questions]
     Preview --> Dashboard
     Dashboard --> ImportBank[Import completed generation to Question Bank]
-    ImportBank --> Review[Review and edit question set]
-    Review --> Save{Save review changes?}
+    ImportBank --> Review[Review and edit draft question set]
+    Review --> Save{Save edit changes?}
     Save -- No --> Review
-    Save -- Yes --> Persist[Save question set in review]
+    Save -- Yes --> Persist[Save draft question set]
     Persist --> Publish{Publish now?}
     Publish -- No --> Dashboard
     Publish -- Yes --> Published[Set status published]
@@ -96,7 +96,7 @@ flowchart LR
 12. Credit direservasi pada Start generation (satu request = satu reservation) agar request paralel tidak melewati quota. Generation tidak memerlukan draft `question_sets`.
 13. Credit hanya ditagihkan (`charged`) setelah output valid. Terminal failure me-release reservation.
 14. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` counts started HTTP calls, 0 at queue, max 3). Manual retry setelah terminal `failed` membuat Generation baru dan reservation baru; `parent_generation_id` ditulis dalam transaksi Start. `execution_token` membedakan resume Job yang sama vs Job kompetitor.
-15. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview completed `result_json` adalah Phase 4.5 (read-only). Question Bank Batch 1 mengimpor generation completed MCQ ke Question Set `draft` tanpa mengubah data generasi.
+15. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview completed `result_json` adalah Phase 4.5 (read-only). Question Bank mengimpor generation completed MCQ ke Question Set `draft`, mengizinkan edit draf, dan publish ke `published` tanpa mengubah data generasi.
 16. Stale queued (`queued_at`) atau processing (`updated_at`) + reserved di-recover ke `failed` + `released` (`stale_recovery`) tanpa HTTP provider. User cancel ditunda.
 
 ## AI Generation State Flow
@@ -116,7 +116,7 @@ Current Phase 4 runtime never writes `cancelled`. User-initiated `queued|process
 
 Automatic provider/job retry stays on the **same** `AiGeneration` and the **same** `AiUsageLog` reservation. `attempt_number` is the count of provider HTTP calls started (0 while queued). No extra credit. Same Job `execution_token` may resume `processing`; a different token must not call the provider. Do not create a child Generation for automatic retry.
 
-Phase 4.3+4.4 persist validated MCQ `result_json` (partial after each attempt) and per-call `ai_generation_attempts` (including the prompt version actually used). Phase 4.5 renders completed `result_json` only; queued/processing/failed HTML must not leak partial results, tokens, or provider internals. Status JSON is `{ generation_status, terminal }` only. Question Bank Batch 1 import is explicit and writes `draft` only.
+Phase 4.3+4.4 persist validated MCQ `result_json` (partial after each attempt) and per-call `ai_generation_attempts` (including the prompt version actually used). Phase 4.5 renders completed `result_json` only; queued/processing/failed HTML must not leak partial results, tokens, or provider internals. Status JSON is `{ generation_status, terminal }` only. Question Bank import is explicit and writes `draft`; Batch 2 edit/publish do not mutate generation runtime.
 
 Manual user retry after terminal `failed`: the old Generation remains `failed`; its reservation is `released`; `RetryFailedQuestionGeneration` starts a **new** Generation with a new reservation and `parent_generation_id` in the same Start transaction. When `parentGenerationId` is set, Start validates inside the same transaction (after the User lock, before insert) that the parent exists, belongs to the same User, is `failed`, has stored Usage, and that Usage is `released`. Foreign, non-failed, failed+reserved, failed+charged, and missing-usage parents are rejected.
 
@@ -124,24 +124,25 @@ Phase 4.5 polling: vanilla JS captures the initial `generation_status` and reloa
 
 Stale recovery (`RecoverStaleGenerations`, scheduled every minute `withoutOverlapping(10)` from `routes/console.php`) scans candidate IDs without locks, then per ID locks User → Generation → Usage, re-checks timestamps, and terminalizes stale reserved orphans. Queued clock is `queued_at`; processing clock is `updated_at`. Runtime TTL is `max(1800, configured stale_after_seconds)`: 1800 is the minimum safe floor; operators may configure a higher threshold. Leave `execution_token` on processing rows. Do not touch STARTED attempt rows.
 
-Phase 5.1–5.3: owner may import a completed MCQ Generation into a **draft** Question Set. Persistence is an explicit import snapshot. Generation `result_json` remains audit/preview data. One Generation produces at most one Question Set.
+Phase 5.1–5.6: owner may import a completed MCQ Generation into a **draft** Question Set, edit that draft, and publish it. Persistence is an explicit import snapshot. Generation `result_json` remains audit/preview data. One Generation produces at most one Question Set. Edit and publish do not charge quota or call Gemini.
 
 ## Question Set State Flow
 
 Question Bank / `question_sets` is Phase 5. It is not a prerequisite of Phase 4 generation.
 
-Current Batch 1 runtime writes only `draft` (import). Locked product lifecycle is `draft → published`. Publish, edit, `generating`, `review`, and `archived` are not Batch 1 behavior.
+Current Batch 2 runtime: import and edit write `draft`; explicit publish writes `published`. Locked product lifecycle is `draft → published`. `generating`, `review`, and `archived` are not active paths.
 
 ```mermaid
 stateDiagram-v2
     [*] --> draft: import completed MCQ generation
-    draft --> published: Batch 2 publish not implemented
+    draft --> draft: owner edit
+    draft --> published: publish after persisted MCQ validation
     published --> [*]
 ```
 
-Canonical schema may still store `generating`, `review`, and `archived`. Batch 1 must not transition into those values.
+Canonical schema may still store `generating`, `review`, and `archived`. Batch 2 must not transition into those values.
 
-Admin review (`review_status`) remains a future/Phase 6 concern. Batch 1 writes `not_submitted` only.
+Admin review (`review_status`) remains a future/Phase 6 concern. Import and publish leave `not_submitted`. Visibility stays `private`.
 
 ## Admin Flow
 

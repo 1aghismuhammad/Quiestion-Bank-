@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.13
+- Version: 0.14
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -177,15 +177,15 @@ AI Engine consists of:
 - MCQ schema validation and deterministic duplicate detection. Targeted repair requests only missing/invalid slots.
 - Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry after `failed` creates a new Generation with `parent_generation_id` written in the Start transaction.
 - Provider/model/token metadata on attempts and optional Generation aggregates. Do not persist raw prompt or full raw Gemini response. Diagnostic/error metadata is sanitized.
-- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5.1–5.3 import an owned completed MCQ Generation into a draft Question Set without modifying Generation runtime data.
+- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5.1–5.6 import an owned completed MCQ Generation into a draft Question Set, allow draft MCQ edit, and publish without modifying Generation runtime data.
 - Stale queued (`queued_at`) or processing (`updated_at`) reserved generations are terminalized to `failed` + `released` with `stale_recovery` by `generations:recover-stale` (every minute, without overlapping). No provider HTTP and no Job redispatch.
 
 ### Question Bank
 
-- Phase 5.1–5.3 implemented (pending review): owner Blade index/show; explicit import from completed MCQ Generation; `UNIQUE(generation_id)`; snapshot rows in `question_sets` / `questions` / `question_options`.
-- Batch 1 writes `status=draft`, `visibility=private`, `review_status=not_submitted` only. Locked lifecycle is `draft → published`; publish/edit/manual create are Batch 2.
-- Schema preserves canonical enum values (`generating`, `review`, `published`, `archived`) but Batch 1 does not transition into them.
-- Optional admin review and public visibility remain later (Phase 6 / Batch 2).
+- Phase 5.1–5.6 implemented (pending review): owner Blade index/show/edit; explicit import from completed MCQ Generation; atomic draft MCQ save; publish `draft → published` after persisted integrity checks; `UNIQUE(generation_id)`; snapshot rows in `question_sets` / `questions` / `question_options`.
+- Import writes `status=draft`, `visibility=private`, `review_status=not_submitted`. Publish changes only `status` to `published`. Locked lifecycle is `draft → published`. Manual create, unpublish, archive, and TF/essay are later.
+- Schema preserves canonical enum values (`generating`, `review`, `archived`) but Batch 2 does not transition into them.
+- Optional admin review and public visibility remain later (Phase 6).
 
 ### Admin Dashboard
 

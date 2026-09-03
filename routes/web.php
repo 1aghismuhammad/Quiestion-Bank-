@@ -92,6 +92,12 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
             ->group(function (): void {
                 Route::get('/question-sets/{questionSet}', [QuestionSetController::class, 'show'])
                     ->name('question-sets.show');
+                Route::get('/question-sets/{questionSet}/edit', [QuestionSetController::class, 'edit'])
+                    ->name('question-sets.edit');
+                Route::patch('/question-sets/{questionSet}', [QuestionSetController::class, 'update'])
+                    ->name('question-sets.update');
+                Route::post('/question-sets/{questionSet}/publish', [QuestionSetController::class, 'publish'])
+                    ->name('question-sets.publish');
             });
 
         Route::whereNumber('generation')

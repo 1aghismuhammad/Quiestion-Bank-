@@ -15,7 +15,7 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 2.6 - Material Ownership & Authorization: `COMPLETE`
 - Phase 2.7 - Archive / Restore Lifecycle: `COMPLETE`
 - Phase 2.8 - Material Web Management: `COMPLETE`
-- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, Plan catalog, Pro subscription history, entitlement resolver, account storage quota, generation quota definition, Plan Offers, manual QRIS/WhatsApp upgrade verification, generation domain foundation, generation usage/quota runtime, Gemini MCQ provider, async generation orchestration, owner generation UI/preview, stale generation recovery, and Question Bank Batch 1 (schema, explicit completed-MCQ import to draft, owner list/detail)
+- Application code: Google OAuth, role access, profile setup, dashboards, owner-scoped Blade Material Management, Plan catalog, Pro subscription history, entitlement resolver, account storage quota, generation quota definition, Plan Offers, manual QRIS/WhatsApp upgrade verification, generation domain foundation, generation usage/quota runtime, Gemini MCQ provider, async generation orchestration, owner generation UI/preview, stale generation recovery, and Question Bank Batch 1–2 (schema, explicit completed-MCQ import to draft, owner list/detail, draft MCQ edit, draft→published)
 - Phase 3 - Subscription & Quota Foundation: `COMPLETE`
 - Phase 3.1 - Plan Domain Foundation: `COMPLETE`
 - Phase 3.2 - Subscription Domain Foundation: `COMPLETE`
@@ -29,12 +29,12 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 4.3 + 4.4 - Gemini + structured output + async orchestration: `COMPLETE`
 - Phase 4.5 - Generation Web UI / Result Preview: `COMPLETE`
 - Phase 4.6 - Reliability / Stale Recovery / Phase Closure: `COMPLETE`
-- Next: Phase 5 Question Bank (5.1–5.3 implemented pending review; Batch 2 edit/publish not implemented)
-- Documentation version: 0.13.0
+- Next: Phase 5 Question Bank (5.1–5.6 implemented pending review; Phase 5 remains IN PROGRESS)
+- Documentation version: 0.14.0
 - MVP target: Phase 0-6
 - Database design: 18 domain entities
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 4 are `COMPLETE`. Phase 5.1–5.3 are implemented pending review. Editing and publish remain Batch 2.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 4 are `COMPLETE`. Phase 5.1–5.6 are implemented pending review. Phase 5 is not `COMPLETE`.
 
 ## Architecture Decisions
 

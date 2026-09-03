@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use App\Enums\QuestionSetStatus;
 use App\Models\QuestionSet;
 use App\Models\User;
 
@@ -15,6 +16,17 @@ class QuestionSetPolicy
     }
 
     public function view(User $user, QuestionSet $questionSet): bool
+    {
+        return $this->owns($user, $questionSet);
+    }
+
+    public function update(User $user, QuestionSet $questionSet): bool
+    {
+        return $this->owns($user, $questionSet)
+            && $questionSet->status === QuestionSetStatus::DRAFT;
+    }
+
+    public function publish(User $user, QuestionSet $questionSet): bool
     {
         return $this->owns($user, $questionSet);
     }

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\QuestionSets\ImportCompletedGenerationIntoQuestionSet;
+use App\Actions\QuestionSets\PublishQuestionSet;
+use App\Actions\QuestionSets\UpdateDraftQuestionSet;
+use App\Http\Requests\QuestionSets\UpdateQuestionSetRequest;
 use App\Models\AiGeneration;
 use App\Models\QuestionSet;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -46,6 +49,54 @@ class QuestionSetController extends Controller
         return view('question-sets.show', [
             'questionSet' => $model,
         ]);
+    }
+
+    public function edit(Request $request, int $questionSet): View
+    {
+        $model = $this->ownedQuestionSet($request, $questionSet);
+        $this->authorize('update', $model);
+
+        $model->load(['questions.options']);
+
+        return view('question-sets.edit', [
+            'questionSet' => $model,
+        ]);
+    }
+
+    public function update(
+        UpdateQuestionSetRequest $request,
+        int $questionSet,
+        UpdateDraftQuestionSet $update,
+    ): RedirectResponse {
+        $model = $this->ownedQuestionSet($request, $questionSet);
+        $this->authorize('update', $model);
+
+        try {
+            $update->handle($request->user(), $model, $request->validated());
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors())->withInput();
+        }
+
+        return to_route('question-sets.show', $model)
+            ->with('success', 'Perubahan soal disimpan.');
+    }
+
+    public function publish(
+        Request $request,
+        int $questionSet,
+        PublishQuestionSet $publish,
+    ): RedirectResponse {
+        $model = $this->ownedQuestionSet($request, $questionSet);
+        $this->authorize('publish', $model);
+
+        try {
+            $publish->handle($request->user(), $model);
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
+        }
+
+        return to_route('question-sets.show', $model)
+            ->with('success', 'Soal diterbitkan.');
     }
 
     public function storeFromGeneration(

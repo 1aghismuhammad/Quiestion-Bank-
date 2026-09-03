@@ -134,7 +134,7 @@ Additional rules:
 - HTTP timeout 60s; Job timeout 270s is retryable (`failOnTimeout` false).
 - Automatic retry terbatas pada Generation/reservation yang sama (max 3 HTTP).
 - Manual retry setelah terminal `failed` membuat Generation baru (`parent_generation_id` wajib pada retry Action, ditulis dalam transaksi Start).
-- Output divalidasi sebelum diimpor ke Question Bank. Phase 4 job tidak menulis `question_sets`. Phase 5.1–5.3 persistensi hanya melalui import eksplisit. Preview completed `result_json` tetap pada UI generasi.
+- Output divalidasi sebelum diimpor ke Question Bank. Phase 4 job tidak menulis `question_sets`. Persistensi hanya melalui import eksplisit, edit draf, atau publish. Preview completed `result_json` tetap pada UI generasi.
 - Invalid output pada terminal failure me-release credit. Stale queued/processing reserved orphans recover to `failed` + `released` (`stale_recovery`) without provider HTTP.
 
 ## File Upload
@@ -179,7 +179,7 @@ Minimum coverage khusus:
 - Role admin route protection.
 - Phase 4.1+4.2 runtime: quota reservation, charge, release, ownership vs eligibility, dan concurrency generation.
 - Phase 4.5+4.6: generation owner UI/preview, status JSON, manual retry, dan stale recovery. Jangan mengklaim SQLite membuktikan row lock.
-- Phase 5.1–5.3: import completed MCQ ke Question Set draft, unique `generation_id`, ownership 404, dan UI index/show. Jangan mengklaim SQLite membuktikan row lock.
+- Phase 5.1–5.6: import completed MCQ ke Question Set draft, edit draf atomik, publish `draft → published`, unique `generation_id`, ownership 404, dan UI index/show/edit. Jangan mengklaim SQLite membuktikan row lock.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

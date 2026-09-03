@@ -95,7 +95,8 @@ class QuestionSetIndexShowTest extends TestCase
             ->assertSee('Because the material supports it')
             ->assertDontSee('Simpan ke Question Bank')
             ->assertDontSee('execution_token')
-            ->assertDontSee('Terbitkan')
+            ->assertSee('Edit')
+            ->assertSee('Terbitkan')
             ->assertDontSee('Hapus');
     }
 
