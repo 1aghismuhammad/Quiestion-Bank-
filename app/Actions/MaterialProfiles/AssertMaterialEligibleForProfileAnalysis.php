@@ -13,6 +13,21 @@ use App\Models\Material;
 
 class AssertMaterialEligibleForProfileAnalysis
 {
+    /**
+     * Non-throwing variant for read-only surfaces that need to decide whether to
+     * offer the start action.
+     */
+    public function passes(Material $material): bool
+    {
+        try {
+            $this->handle($material);
+        } catch (MaterialProfileRejectedException) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function handle(Material $material): void
     {
         if ($material->trashed()) {

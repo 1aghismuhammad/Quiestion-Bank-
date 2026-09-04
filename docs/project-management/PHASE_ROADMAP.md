@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1 is `COMPLETE`. Phase 5.7B2+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE`. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; 5.7B2+ not started)
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; 5.7C not started)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -261,6 +261,29 @@ Phase 5.7B1 — Material Profile Foundation (`COMPLETE`):
 - One `workflow_token` per Profile Version. `step_execution_token` is supplied at claim. Processing lease 120s is separate from queued abandonment 900s.
 
 Out of scope for 5.7B1: production jobs, Gemini, profile HTTP/UI, blueprint, generation Start changes, quota/usage writes, DOCX.
+
+Phase 5.7B2 — Sequential Material Profile Map/Reduce Provider Calls (`COMPLETE`):
+
+- Dedicated `MaterialProfileAnalysisProvider` contract; `identity()` supplies sanitized pre-call provider name. Gemini wire format stays inside `GeminiMaterialProfileProvider`.
+- `StartMaterialProfileAnalysis` reuses a fingerprint-matching ready Version, rejects a queued or processing Version with `in_flight_exists`, and enforces three new Profile Versions per User per rolling hour with `throttle_exceeded`.
+- `DispatchNextMaterialProfileStep` dispatches exactly one next Step: maps in ascending `step_index`, reduce only after every required map is ready. Production jobs are `AnalyzeMaterialProfileMapJob` and `ReduceMaterialProfileJob` (`tries = 3`, `timeout = 270`, `failOnTimeout = false`, `database-generation` / `material-intelligence`).
+- One unchanged `workflow_token` per Version, one distinct `step_execution_token` per Step, and retries that retain the same serialized Step token. An expired processing `failed()` is a no-op; recovery writes `stale_recovery`.
+- Map input is one canonical core plus at most 400 characters of labelled overlap; evidence is validated against the core as UTF-8 code-point offsets and one invalid candidate rejects the complete response.
+- Reduce input includes every persisted extracted Element; `max_map_candidates * max_chunks <= max_reduce_summaries`. Reduce revalidates the Material fingerprint before Attempt/HTTP. Reduce output requires at least one topic, objective, and indicator.
+- Started Attempt provider/model/prompt/purpose are immutable. Ready finalization independently proves extracted vs suggested Element invariants.
+- Three provider Attempts per Step maximum, provider HTTP outside transactions, atomic map persistence, and atomic reduce-ready plus Version-ready finalization.
+- No migration, no Composer dependency, no generation credit, and no `ai_usage_logs` write.
+
+Phase 5.7B3 — Owner Activation, Progress, Review, and Regeneration UI (`COMPLETE`):
+
+- Authenticated owner routes: `GET /materials/{material}/profile`, `GET /materials/{material}/profile/status`, `POST /materials/{material}/profile`, `POST /materials/{material}/profile/regenerate`.
+- One canonical read path (`ResolveMaterialProfileOwnerView`) distinguishing `none`, `queued`, `processing`, `ready`, `failed`, and `stale` using the same fingerprint contract as start.
+- Bounded, sanitized status JSON with a fixed field allowlist, `Cache-Control: no-store`, no side effects, and polling only while queued or processing.
+- Review page groups topics, learning objectives, indicators, and other constraints, distinguishes extracted from suggested items, and shows escaped evidence only for validated extracted elements.
+- Explicit POST regeneration that creates a new Version, rejects an active workflow, respects the throttle, and never mutates terminal data.
+- Centralized owner-safe Indonesian error mapping; internal authority/concurrency codes are never copied into owner JSON. No token, Attempt, provider payload, or raw exception text is exposed.
+
+Out of scope for 5.7B2 and 5.7B3: profile element editing, approve/reject persistence, manual ordering, blueprint creation, generation-run integration, Advanced Mode, DOCX changes, admin profile management, notification workflow, and any credit or usage accounting.
 
 ## Phase 6 - Admin Dashboard
 

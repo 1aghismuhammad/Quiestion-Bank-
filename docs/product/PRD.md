@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.15.1
+- Version: 0.15.3
 - Updated: 4 September 2026
-- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank is MCQ-only. Phase 5.7 is `IN PROGRESS`. Phase 5.7A (upload-only Material creation) and Phase 5.7B1 (Material Profile foundation, no production AI/HTTP/UI) are complete. Phase 5.7B2+ has not started. Legacy text Materials remain readable and editable. Phase 6 Admin Dashboard remains `PLANNED`.
+- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank is MCQ-only. Phase 5.7 is `IN PROGRESS`. Phase 5.7A, Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are complete. Phase 5.7C has not started. Legacy text Materials remain readable and editable. Phase 6 Admin Dashboard remains `PLANNED`.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -111,7 +111,9 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Question Bank
 - FR-MAT-09: User dapat mengubah material draft/ready menjadi archived dan memulihkan material archived menjadi ready.
 - FR-MAT-10: Phase 2 Material Management dapat digunakan langsung dari dashboard tanpa membuat question set.
 - FR-MAT-11: Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap ada; akses Material existing tetap; archive dan restore tetap diizinkan; upload FILE baru ditolak sampai usage kembali di bawah limit entitlement efektif. Karena pembuatan baru hanya melalui unggah, user di atas kuota tidak dapat membuat Material baru.
-- FR-MAT-12: Material Profile persistence exists (versions, chunks, steps, elements, attempts) with eligibility, hashing, splitting, tokens, leases, and stale recovery. Phase 5.7B1 does not expose analysis through production HTTP or UI and does not call an AI provider.
+- FR-MAT-12: Material Profile persistence exists (versions, chunks, steps, elements, attempts) with eligibility, hashing, splitting, tokens, leases, and stale recovery. Phase 5.7B1 delivered this foundation.
+- FR-MAT-13: Sequential map/reduce analysis uses a dedicated Gemini provider boundary, reuses a fingerprint-matching ready Version, rejects in-flight workflows, throttles three new Versions per user per rolling hour, and never consumes generation credits or writes `ai_usage_logs`.
+- FR-MAT-14: The Material owner can start, poll, review, and regenerate a profile through authenticated owner-scoped routes. Results are immutable; stale fingerprints are not shown as current; there is no element editing, blueprint, or generation-run integration.
 
 ### AI Generation
 

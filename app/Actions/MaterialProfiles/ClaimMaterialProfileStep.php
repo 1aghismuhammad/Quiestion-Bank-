@@ -11,12 +11,14 @@ use App\Enums\MaterialProfileStepPurpose;
 use App\Enums\MaterialProfileStepStatus;
 use App\Models\MaterialProfileStep;
 use App\Models\MaterialProfileVersion;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ClaimMaterialProfileStep
 {
     use LocksMaterialProfileWorkflow;
+    use ResolvesNextMaterialProfileStep;
+
+    public function __construct(private AssertMaterialProfileWorkflowAuthority $assertAuthority) {}
 
     public function handle(
         int $profileVersionId,
@@ -50,6 +52,10 @@ class ClaimMaterialProfileStep
                 return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Terminal);
             }
 
+            if ($stepExecutionToken === '') {
+                return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Revoked);
+            }
+
             $expected = $this->expectedNextStep($steps);
 
             if ($expected === null || (int) $expected->profile_step_id !== (int) $step->profile_step_id) {
@@ -65,17 +71,30 @@ class ClaimMaterialProfileStep
             }
 
             if ($step->status === MaterialProfileStepStatus::QUEUED) {
+                $stored = $step->step_execution_token;
+
+                // A queued Step that already carries a dispatcher-minted token may
+                // only be claimed with that same token. Any other token is a
+                // duplicate worker and must not overwrite execution authority.
+                if (is_string($stored) && $stored !== '' && $stored !== $stepExecutionToken) {
+                    return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Duplicate);
+                }
+
                 $this->markClaimed($version, $step, $stepExecutionToken);
 
                 return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Claimed);
             }
 
             if ($step->status === MaterialProfileStepStatus::PROCESSING) {
+                if ($version->status !== MaterialProfileStatus::PROCESSING) {
+                    return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Terminal);
+                }
+
                 if ((string) $step->step_execution_token !== $stepExecutionToken) {
                     return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Duplicate);
                 }
 
-                if ($this->leaseExpired($step)) {
+                if (! $this->assertAuthority->hasLiveProcessingLease($step)) {
                     return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Expired);
                 }
 
@@ -86,37 +105,6 @@ class ClaimMaterialProfileStep
 
             return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Terminal);
         });
-    }
-
-    /**
-     * @param  Collection<int, MaterialProfileStep>  $steps
-     */
-    private function expectedNextStep(Collection $steps): ?MaterialProfileStep
-    {
-        $maps = $steps
-            ->filter(fn (MaterialProfileStep $step): bool => $step->purpose === MaterialProfileStepPurpose::MAP)
-            ->sortBy(fn (MaterialProfileStep $step): int => (int) $step->step_index)
-            ->values();
-
-        foreach ($maps as $map) {
-            if ($map->status === MaterialProfileStepStatus::FAILED) {
-                return null;
-            }
-
-            if ($map->status !== MaterialProfileStepStatus::READY) {
-                return $map;
-            }
-        }
-
-        $reduce = $steps->first(
-            fn (MaterialProfileStep $step): bool => $step->purpose === MaterialProfileStepPurpose::REDUCE,
-        );
-
-        if ($reduce !== null && $reduce->status !== MaterialProfileStepStatus::READY) {
-            return $reduce;
-        }
-
-        return null;
     }
 
     private function markClaimed(
@@ -149,10 +137,5 @@ class ClaimMaterialProfileStep
         $step->heartbeat_at = $now;
         $step->lease_expires_at = $now->clone()->addSeconds($leaseSeconds);
         $step->save();
-    }
-
-    private function leaseExpired(MaterialProfileStep $step): bool
-    {
-        return $step->lease_expires_at !== null && $step->lease_expires_at->lte(now());
     }
 }

@@ -32,13 +32,15 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 5 - Question Bank: `COMPLETE` (MCQ-only MVP: completed-Generation import to draft, owner list/detail, draft edit, atomic whole-set save, `draft → published`, published read-only)
 - Phase 5.7 - Pre-Phase-6 enhancements: `IN PROGRESS`
 - Phase 5.7A - Upload-only Material Transition: `COMPLETE` (new Material creation is upload-only; legacy `source_type=text` rows remain readable/editable)
-- Phase 5.7B1 - Material Profile Foundation: `COMPLETE` (persistence, hashing, splitting, eligibility, tokens, leases, recovery; no production AI, HTTP, or UI)
+- Phase 5.7B1 - Material Profile Foundation: `COMPLETE` (persistence, hashing, splitting, eligibility, tokens, leases, recovery)
+- Phase 5.7B2 - Sequential Material Profile Map/Reduce Provider Calls: `COMPLETE` (dedicated provider boundary, lossless bounded reduce, fingerprint revalidation, sequential `material-intelligence` jobs, no generation credits)
+- Phase 5.7B3 - Owner Activation, Progress, Review, and Regeneration UI: `COMPLETE` (owner start, status polling, review, regenerate; no element editing or blueprint)
 - Next numbered main phase: Phase 6 Admin Dashboard (`PLANNED`)
-- Documentation version: 0.15.1
+- Documentation version: 0.15.3
 - MVP target: Phase 0-6
 - Database design: 23 domain entities documented in the canonical DBML
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP is MCQ-only; true/false and essay Question Bank remain later. Phase 5.7 is `IN PROGRESS`; Phase 5.7A and Phase 5.7B1 are `COMPLETE`. Phase 5.7B1 is foundation only: no production Gemini execution and no profile HTTP/UI. Phase 5.7B2+ has not started. New Material creation is upload-only; legacy `source_type=text` rows remain readable and editable. Phase 6 remains `PLANNED`.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP is MCQ-only; true/false and essay Question Bank remain later. Phase 5.7 is `IN PROGRESS`; Phase 5.7A, Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE`. Phase 5.7C has not started. New Material creation is upload-only; legacy `source_type=text` rows remain readable and editable. Phase 6 remains `PLANNED`.
 
 ## Architecture Decisions
 
@@ -101,6 +103,21 @@ GENERATION_STALE_RECOVERY_BATCH=50
 Local development memakai MySQL 8+ melalui Laragon. Set `DB_CONNECTION=mysql` di `.env` dan pastikan MySQL Laragon berjalan sebelum perintah artisan database. Test otomatis memakai SQLite in-memory melalui `phpunit.xml` dan tidak mengubah koneksi aplikasi lokal.
 
 Environment value dan credential tidak boleh dicatat dalam repository.
+
+## Production queue workers
+
+Material extraction stays on its existing worker. Do not change that worker or `database.retry_after` / `DB_QUEUE_RETRY_AFTER` (90).
+
+Question generation and Material Profile analysis share connection `database-generation` (`GENERATION_QUEUE_RETRY_AFTER` 360). Profile jobs use queue `material-intelligence`, `$timeout = 270`, `$tries = 3`. Production must consume `material-intelligence`. The chosen operator command prioritizes question generation first:
+
+```text
+php artisan queue:work database-generation \
+  --queue=question-generation,material-intelligence \
+  --timeout=270 \
+  --tries=3
+```
+
+Keep `retry_after` 360 greater than timeout 270. A dedicated `material-intelligence` worker with the same timeout and tries is also valid.
 
 ## Open Product Decisions
 

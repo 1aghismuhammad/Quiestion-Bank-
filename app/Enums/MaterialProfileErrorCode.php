@@ -18,6 +18,8 @@ enum MaterialProfileErrorCode: string
     case Revoked = 'revoked';
     case DuplicateWorker = 'duplicate_worker';
     case ValidationFailed = 'validation_failed';
+    case ThrottleExceeded = 'throttle_exceeded';
+    case ProviderFailed = 'provider_failed';
 
     public function userMessage(): string
     {
@@ -29,6 +31,8 @@ enum MaterialProfileErrorCode: string
             self::StaleRecovery => 'Analisis profil tidak selesai tepat waktu.',
             self::QueuedAbandoned => 'Analisis profil tidak dimulai tepat waktu.',
             self::HashMismatch => 'Konten materi berubah sebelum analisis selesai.',
+            self::ThrottleExceeded => 'Batas tiga analisis profil per jam sudah tercapai. Coba lagi nanti.',
+            self::ProviderFailed => 'Analisis profil materi gagal diproses. Silakan coba lagi.',
             default => 'Analisis profil materi gagal.',
         };
     }

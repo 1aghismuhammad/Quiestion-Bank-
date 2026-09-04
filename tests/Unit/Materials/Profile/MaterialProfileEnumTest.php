@@ -9,6 +9,8 @@ use App\Enums\MaterialProfileAttemptStatus;
 use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Enums\MaterialProfileErrorCode;
+use App\Enums\MaterialProfileOwnerState;
+use App\Enums\MaterialProfileStartOutcome;
 use App\Enums\MaterialProfileStatus;
 use App\Enums\MaterialProfileStepPurpose;
 use App\Enums\MaterialProfileStepStatus;
@@ -45,8 +47,18 @@ class MaterialProfileEnumTest extends TestCase
                 'revoked',
                 'duplicate_worker',
                 'validation_failed',
+                'throttle_exceeded',
+                'provider_failed',
             ],
             array_column(MaterialProfileErrorCode::cases(), 'value'),
+        );
+        $this->assertSame(
+            ['created', 'reused'],
+            array_column(MaterialProfileStartOutcome::cases(), 'value'),
+        );
+        $this->assertSame(
+            ['none', 'queued', 'processing', 'ready', 'failed', 'stale'],
+            array_column(MaterialProfileOwnerState::cases(), 'value'),
         );
     }
 }

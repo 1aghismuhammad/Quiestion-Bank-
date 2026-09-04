@@ -6,6 +6,7 @@ namespace Tests\Support\MaterialProfiles;
 
 use App\Actions\MaterialProfiles\ClaimMaterialProfileStep;
 use App\Actions\MaterialProfiles\QueueMaterialProfileAnalysis;
+use App\Actions\MaterialProfiles\ValidateProfileMapCandidates;
 use App\Enums\MaterialProfileAttemptStatus;
 use App\Enums\MaterialProfileClaimOutcome;
 use App\Enums\MaterialProfileElementKind;
@@ -75,7 +76,11 @@ trait CreatesQueuedMaterialProfiles
             'origin' => MaterialProfileElementOrigin::EXTRACTED,
             'text' => 'Topik utama',
             'evidence_excerpt' => $excerpt,
-            'evidence_locator' => 'core-0',
+            'evidence_locator' => ValidateProfileMapCandidates::evidenceLocator(
+                (int) $chunk->chunk_index,
+                (int) $chunk->char_start,
+                (int) $chunk->char_end,
+            ),
             'char_start' => $chunk->char_start,
             'char_end' => $chunk->char_end,
             'sort_order' => 0,

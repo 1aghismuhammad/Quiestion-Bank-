@@ -52,6 +52,16 @@ class MaterialPolicy
         return $this->ownsMaterial($user, $material);
     }
 
+    public function viewProfile(User $user, Material $material): bool
+    {
+        return $this->ownsActiveMaterial($user, $material);
+    }
+
+    public function analyzeProfile(User $user, Material $material): bool
+    {
+        return $this->ownsActiveMaterial($user, $material);
+    }
+
     private function ownsMaterial(User $user, Material $material): bool
     {
         return (int) $material->user_id === (int) $user->id;

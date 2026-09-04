@@ -76,6 +76,10 @@
                 </form>
             @endcan
 
+            @can('viewProfile', $material)
+                <a class="button button-secondary" href="{{ route('materials.profile.show', $material) }}">Profil materi</a>
+            @endcan
+
             @if ($canGenerate)
                 <a class="button" href="{{ route('generations.create', $material) }}">Generate Questions</a>
             @endif

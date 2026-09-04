@@ -178,6 +178,52 @@ Output invalid/partial bukan success. Phase 4 tidak menyimpan generated question
 - Attempt yang dijalankan setelah deploy baru mencatat version baru, meskipun Generation di-queue di deploy lama.
 - Tidak ada tabel `prompt_versions` dan tidak ada `ai_generations.prompt_version`.
 
+## Material Profile Prompt Contracts (Phase 5.7B2)
+
+Material Profile analysis has its own provider boundary and prompt contract. It never reuses the question-generation provider, prompt builder, version string, or audit tables.
+
+- Provider contract: `MaterialProfileAnalysisProvider` with `identity()`, `analyzeChunk` (map), and `reduceProfile` (reduce). The Gemini adapter implements the contract; domain Actions and profile Jobs never import it.
+- Prompt source of truth: `MaterialProfilePromptBuilder`. Version strings come from `config('material_profile.map_prompt_version')` and `config('material_profile.reduce_prompt_version')` (for example `profile-map-v1` and `profile-reduce-v1`).
+- Audit: `material_profile_attempts` only. There is no `ai_generations`, `ai_generation_attempts`, or `ai_usage_logs` row for profile analysis.
+- Model comes from `config('material_profile.primary_model')`. Both operations use structured JSON output (`responseMimeType` plus `responseSchema`), a 60-second HTTP timeout, and a 10-second connect timeout.
+- API key comes only from `GEMINI_API_KEY` through `config('material_profile.api_key')`, is sent as the `x-goog-api-key` header, is never placed in a URL, and is never logged or persisted.
+
+### Overlap and canonical core separation
+
+- A map request carries exactly one chunk: the canonical core, plus at most 400 characters of preceding overlap when the chunk has one.
+- Overlap and core are delimited separately as `<<<OVERLAP>>>` … `<<<END_OVERLAP>>>` and `<<<CORE>>>` … `<<<END_CORE>>>`. Overlap is presented before the core and labelled as interpretation context only.
+- The complete Material is never sent in one map request unless the whole Material fits in that single canonical chunk.
+- Both sections are untrusted DATA. Instruction injection inside the Material is ignored.
+
+### UTF-8 evidence offsets
+
+- `evidence_start` and `evidence_end` are UTF-8 code-point offsets counted from the first character of the canonical core, never byte offsets and never Material-wide offsets.
+- Server validation requires `evidence_start >= 0`, `evidence_end > evidence_start`, `evidence_end` within the core length, and `evidence_excerpt` exactly equal to the core substring between the two offsets.
+- Evidence may never reference the preceding overlap. A negative start is rejected, and overlap text quoted at a core offset fails the exact-substring check.
+- The server converts validated core-relative offsets into canonical Material offsets and owns `origin`, `source_chunk_id`, `char_start`, `char_end`, `evidence_locator`, and `sort_order`. Provider-supplied identifiers, ownership, ordering, and canonical offsets are never trusted.
+
+### Complete-response rejection
+
+- One invalid candidate rejects the complete provider response for that Attempt. Valid candidates from the same response are discarded with it.
+- Rejection causes include unsupported kind, empty or oversized text, non-integer offsets, missing or mismatched excerpt, out-of-range evidence, and exceeding the configured candidate count.
+- Deterministic exact-duplicate removal happens only after validation succeeds.
+- A rejected response creates no Element, marks the Attempt `failed` with `validation_failed` or `schema_invalid`, and retries only while the three-Attempt budget remains.
+
+### Reduce input limitations
+
+- Reduce receives every persisted extracted Element as a bounded validated summary: kind, normalized text, safe evidence locator, and canonical offsets. There is no LIMIT/first-N/last-N/sampling truncation.
+- Reduce never receives the complete Material, any chunk canonical core, raw prompts, raw provider responses, unrestricted attempt metadata, or credentials. The summary count is bounded by `material_profile.max_reduce_summaries`, and `max_map_candidates * max_chunks` must stay `<= max_reduce_summaries`.
+- Reduce revalidates the live Material fingerprint (owner, content hash, null-safe file hash, extractor) before creating an Attempt or calling the provider.
+- Reduce runs only after every required map Step is ready and backed by a succeeded Attempt.
+- Reduce output must contain at least one topic, one objective, and one indicator. Suggested elements are deduplicated on normalized kind plus text, use `origin = suggested`, and carry no source chunk and no evidence.
+
+### Retention prohibitions
+
+- Final prompts for map and reduce are not persisted.
+- Full provider response bodies, response fragments, and unrestricted exception messages are not persisted and are never shown to the owner.
+- `material_profile_attempts` stores only provider, model, prompt version, purpose, status, input/output/total tokens, latency, a bounded error code, and timestamps.
+- The owner surface shows only validated Element text, validated evidence excerpts with canonical boundaries, Step counts, and mapped Indonesian messages. Workflow tokens, Step execution tokens, Attempt rows, model names, and provider payloads are never exposed.
+
 ## Audit Requirements
 
 Phase 4 menyimpan user, material, assessment, difficulty, question type, count, `output_language`, status, `execution_token`, attempt, sanitized error, timestamps, `result_json`, dan aggregate provider/token. Setiap HTTP call diaudit di `ai_generation_attempts` termasuk `prompt_version`, model, purpose, tokens, dan latency. UI preview tidak menampilkan raw prompt, raw response, token eksekusi, atau attempt internals.

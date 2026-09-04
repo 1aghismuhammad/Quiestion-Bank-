@@ -81,6 +81,37 @@ class RecoverStaleMaterialProfilesTest extends TestCase
         $this->assertTrue($version->fresh()->steps->every(fn ($item): bool => $item->lease_expires_at === null));
     }
 
+    public function test_processing_step_with_a_null_lease_is_recovered_as_stale_recovery(): void
+    {
+        $user = User::factory()->create();
+        $material = Material::factory()->text()->for($user)->create(['content' => 'Sewa null.']);
+        $version = $this->queueProfile($user, $material);
+        $step = $version->steps()->where('purpose', MaterialProfileStepPurpose::MAP)->firstOrFail();
+        $reduce = $version->steps()->where('purpose', MaterialProfileStepPurpose::REDUCE)->firstOrFail();
+        $this->claimStep($version, $step, (string) Str::uuid());
+
+        $step = $step->fresh();
+        $step->lease_expires_at = null;
+        $step->save();
+
+        $this->assertNull($reduce->fresh()->lease_expires_at);
+        $this->assertSame(MaterialProfileStepStatus::QUEUED, $reduce->fresh()->status);
+
+        $recovered = app(RecoverStaleMaterialProfiles::class)->handle();
+        $this->assertSame(1, $recovered);
+        $this->assertSame(MaterialProfileStatus::FAILED, $version->fresh()->status);
+        $this->assertSame(MaterialProfileErrorCode::StaleRecovery->value, $version->fresh()->error_code);
+        $this->assertSame(MaterialProfileStepStatus::FAILED, $step->fresh()->status);
+        $this->assertSame(MaterialProfileErrorCode::StaleRecovery->value, $step->fresh()->error_code);
+        $this->assertSame(MaterialProfileStepStatus::FAILED, $reduce->fresh()->status);
+        $this->assertSame(MaterialProfileErrorCode::StepAborted->value, $reduce->fresh()->error_code);
+
+        $this->assertSame(0, app(RecoverStaleMaterialProfiles::class)->handle());
+        $this->assertSame(MaterialProfileErrorCode::StaleRecovery->value, $version->fresh()->error_code);
+        $this->assertSame(MaterialProfileErrorCode::StaleRecovery->value, $step->fresh()->error_code);
+        $this->assertSame(MaterialProfileErrorCode::StepAborted->value, $reduce->fresh()->error_code);
+    }
+
     public function test_recovery_is_idempotent_and_respects_batch_size(): void
     {
         config(['material_profile.stale_recovery_batch_size' => 1]);

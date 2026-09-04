@@ -18,7 +18,10 @@ class RecoverStaleMaterialProfiles
 {
     use LocksMaterialProfileWorkflow;
 
-    public function __construct(private FinalizeMaterialProfileFailure $finalizeFailure) {}
+    public function __construct(
+        private FinalizeMaterialProfileFailure $finalizeFailure,
+        private AssertMaterialProfileWorkflowAuthority $assertAuthority,
+    ) {}
 
     public function handle(): int
     {
@@ -72,8 +75,10 @@ class RecoverStaleMaterialProfiles
 
         $processing = MaterialProfileStep::query()
             ->where('status', MaterialProfileStepStatus::PROCESSING)
-            ->whereNotNull('lease_expires_at')
-            ->where('lease_expires_at', '<=', $processingCutoff)
+            ->where(function ($query) use ($processingCutoff): void {
+                $query->whereNull('lease_expires_at')
+                    ->orWhere('lease_expires_at', '<=', $processingCutoff);
+            })
             ->orderBy('profile_version_id')
             ->limit($batch)
             ->pluck('profile_version_id');
@@ -115,8 +120,7 @@ class RecoverStaleMaterialProfiles
 
         foreach ($steps as $step) {
             if ($step->status === MaterialProfileStepStatus::PROCESSING
-                && $step->lease_expires_at !== null
-                && $step->lease_expires_at->lte($now)) {
+                && ! $this->assertAuthority->hasLiveProcessingLease($step)) {
                 return [
                     'code' => MaterialProfileErrorCode::StaleRecovery,
                     'step_id' => (int) $step->profile_step_id,

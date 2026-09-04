@@ -26,6 +26,109 @@ Notes:
 -
 ```
 
+## v0.15.3 Phase 5.7B3 Material Profile owner activation and review UI
+
+- Date: 4 September 2026
+- Version: 0.15.3
+- Phase: Phase 5.7B3 - Owner Activation, Progress, Review, and Regeneration UI
+- Type: Feature implementation
+
+Added:
+
+- Owner-scoped routes `materials.profile.show`, `materials.profile.status`, `materials.profile.store`, and `materials.profile.regenerate` under `auth`, `account.active`, and `profile.complete`.
+- `MaterialProfileController` delegating every mutation to `StartMaterialProfileAnalysis`; it holds no provider, transaction, locking, or token logic.
+- `ResolveMaterialProfileOwnerView` as the single read-only owner state query, plus `MaterialProfileOwnerState` for `none`, `queued`, `processing`, `ready`, `failed`, and `stale`.
+- Owner review page with grouped topics, learning objectives, indicators, and other instructional constraints; extracted items show escaped source evidence with canonical character boundaries, suggested items are labelled separately.
+- Bounded status JSON with a fixed 13-field allowlist, `Cache-Control: no-store`, and polling only while queued or processing.
+- `MaterialProfileOwnerMessages` as the one deterministic mapping from domain error codes to owner-facing Indonesian text.
+- `viewProfile` and `analyzeProfile` abilities on `MaterialPolicy`, and a profile entry point on the Material show page.
+
+Changed:
+
+- Docs record Phase 5.7B3 `COMPLETE`. Phase 5.7 remains `IN PROGRESS`. Phase 5.7C has not started. Phase 6 remains `PLANNED`.
+- `MaterialProfileIsolationTest` now asserts the exact owner-scoped route surface instead of asserting that no profile route exists.
+
+Fixed:
+
+- Owner status JSON and HTML map internal authority/concurrency codes (`duplicate_worker`, `not_next_step`, `revoked`, `validation_failed`, `step_aborted`) to the public code `provider_failed` while keeping the existing Indonesian message.
+
+Database Impact:
+
+- None. No migration added and no committed B1 migration edited. No UI-only persistence table.
+
+Notes:
+
+- Review and regeneration only: no element editing, approve/reject flags, manual ordering, blueprint, generation-run integration, Advanced Mode, DOCX change, admin surface, or notification workflow.
+- Currentness uses the same fingerprint contract as `StartMaterialProfileAnalysis`; "latest row" alone is never treated as current.
+- Stale results are never presented as the current profile, and rendering a stale Version does not mutate it.
+- A previous ready profile shown during regeneration is labelled as history, separate from the active workflow.
+- Polling performs full authentication and ownership authorization, writes nothing, dispatches nothing, refreshes no lease, and consumes no throttle or credit.
+- No workflow token, step execution token, Attempt record, raw prompt, raw response, provider body, API key, chunk text, or complete Material content is exposed through HTML or JSON.
+- Internal terminal causes are never copied verbatim into owner JSON `error_code`.
+- Progress is expressed as completed/total Step counts; no fabricated percentage precision.
+- Start, regenerate, and final results work without JavaScript; polling is progressive enhancement with a manual refresh fallback and a bounded failure threshold.
+- Production must run a `database-generation` worker that consumes `material-intelligence`. Combined `question-generation,material-intelligence` is the chosen operator command; `question-generation` is first. Timeout 270s; `retry_after` 360s. Extraction `retry_after` 90 is unchanged.
+- No frontend framework, Composer package, NPM package, CDN asset, or remote font was added.
+- Historical CHANGE_LOG entries are not rewritten.
+
+## v0.15.2 Phase 5.7B2 sequential Material Profile map/reduce provider calls
+
+- Date: 4 September 2026
+- Version: 0.15.2
+- Phase: Phase 5.7B2 - Sequential Material Profile Map/Reduce Provider Calls
+- Type: Feature implementation
+
+Added:
+
+- Dedicated provider boundary `MaterialProfileAnalysisProvider` with `identity()`, `analyzeChunk`, and `reduceProfile`. Bound to `GeminiMaterialProfileProvider` in `AppServiceProvider`. Domain Actions never import the Gemini adapter. `QuestionGenerationProvider` is not reused.
+- `MaterialProfilePromptBuilder` with versioned map/reduce prompts, explicit JSON response schemas, and labelled overlap versus canonical core sections.
+- Typed request/result objects: map and reduce requests and results, extracted and suggested candidates, element summaries, validated elements, provider attempt metadata, start/reuse result, step dispatch, and persist result.
+- `StartMaterialProfileAnalysis` with ready-version reuse, in-flight rejection, rolling throttle, and an internal `forceRegenerate` flag.
+- `DispatchNextMaterialProfileStep` as the one canonical sequential dispatcher; maps run in ascending `step_index` and reduce runs only after every required map is ready.
+- Attempt lifecycle Actions `BeginMaterialProfileAttempt` and `FailMaterialProfileAttempt`, terminal failure through `FailMaterialProfileWorkflowForStep`, and shared retry policy in `RecordsMaterialProfileProviderOutcome`.
+- Server-side validation `ValidateProfileMapCandidates` and `ValidateProfileReduceCandidates`, with context re-verification in `VerifiesMaterialProfileContext`.
+- Atomic persistence Actions `PersistMaterialProfileMapSuccess` and `PersistMaterialProfileReduceSuccess`.
+- Production jobs `AnalyzeMaterialProfileMapJob` and `ReduceMaterialProfileJob` with `tries = 3`, `timeout = 270`, `failOnTimeout = false`, and dispatch after commit on the configured profile connection and queue.
+- Error codes `throttle_exceeded` and `provider_failed`, and provider exception hierarchy for transient, permanent, malformed-response, candidate-validation, and attempt-budget cases.
+
+Changed:
+
+- `config/material_profile.php` gains Gemini API key/base, primary model, map and reduce prompt versions, max output tokens, three attempts per Step, backoff, three new analyses per rolling hour, candidate and summary limits (`max_map_candidates` default 10 so 10 × 20 chunks ≤ 200 reduce summaries), text and evidence caps, and the status polling interval. All B1 values are preserved: lease 120s, abandonment 900s, job timeout 270s, provider HTTP timeout 60s, connect timeout 10s, and the B1 queue connection and queue.
+- `ClaimMaterialProfileStep` now refuses to overwrite a queued Step that already carries a different dispatcher-minted token, and shares next-step resolution through `ResolvesNextMaterialProfileStep`.
+- `FinalizeMaterialProfileReady` exposes `applyLocked()` so reduce readiness and Version readiness commit in one transaction; public behavior and existing B1 tests are unchanged.
+- `FinalizeMaterialProfileFailure` accepts an optional target Step so the terminal cause stays on the Step that failed.
+- Docs record Phase 5.7B2 `COMPLETE`. Phase 5.7 remains `IN PROGRESS`. Phase 5.7C has not started.
+
+Fixed:
+
+- Expired processing `failed()` callbacks are no-ops; a processing Step with a null or expired lease has no claim, heartbeat, or `failed()` authority and is recovered as `stale_recovery`; lossless reduce coverage replaces silent first-N truncation; reduce fingerprint is checked before provider HTTP; Attempt identity is immutable; ready Element invariants are origin-specific.
+
+Database Impact:
+
+- None. No migration added and no committed B1 migration edited. The existing Version, Chunk, Step, Element, and Attempt schema carries all B2 state.
+- `material_profile_attempts` remains the only provider-call audit and has no raw prompt, raw response, or provider body column.
+- No `ai_usage_logs` writes. No Composer dependency.
+
+Notes:
+
+- One unchanged `workflow_token` per Profile Version; one distinct `step_execution_token` per Step; automatic retries retain the same serialized Step token.
+- A map request carries only the current canonical core, at most 400 characters of labelled preceding overlap, the chunk index, and the core boundaries. The complete book is never sent unless it is one chunk.
+- Evidence offsets are UTF-8 code-point offsets relative to the canonical core; excerpts must match the core exactly, overlap-only evidence is rejected, and one invalid candidate rejects the complete response.
+- The server owns origin, `source_chunk_id`, canonical offsets, evidence locator, `sort_order`, ownership, and foreign keys. Provider-supplied identifiers are never trusted.
+- Reduce input carries every persisted extracted Element as a bounded validated summary: kind, normalized text, safe locator, and canonical offsets. Complete Material content and chunk cores are structurally excluded. Silent prefix truncation is forbidden; `max_map_candidates * max_chunks` stays `<= max_reduce_summaries` (defaults 10 × 20 ≤ 200).
+- Reduce revalidates owner integrity, `material_content_hash`, null-safe `material_file_hash`, and `extractor_implementation` before creating a reduce Attempt or calling the provider.
+- Provider HTTP always runs outside database transactions; every actual provider call has exactly one started Attempt. Domain Actions resolve provider identity from `MaterialProfileAnalysisProvider::identity()` and never import `GeminiMaterialProfileProvider`.
+- Started Attempt provider/model/prompt version/purpose are immutable. Post-call metadata may only supply bounded non-negative token counts and latency, and a mismatch rejects the complete success result.
+- Retryable causes are timeout, connection failure, HTTP 429, HTTP 5xx, and schema-invalid output while attempts remain. Missing configuration, authentication rejection, invalid persisted context, and any cause on the third Attempt are terminal.
+- Map success, its extracted Elements, Step readiness, cleared lease, and the next queued Step commit atomically; reduce success and Version readiness commit atomically.
+- Late or expired workers persist nothing: an expired or null processing lease has no claim, heartbeat, or Job `failed()` authority even before recovery runs, and an obsolete `failed()` cannot fail a newer or terminal workflow. A queued pre-claim `failed()` may terminal-fail only while both Version and Step are still queued and unclaimed. Recovery terminal-fails a processing Step whose lease is null or expired with `stale_recovery`.
+- Ready finalization independently proves Element semantics: extracted rows require this Version's chunk, exact canonical evidence, offsets, and locator; suggested rows carry no chunk, evidence, or offsets.
+- Production must run a `database-generation` worker that consumes `material-intelligence` (combined with `question-generation` is acceptable; `question-generation` is first). Job timeout 270s; connection `retry_after` 360s. The Material extraction worker and its `retry_after` 90 are unchanged.
+- Ready and failed Versions and their Elements are immutable; regeneration creates a new Version.
+- Profile analysis consumes no generation credit, reserves no quota, and writes no `ai_usage_logs`.
+- Automated QA never calls the real Gemini API; provider and HTTP fakes are used throughout.
+- Historical CHANGE_LOG entries are not rewritten.
+
 ## v0.15.1 Phase 5.7B1 Material Profile foundation
 
 - Date: 4 September 2026

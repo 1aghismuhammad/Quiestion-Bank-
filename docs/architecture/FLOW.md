@@ -9,7 +9,8 @@ Dokumen ini menerjemahkan rancangan flowchart user dan admin ke alur implementas
 - Blade + Livewire untuk UI.
 - Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Phase 4.5 generation UI menggunakan Blade/controller dan vanilla JS polling, tanpa Livewire/React/Vue/websockets.
-- Google Gemini melalui queue untuk generation.
+- Phase 5.7B3 Material Profile UI menggunakan Blade/controller dan vanilla JS polling bounded, tanpa Livewire/React/Vue/websockets.
+- Google Gemini melalui queue untuk generation dan untuk analisis profil materi.
 - Database canonical: `docs/database/AI_QUESTION_BANK.dbml`.
 - Phase 3.1 + 3.2: Plan catalog Free/Pro dan riwayat window Pro. Phase 3.3 + 3.4: resolver entitlement dan quota storage akun pada upload. Phase 3.5: definisi quota generation. Phase 3.6: Plan Offers, QRIS/WhatsApp, dan verifikasi admin.
 
@@ -90,7 +91,9 @@ flowchart LR
 6. Kombinasi user dan file hash unique sehingga duplikat user yang sama ditolak.
 7. Materi teks **lama** menggunakan extraction status `not_required` dan tetap dapat diedit. Pembuatan materi teks baru tidak tersedia. Upload berjalan pending, processing, lalu completed/failed. Penggantian file tidak didukung.
 8. Material berubah dari draft menjadi ready setelah content text tersedia atau extraction berhasil.
-9. Phase 5.7B1 Material Profile adalah fondasi internal: Queue/Claim/Heartbeat/Ready/Failure/Recovery tanpa rute HTTP, tombol UI, atau pemanggilan Gemini. Scheduler `profiles:recover-stale` berjalan setiap menit `withoutOverlapping`.
+9. Phase 5.7B1 Material Profile adalah fondasi internal: Queue/Claim/Heartbeat/Ready/Failure/Recovery. Scheduler `profiles:recover-stale` berjalan setiap menit `withoutOverlapping`.
+9a. Phase 5.7B2 menambahkan eksekusi map/reduce sekuensial melalui boundary provider tersendiri (`MaterialProfileAnalysisProvider`; adapter Gemini hanya di `GeminiMaterialProfileProvider`). `StartMaterialProfileAnalysis` memakai kembali versi ready yang fingerprint-nya cocok, menolak versi queued/processing (`in_flight_exists`), dan membatasi tiga Profile Version baru per user per jam bergulir (`throttle_exceeded`). Dispatcher kanonis mengirim tepat satu Step berikutnya: map naik menurut `step_index`, reduce hanya setelah semua map ready dan menerima setiap extracted Element yang sudah tersimpan (tanpa truncasi diam-diam). Reduce memverifikasi fingerprint materi sebelum Attempt/HTTP. Satu `workflow_token` per versi, satu `step_execution_token` per Step, retry memakai token Step yang sama, maksimal tiga Attempt per Step, HTTP provider selalu di luar transaksi, dan reduce-ready plus Version-ready commit atomik. Job `failed()` yang leasenya kedaluwarsa tidak menulis apa pun. Worker produksi `database-generation --queue=question-generation,material-intelligence --timeout=270 --tries=3`. Analisis profil tidak memotong credit generation dan tidak menulis `ai_usage_logs`.
+9b. Phase 5.7B3 membuka workflow itu kepada owner materi: `GET /materials/{material}/profile` (review), `GET /materials/{material}/profile/status` (polling JSON bounded, tanpa side effect), `POST /materials/{material}/profile` (start/reuse), dan `POST /materials/{material}/profile/regenerate` (analisis ulang eksplisit). Semua rute memerlukan `auth`, `account.active`, `profile.complete`, dan otorisasi owner materi. State owner adalah `none`, `queued`, `processing`, `ready`, `failed`, atau `stale`, ditentukan dengan kontrak fingerprint yang sama seperti start sehingga hasil stale tidak pernah ditampilkan sebagai profil terkini. Regenerasi membuat versi baru dan tidak pernah mengubah versi terminal. Token, Attempt, payload provider, dan pesan exception mentah tidak pernah diekspos.
 10. Seluruh upload yang belum dihapus tetap dihitung pada storage usage, termasuk archived dan extraction failed.
 11. Owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
 12. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.

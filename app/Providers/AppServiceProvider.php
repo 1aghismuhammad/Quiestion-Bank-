@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Contracts\AI\MaterialProfileAnalysisProvider;
 use App\Contracts\AI\QuestionGenerationProvider;
 use App\Contracts\Materials\MaterialFileStore;
+use App\Services\AI\GeminiMaterialProfileProvider;
 use App\Services\AI\GeminiQuestionGenerationProvider;
 use App\Services\Materials\Extraction\DocxExtractor;
 use App\Services\Materials\Extraction\MaterialExtractorRouter;
@@ -21,6 +23,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(MaterialFileStore::class, MaterialStorageService::class);
         $this->app->bind(QuestionGenerationProvider::class, GeminiQuestionGenerationProvider::class);
+        $this->app->bind(MaterialProfileAnalysisProvider::class, GeminiMaterialProfileProvider::class);
         $this->app->bind(MaterialExtractorRouter::class, function (): MaterialExtractorRouter {
             return new MaterialExtractorRouter(
                 new TxtExtractor,

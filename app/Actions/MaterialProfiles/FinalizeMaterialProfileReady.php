@@ -36,34 +36,53 @@ class FinalizeMaterialProfileReady
             $version = $this->lockUserMaterialAndVersion($profileVersionId);
             $steps = $this->lockStepsAscending($profileVersionId);
             $chunks = $this->lockChunksAscending($profileVersionId);
-            $material = Material::query()
-                ->withTrashed()
-                ->whereKey($version->material_id)
-                ->firstOrFail();
 
-            if ($version->status === MaterialProfileStatus::READY) {
-                return $version;
-            }
-
-            $this->assertAuthority->handle($version, $workflowToken);
-            $this->assertOwnership($version, $material);
-            $this->assertReadyInvariants($version, $material, $steps, $chunks);
-
-            $now = now();
-            $version->status = MaterialProfileStatus::READY;
-            $version->completed_at = $now;
-            $version->failed_at = null;
-            $version->error_code = null;
-            $version->error_message = null;
-            $version->save();
-
-            foreach ($steps as $step) {
-                $step->lease_expires_at = null;
-                $step->save();
-            }
-
-            return $version->refresh();
+            return $this->applyLocked($version, $steps, $chunks, $workflowToken);
         });
+    }
+
+    /**
+     * Run every readiness invariant and mark the Version ready, assuming the
+     * caller already holds the canonical User -> Material -> Version -> Step ->
+     * Chunk locks inside an open transaction. This lets the reduce worker commit
+     * reduce readiness and Version readiness together.
+     *
+     * @param  Collection<int, MaterialProfileStep>  $steps
+     * @param  Collection<int, MaterialProfileChunk>  $chunks
+     */
+    public function applyLocked(
+        MaterialProfileVersion $version,
+        Collection $steps,
+        Collection $chunks,
+        string $workflowToken,
+    ): MaterialProfileVersion {
+        $material = Material::query()
+            ->withTrashed()
+            ->whereKey($version->material_id)
+            ->firstOrFail();
+
+        if ($version->status === MaterialProfileStatus::READY) {
+            return $version;
+        }
+
+        $this->assertAuthority->handle($version, $workflowToken);
+        $this->assertOwnership($version, $material);
+        $this->assertReadyInvariants($version, $material, $steps, $chunks);
+
+        $now = now();
+        $version->status = MaterialProfileStatus::READY;
+        $version->completed_at = $now;
+        $version->failed_at = null;
+        $version->error_code = null;
+        $version->error_message = null;
+        $version->save();
+
+        foreach ($steps as $step) {
+            $step->lease_expires_at = null;
+            $step->save();
+        }
+
+        return $version->refresh();
     }
 
     private function assertOwnership(MaterialProfileVersion $version, Material $material): void
@@ -264,6 +283,8 @@ class FinalizeMaterialProfileReady
     ): void {
         $length = mb_strlen($content, 'UTF-8');
         $seenSortOrders = [];
+        $maxText = max(1, (int) config('material_profile.max_element_text_chars', 300));
+        $maxEvidence = max(1, (int) config('material_profile.max_evidence_chars', 500));
 
         foreach ($elements as $element) {
             if (in_array((int) $element->sort_order, $seenSortOrders, true)) {
@@ -272,48 +293,93 @@ class FinalizeMaterialProfileReady
 
             $seenSortOrders[] = (int) $element->sort_order;
 
-            if (trim((string) $element->text) === '') {
+            $text = (string) $element->text;
+
+            if (trim($text) === '' || mb_strlen($text, 'UTF-8') > $maxText) {
                 throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
             }
 
-            $chunk = null;
+            if ($element->origin === MaterialProfileElementOrigin::EXTRACTED) {
+                $this->assertExtractedElement($version, $content, $length, $chunks, $element, $maxEvidence);
 
-            if ($element->source_chunk_id !== null) {
-                $chunk = $chunks->first(
-                    fn (MaterialProfileChunk $candidate): bool => (int) $candidate->profile_chunk_id === (int) $element->source_chunk_id,
-                );
-
-                if ($chunk === null || (int) $chunk->profile_version_id !== (int) $version->profile_version_id) {
-                    throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
-                }
+                continue;
             }
 
-            if ($element->origin === MaterialProfileElementOrigin::EXTRACTED && $chunk === null) {
-                throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+            if ($element->origin === MaterialProfileElementOrigin::SUGGESTED) {
+                $this->assertSuggestedElement($element);
+
+                continue;
             }
 
-            if ($element->char_start !== null || $element->char_end !== null) {
-                if ($element->char_start === null || $element->char_end === null) {
-                    throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
-                }
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+        }
+    }
 
-                $start = (int) $element->char_start;
-                $end = (int) $element->char_end;
+    /**
+     * @param  Collection<int, MaterialProfileChunk>  $chunks
+     */
+    private function assertExtractedElement(
+        MaterialProfileVersion $version,
+        string $content,
+        int $length,
+        Collection $chunks,
+        MaterialProfileElement $element,
+        int $maxEvidence,
+    ): void {
+        if ($element->source_chunk_id === null
+            || $element->evidence_excerpt === null
+            || $element->evidence_locator === null
+            || $element->char_start === null
+            || $element->char_end === null) {
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+        }
 
-                if ($start < 0 || $end <= $start || $end > $length) {
-                    throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
-                }
+        $chunk = $chunks->first(
+            fn (MaterialProfileChunk $candidate): bool => (int) $candidate->profile_chunk_id === (int) $element->source_chunk_id,
+        );
 
-                if ($chunk !== null && ($start < (int) $chunk->char_start || $end > (int) $chunk->char_end)) {
-                    throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
-                }
+        if ($chunk === null || (int) $chunk->profile_version_id !== (int) $version->profile_version_id) {
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+        }
 
-                $excerpt = mb_substr($content, $start, $end - $start, 'UTF-8');
+        $start = (int) $element->char_start;
+        $end = (int) $element->char_end;
 
-                if (is_string($element->evidence_excerpt) && $element->evidence_excerpt !== $excerpt) {
-                    throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
-                }
-            }
+        if ($start < 0 || $end <= $start || $end > $length) {
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+        }
+
+        if ($start < (int) $chunk->char_start || $end > (int) $chunk->char_end) {
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+        }
+
+        $excerpt = mb_substr($content, $start, $end - $start, 'UTF-8');
+
+        if (! is_string($element->evidence_excerpt)
+            || $element->evidence_excerpt !== $excerpt
+            || mb_strlen($element->evidence_excerpt, 'UTF-8') > $maxEvidence) {
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+        }
+
+        $expectedLocator = ValidateProfileMapCandidates::evidenceLocator(
+            (int) $chunk->chunk_index,
+            $start,
+            $end,
+        );
+
+        if ((string) $element->evidence_locator !== $expectedLocator) {
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+        }
+    }
+
+    private function assertSuggestedElement(MaterialProfileElement $element): void
+    {
+        if ($element->source_chunk_id !== null
+            || $element->evidence_excerpt !== null
+            || $element->evidence_locator !== null
+            || $element->char_start !== null
+            || $element->char_end !== null) {
+            throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
         }
     }
 

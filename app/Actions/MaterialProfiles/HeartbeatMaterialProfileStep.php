@@ -15,6 +15,8 @@ class HeartbeatMaterialProfileStep
 {
     use LocksMaterialProfileWorkflow;
 
+    public function __construct(private AssertMaterialProfileWorkflowAuthority $assertAuthority) {}
+
     public function handle(
         int $profileVersionId,
         int $profileStepId,
@@ -44,11 +46,15 @@ class HeartbeatMaterialProfileStep
                 return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Terminal);
             }
 
+            if ($stepExecutionToken === '') {
+                return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Revoked);
+            }
+
             if ((string) $step->step_execution_token !== $stepExecutionToken) {
                 return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Duplicate);
             }
 
-            if ($step->lease_expires_at !== null && $step->lease_expires_at->lte(now())) {
+            if (! $this->assertAuthority->hasLiveProcessingLease($step)) {
                 return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Expired);
             }
 

@@ -80,7 +80,16 @@ app/Services/Subscriptions
 - `env()` hanya di `config/*.php`. Kredensial pembayaran manual: `config/subscriptions.php` (`SUBSCRIPTION_WHATSAPP_NUMBER`, `SUBSCRIPTION_QRIS_PATH`). QRIS memakai disk `public`, bukan path Blade hard-code.
 - Operasi pembayaran/upgrade mengunci baris `users` terlebih dahulu, lalu request, lalu antrian subscription. Satu pending request per user ditegakkan di aplikasi, bukan unique `(user_id, status)`.
 - Start generation mengunci `users` lalu `materials` (reload by PK). Claim/begin-attempt/finish-attempt/partial persist mengunci `users` lalu `ai_generations` dan menuntut `processing` + matching `execution_token`. Finalize success/failure mengunci `users` lalu `ai_generations` lalu `ai_usage_logs`. Consume/Release tidak memanggil `ResolveUserEntitlement` / `ResolveGenerationQuota`. Gemini HTTP tidak di dalam transaksi DB.
-- Queue generation memakai connection `database-generation` (`GENERATION_QUEUE_RETRY_AFTER` 360). Jangan mengubah `database.retry_after` / `DB_QUEUE_RETRY_AFTER` (extraction tetap 90). Production membutuhkan worker generation terpisah.
+- Queue generation memakai connection `database-generation` (`GENERATION_QUEUE_RETRY_AFTER` 360). Jangan mengubah `database.retry_after` / `DB_QUEUE_RETRY_AFTER` (extraction tetap 90). Production membutuhkan worker generation yang juga mengonsumsi `material-intelligence`:
+
+```text
+php artisan queue:work database-generation \
+  --queue=question-generation,material-intelligence \
+  --timeout=270 \
+  --tries=3
+```
+
+`question-generation` diprioritaskan lebih dulu. `retry_after` 360 harus lebih besar dari timeout 270. Worker extraction dan `retry_after` 90 tidak diubah.
 - `.env` lokal wajib `DB_CONNECTION=mysql`. SQLite hanya untuk test otomatis melalui `phpunit.xml`.
 - Semua perubahan schema menggunakan migration.
 - `docs/database/AI_QUESTION_BANK.dbml` adalah desain canonical.
@@ -181,7 +190,9 @@ Minimum coverage khusus:
 - Phase 4.1+4.2 runtime: quota reservation, charge, release, ownership vs eligibility, dan concurrency generation.
 - Phase 4.5+4.6: generation owner UI/preview, status JSON, manual retry, dan stale recovery. Jangan mengklaim SQLite membuktikan row lock.
 - Phase 5.1–5.6 (`COMPLETE`, MCQ-only): import completed MCQ ke Question Set draft, edit draf atomik, publish `draft → published`, unique `generation_id`, ownership 404, dan UI index/show/edit. Jangan mengklaim SQLite membuktikan row lock.
-- Phase 5.7B1 (`COMPLETE`, foundation only): schema/index Material Profile, eligibility, hasher/splitter UTF-8, satu `workflow_token` per versi, `step_execution_token` per claim, lease 120s vs abandonment 900s, ready/failure invariants, recovery bounded/idempotent, zero `ai_usage_logs`, zero rute HTTP profil. Jangan mengklaim SQLite membuktikan first-lock-wins.
+- Phase 5.7B1 (`COMPLETE`, foundation only): schema/index Material Profile, eligibility, hasher/splitter UTF-8, satu `workflow_token` per versi, `step_execution_token` per claim, lease 120s vs abandonment 900s, ready/failure invariants, recovery bounded/idempotent, zero `ai_usage_logs`. Jangan mengklaim SQLite membuktikan first-lock-wins.
+- Phase 5.7B2 (`COMPLETE`): reuse versi ready, penolakan in-flight, throttle tiga per jam bergulir, urutan map naik dan reduce terakhir, reduce lossless terbatas, fingerprint reduce sebelum HTTP, `failed()` kedaluwarsa tanpa otoritas, identity Attempt immutable, satu token workflow vs token Step per Step, retry memakai token Step yang sama, batas tiga Attempt, mapping error provider (timeout, 429, 5xx, schema invalid, auth permanen), validasi evidence UTF-8 dengan penolakan respons penuh, persistensi map atomik, dan reduce-ready plus Version-ready atomik. Worker produksi harus mengonsumsi `material-intelligence`. Provider dan HTTP wajib difake; jangan memanggil Gemini nyata. Jangan mengklaim SQLite membuktikan first-lock-wins.
+- Phase 5.7B3 (`COMPLETE`): rute owner profil, otorisasi owner untuk view/status/start/regenerate, allowlist field pada status JSON, polling tanpa side effect, state `none`/`queued`/`processing`/`ready`/`failed`/`stale`, escaping teks turunan provider, regenerasi POST yang tidak mengubah versi terminal, mapping pesan Indonesia yang aman, dan `error_code` publik tanpa kode otoritas internal. Jangan menambah editing element, blueprint, integrasi generation, atau akuntansi credit.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

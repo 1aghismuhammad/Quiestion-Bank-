@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GenerationController;
 use App\Http\Controllers\MaterialController;
+use App\Http\Controllers\MaterialProfileController;
 use App\Http\Controllers\MaterialTopicController;
 use App\Http\Controllers\ProfileSetupController;
 use App\Http\Controllers\QuestionSetController;
@@ -128,6 +129,15 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('generations.create');
                 Route::post('/materials/{material}/generations', [GenerationController::class, 'store'])
                     ->name('generations.store');
+
+                Route::get('/materials/{material}/profile', [MaterialProfileController::class, 'show'])
+                    ->name('materials.profile.show');
+                Route::get('/materials/{material}/profile/status', [MaterialProfileController::class, 'status'])
+                    ->name('materials.profile.status');
+                Route::post('/materials/{material}/profile', [MaterialProfileController::class, 'store'])
+                    ->name('materials.profile.store');
+                Route::post('/materials/{material}/profile/regenerate', [MaterialProfileController::class, 'regenerate'])
+                    ->name('materials.profile.regenerate');
 
                 Route::post('/materials/{material}/topics', [MaterialTopicController::class, 'store'])
                     ->name('materials.topics.store');

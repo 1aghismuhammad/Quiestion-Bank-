@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.15.1
+- Version: 0.15.3
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -126,7 +126,9 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Kombinasi user dan file hash unique untuk mencegah duplikasi per user.
 - Storage usage menghitung seluruh upload yang belum dihapus, termasuk archived dan extraction failed.
 - Lifecycle material mendukung `draft|ready -> archived` dan owner restore `archived -> ready`.
-- Phase 5.7B1 menambahkan fondasi Material Profile: versi, chunk UTF-8, step lifecycle, attempt, element, hasher, splitter, eligibility, `workflow_token`, `step_execution_token`, lease 120 detik, abandonment 900 detik, dan `profiles:recover-stale`. Tidak ada Gemini, production job, atau HTTP/UI profil. Batas kanonis 240.000 karakter; batas generation 80.000 tidak dipakai. Admin tidak bypass owner isolation.
+- Phase 5.7B1 menambahkan fondasi Material Profile: versi, chunk UTF-8, step lifecycle, attempt, element, hasher, splitter, eligibility, `workflow_token`, `step_execution_token`, lease 120 detik, abandonment 900 detik, dan `profiles:recover-stale`. Batas kanonis 240.000 karakter; batas generation 80.000 tidak dipakai. Admin tidak bypass owner isolation.
+- Phase 5.7B2 menambahkan provider Gemini tersendiri (`MaterialProfileAnalysisProvider`), identity provider yang netral di domain Action, reuse versi ready, throttle tiga per jam, Job map/reduce sekuensial pada antrian `material-intelligence`, validasi evidence UTF-8, reduce lossless terbatas, verifikasi fingerprint sebelum HTTP reduce, dan finalisasi reduce-ready plus Version-ready yang atomik. `failed()` yang leasenya kedaluwarsa tidak punya otoritas tulis. Analisis profil tidak memotong credit generation dan tidak menulis `ai_usage_logs`.
+- Phase 5.7B3 membuka start, polling status, review, dan regenerasi kepada owner materi. Hasil stale tidak ditampilkan sebagai profil terkini. Tidak ada editing element, blueprint, atau integrasi generation.
 
 ### Subscription and Quota
 
@@ -174,7 +176,7 @@ AI Engine consists of:
 
 - Prompt identity: `McqPromptBuilder::version()` from config, persisted on each `ai_generation_attempts.prompt_version`. No `prompt_versions` table. No `ai_generations.prompt_version`.
 - Gemini HTTP client adapter (`generateContent`, JSON schema, 60s timeout). Primary/fallback models configurable.
-- Queue-based generation on connection `database-generation` / queue `question-generation`. Existing Material extraction connection `retry_after` 90 is unchanged.
+- Queue-based generation on connection `database-generation` / queue `question-generation`. Material Profile analysis uses the same connection and queue `material-intelligence`. Existing Material extraction connection `retry_after` 90 is unchanged.
 - MCQ schema validation and deterministic duplicate detection. Targeted repair requests only missing/invalid slots.
 - Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry after `failed` creates a new Generation with `parent_generation_id` written in the Start transaction.
 - Provider/model/token metadata on attempts and optional Generation aggregates. Do not persist raw prompt or full raw Gemini response. Diagnostic/error metadata is sanitized.
@@ -246,15 +248,24 @@ GENERATION_STALE_RECOVERY_BATCH=50
 
 `GENERATION_STALE_AFTER_SECONDS` default and runtime floor is 1800 seconds; operators may configure a higher threshold. Runtime recovery uses `max(1800, configured)`.
 
-Nama model Gemini disimpan pada `config/generation.php` (primary + fallback) dan dicatat per provider attempt. Production membutuhkan worker terpisah untuk `database-generation` / `question-generation` (timeout ~300) di samping worker extraction yang ada.
+Nama model Gemini disimpan pada `config/generation.php` (primary + fallback) dan dicatat per provider attempt. Production membutuhkan worker `database-generation` yang mengonsumsi `question-generation` lalu `material-intelligence` (timeout 270, `retry_after` 360) di samping worker extraction yang ada (`retry_after` 90, tidak diubah).
 
 ## Deployment Topology
 
 MVP membutuhkan:
 
 1. Web application Laravel.
-2. Queue worker for `material-extraction,default` (existing `retry_after` 90).
-3. Queue worker for `database-generation` / `question-generation` (`retry_after` 360, timeout ~300).
+2. Queue worker for `material-extraction,default` (existing `retry_after` 90). Do not change this worker or its `retry_after`.
+3. Queue worker for generation and Material Profile analysis:
+
+```text
+php artisan queue:work database-generation \
+  --queue=question-generation,material-intelligence \
+  --timeout=270 \
+  --tries=3
+```
+
+`question-generation` is first so question jobs are claimed before profile jobs. Connection `retry_after` 360 must stay greater than Job timeout 270. A dedicated `material-intelligence` worker is also valid if the same timeout and tries are used.
 4. Scheduler.
 5. Relational database.
 6. File storage lokal atau object storage.

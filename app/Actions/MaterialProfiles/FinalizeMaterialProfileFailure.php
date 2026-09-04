@@ -17,14 +17,17 @@ class FinalizeMaterialProfileFailure
 {
     use LocksMaterialProfileWorkflow;
 
-    public function handle(int $profileVersionId, MaterialProfileErrorCode $errorCode): MaterialProfileVersion
-    {
-        return DB::transaction(function () use ($profileVersionId, $errorCode): MaterialProfileVersion {
+    public function handle(
+        int $profileVersionId,
+        MaterialProfileErrorCode $errorCode,
+        ?int $targetStepId = null,
+    ): MaterialProfileVersion {
+        return DB::transaction(function () use ($profileVersionId, $errorCode, $targetStepId): MaterialProfileVersion {
             $version = $this->lockUserMaterialAndVersion($profileVersionId);
             $steps = $this->lockStepsAscending($profileVersionId);
             $this->lockChunksAscending($profileVersionId);
 
-            return $this->apply($version, $steps, $errorCode);
+            return $this->apply($version, $steps, $errorCode, $targetStepId);
         });
     }
 

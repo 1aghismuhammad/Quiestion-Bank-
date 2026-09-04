@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.1
+- Version: 0.15.3
 - Domain entities: 23 domain entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, dan `option_id` mengikuti custom PK
@@ -159,9 +159,9 @@ Bab, sub-bab, topik, focus area, urutan, dan rentang halaman yang berasal dari s
 
 Kombinasi material, chapter, sub-chapter, dan topic dibuat unique. Index `(material_id, sort_order)` dipakai untuk membaca topik sesuai urutan.
 
-### Material Profile (Phase 5.7B1 foundation)
+### Material Profile (Phase 5.7B1–B3)
 
-Phase 5.7B1 menambahkan persistence dan lifecycle Material Profile tanpa pemanggilan AI, tanpa production job, dan tanpa HTTP/UI.
+Phase 5.7B1 menambahkan persistence dan lifecycle Material Profile. Phase 5.7B2 menambahkan pemanggilan Gemini sekuensial dan Job produksi di schema yang sama. Phase 5.7B3 menambahkan HTTP/UI owner tanpa tabel baru. Tidak ada migration setelah lima tabel B1.
 
 Eligible materials:
 
@@ -180,17 +180,17 @@ Struktur konten deterministik. Offset UTF-8 code point (`char_start` inklusif, `
 
 #### `material_profile_steps`
 
-Sumber kebenaran lifecycle. Unique `(profile_version_id, purpose, step_index)`. Unique nullable `profile_chunk_id` (paling banyak satu map step per chunk; reduce memakai `null`). Map: `purpose=map`, `profile_chunk_id` wajib. Reduce: `purpose=reduce`, `step_index=0`, `profile_chunk_id` null. `step_execution_token` diisi saat claim, bukan saat queue.
+Sumber kebenaran lifecycle. Unique `(profile_version_id, purpose, step_index)`. Unique nullable `profile_chunk_id` (paling banyak satu map step per chunk; reduce memakai `null`). Map: `purpose=map`, `profile_chunk_id` wajib. Reduce: `purpose=reduce`, `step_index=0`, `profile_chunk_id` null. Phase 5.7B2 men-mint `step_execution_token` saat dispatch Step; retry Job yang sama memakai token tersimpan. Claim B1 tetap dapat menerima token caller jika Step queued belum punya token.
 
 #### `material_profile_elements`
 
-Elemen `extracted` atau `suggested`. Kind B1: `topic`, `objective`, `indicator`, `other`. Extracted memerlukan `source_chunk_id` pada versi yang sama.
+Elemen `extracted` atau `suggested`. Kind B1: `topic`, `objective`, `indicator`, `other`. Extracted memerlukan `source_chunk_id` pada versi yang sama, `evidence_excerpt` non-null yang persis substring kanonis, locator `core-{chunkIndex}:{charStart}-{charEnd}`, dan kedua offset di dalam chunk pemilik. Suggested tidak membawa chunk, evidence, atau offset. Setiap extracted yang lolos persist map masuk reduce; tidak ada truncasi diam-diam.
 
 #### `material_profile_attempts`
 
-Audit per step. Unique `(profile_step_id, attempt_number)`. Tidak menyimpan raw prompt atau raw provider body.
+Audit per step. Unique `(profile_step_id, attempt_number)`. Tidak menyimpan raw prompt atau raw provider body. Provider/model/prompt version/purpose yang ditulis saat Attempt mulai bersifat immutable; metadata pasca-panggilan hanya token/latency yang terbatas. Phase 5.7B2 memakai tabel ini sebagai satu-satunya audit pemanggilan provider. Analisis profil tidak menulis `ai_usage_logs` dan tidak memotong credit generation.
 
-Lock order: User → Material → Profile Version → Steps ascending `profile_step_id` → Chunks ascending `profile_chunk_id`. Processing lease 120 detik terpisah dari queued abandonment 900 detik. `profiles:recover-stale` setiap menit `withoutOverlapping`. Recovery tidak menulis `ai_usage_logs`.
+Lock order: User → Material → Profile Version → Steps ascending `profile_step_id` → Chunks ascending `profile_chunk_id`. Processing lease 120 detik terpisah dari queued abandonment 900 detik. Job `failed()` pada Step processing hanya berwenang selama lease masih `gt(now())`. `profiles:recover-stale` setiap menit `withoutOverlapping`. Recovery tidak menulis `ai_usage_logs`. Worker produksi `database-generation` harus mengonsumsi antrian `material-intelligence` (timeout 270, `retry_after` 360). Owner JSON tidak menampilkan `duplicate_worker`, `not_next_step`, `revoked`, atau `validation_failed` secara verbatim.
 
 ### AI Engine
 

@@ -6,6 +6,8 @@ namespace Tests\Feature\MaterialProfiles;
 
 use App\Actions\MaterialProfiles\FinalizeMaterialProfileFailure;
 use App\Actions\MaterialProfiles\FinalizeMaterialProfileReady;
+use App\Enums\MaterialProfileElementKind;
+use App\Enums\MaterialProfileElementOrigin;
 use App\Enums\MaterialProfileErrorCode;
 use App\Enums\MaterialProfileStatus;
 use App\Enums\MaterialProfileStepPurpose;
@@ -13,6 +15,7 @@ use App\Enums\MaterialProfileStepStatus;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 use App\Models\Material;
 use App\Models\MaterialProfileAttempt;
+use App\Models\MaterialProfileElement;
 use App\Models\MaterialProfileStep;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -102,6 +105,38 @@ class FinalizeMaterialProfileReadyTest extends TestCase
             }),
             'missing_elements' => $version->elements()->delete(),
             'extracted_without_chunk' => $version->elements()->update(['source_chunk_id' => null]),
+            'extracted_missing_evidence' => $version->elements()->update(['evidence_excerpt' => null]),
+            'extracted_missing_offsets' => $version->elements()->update([
+                'char_start' => null,
+                'char_end' => null,
+            ]),
+            'extracted_foreign_chunk' => tap($version, function ($current) use ($user): void {
+                $other = Material::factory()->text()->for($user)->create(['content' => 'Materi lain.']);
+                $foreign = $this->queueProfile($user, $other);
+                $current->elements()->update([
+                    'source_chunk_id' => $foreign->chunks()->value('profile_chunk_id'),
+                ]);
+            }),
+            'suggested_with_chunk' => MaterialProfileElement::factory()->create([
+                'profile_version_id' => $version->profile_version_id,
+                'source_chunk_id' => $version->chunks()->value('profile_chunk_id'),
+                'kind' => MaterialProfileElementKind::TOPIC,
+                'origin' => MaterialProfileElementOrigin::SUGGESTED,
+                'text' => 'Saran dengan chunk',
+                'sort_order' => 50,
+            ]),
+            'suggested_with_evidence' => MaterialProfileElement::factory()->create([
+                'profile_version_id' => $version->profile_version_id,
+                'kind' => MaterialProfileElementKind::TOPIC,
+                'origin' => MaterialProfileElementOrigin::SUGGESTED,
+                'text' => 'Saran dengan bukti',
+                'evidence_excerpt' => 'bukti',
+                'evidence_locator' => 'core-0:0-5',
+                'char_start' => 0,
+                'char_end' => 5,
+                'sort_order' => 51,
+            ]),
+            'malformed_evidence_locator' => $version->elements()->update(['evidence_locator' => 'core-0']),
             'invalid_element_offsets' => $version->elements()->update(['char_end' => 999_999]),
             'hash_changed' => $material->update(['content' => 'Konten berubah.']),
             'ownership_mismatch' => $version->update(['user_id' => User::factory()->create()->id]),
@@ -188,6 +223,12 @@ class FinalizeMaterialProfileReadyTest extends TestCase
             'missing map attempt' => ['missing_map_attempt'],
             'missing elements' => ['missing_elements'],
             'extracted without chunk' => ['extracted_without_chunk'],
+            'extracted missing evidence' => ['extracted_missing_evidence'],
+            'extracted missing offsets' => ['extracted_missing_offsets'],
+            'extracted foreign chunk' => ['extracted_foreign_chunk'],
+            'suggested with chunk' => ['suggested_with_chunk'],
+            'suggested with evidence' => ['suggested_with_evidence'],
+            'malformed evidence locator' => ['malformed_evidence_locator'],
             'invalid element offsets' => ['invalid_element_offsets'],
             'hash changed' => ['hash_changed'],
             'ownership mismatch' => ['ownership_mismatch'],
