@@ -52,6 +52,12 @@ class Material extends Model
         return $this->hasMany(AiGeneration::class, 'material_id', 'material_id');
     }
 
+    public function profileVersions(): HasMany
+    {
+        return $this->hasMany(MaterialProfileVersion::class, 'material_id', 'material_id')
+            ->orderBy('version');
+    }
+
     /**
      * @return array<string, string>
      */

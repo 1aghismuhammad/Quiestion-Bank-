@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1 is `COMPLETE`. Phase 5.7B2+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; 5.7B+ not started)
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; 5.7B2+ not started)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -253,7 +253,14 @@ Phase 5.7A — Upload-only Material Transition:
 - `CreateTextMaterial` and `SourceType::TEXT` remain for legacy/internal use. No file replacement. No schema migration.
 - Users above effective storage quota cannot create a new Material because upload is the only creation path.
 
-Out of scope for 5.7A: Material Profile, blueprint, generation run, multi-credit quota, Advanced Mode, DOCX export.
+Phase 5.7B1 — Material Profile Foundation (`COMPLETE`):
+
+- Five profile tables, models, factories, enums, hasher, UTF-8 splitter, eligibility, queue/claim/heartbeat/ready/failure/recovery Actions, and `profiles:recover-stale`.
+- Foundation only: no Gemini/provider HTTP, no production profile job, no profile HTTP route or UI.
+- Canonical content cap is 240,000 UTF-8 code points. The generation 80,000-character cap is not used for profile eligibility.
+- One `workflow_token` per Profile Version. `step_execution_token` is supplied at claim. Processing lease 120s is separate from queued abandonment 900s.
+
+Out of scope for 5.7B1: production jobs, Gemini, profile HTTP/UI, blueprint, generation Start changes, quota/usage writes, DOCX.
 
 ## Phase 6 - Admin Dashboard
 

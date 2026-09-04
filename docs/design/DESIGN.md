@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.15.0
+- Version: 0.15.1
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -126,6 +126,7 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Kombinasi user dan file hash unique untuk mencegah duplikasi per user.
 - Storage usage menghitung seluruh upload yang belum dihapus, termasuk archived dan extraction failed.
 - Lifecycle material mendukung `draft|ready -> archived` dan owner restore `archived -> ready`.
+- Phase 5.7B1 menambahkan fondasi Material Profile: versi, chunk UTF-8, step lifecycle, attempt, element, hasher, splitter, eligibility, `workflow_token`, `step_execution_token`, lease 120 detik, abandonment 900 detik, dan `profiles:recover-stale`. Tidak ada Gemini, production job, atau HTTP/UI profil. Batas kanonis 240.000 karakter; batas generation 80.000 tidak dipakai. Admin tidak bypass owner isolation.
 
 ### Subscription and Quota
 

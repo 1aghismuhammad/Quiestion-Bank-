@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('generations:recover-stale')
     ->everyMinute()
     ->withoutOverlapping(10);
+
+Schedule::command('profiles:recover-stale')
+    ->everyMinute()
+    ->withoutOverlapping(10);

@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.14.0
+// Version: 0.15.1
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -55,6 +55,43 @@ Enum material_status {
   draft
   ready
   archived
+}
+
+Enum material_profile_status {
+  queued
+  processing
+  ready
+  failed
+}
+
+Enum material_profile_step_purpose {
+  map
+  reduce
+}
+
+Enum material_profile_step_status {
+  queued
+  processing
+  ready
+  failed
+}
+
+Enum material_profile_attempt_status {
+  started
+  succeeded
+  failed
+}
+
+Enum material_profile_element_origin {
+  extracted
+  suggested
+}
+
+Enum material_profile_element_kind {
+  topic
+  objective
+  indicator
+  other
 }
 
 Enum prompt_status {
@@ -311,6 +348,131 @@ Table material_topics {
     (material_id, sort_order)
     (material_id, chapter, sub_chapter, topic_name) [unique]
   }
+}
+
+Table material_profile_versions {
+  profile_version_id bigint [pk, increment]
+  material_id bigint [not null]
+  user_id bigint [not null]
+  version int [not null]
+  status material_profile_status [not null]
+  workflow_token char(36) [not null]
+  queued_at timestamp [not null]
+  started_at timestamp
+  completed_at timestamp
+  failed_at timestamp
+  error_code varchar(64)
+  error_message varchar(255)
+  material_content_hash char(64) [not null]
+  material_file_hash char(64)
+  extractor_implementation varchar(100) [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (material_id, version) [unique, name: 'mat_prof_ver_material_version_uq']
+    (material_id, status) [name: 'mat_prof_ver_material_status_idx']
+    (user_id, created_at) [name: 'mat_prof_ver_user_created_idx']
+  }
+
+  Note: 'Phase 5.7B1 foundation. One workflow_token per version. No Gemini, no production HTTP, no production job dispatch. At most one queued or processing version per Material is enforced in application under User then Material locks.'
+}
+
+Table material_profile_chunks {
+  profile_chunk_id bigint [pk, increment]
+  profile_version_id bigint [not null]
+  chunk_index int [not null]
+  char_start int [not null]
+  char_end int [not null]
+  overlap_before_start int
+  overlap_before_end int
+  core_text_hash char(64) [not null]
+  required boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (profile_version_id, chunk_index) [unique, name: 'mat_prof_chunk_version_index_uq']
+  }
+
+  Note: 'UTF-8 code-point offsets. char_start inclusive, char_end exclusive. Overlap is extra context outside the core. No step status, token, or lease columns.'
+}
+
+Table material_profile_steps {
+  profile_step_id bigint [pk, increment]
+  profile_version_id bigint [not null]
+  purpose material_profile_step_purpose [not null]
+  step_index int [not null]
+  profile_chunk_id bigint
+  status material_profile_step_status [not null]
+  workflow_token char(36) [not null]
+  step_execution_token char(36)
+  step_queued_at timestamp
+  claimed_at timestamp
+  heartbeat_at timestamp
+  lease_expires_at timestamp
+  error_code varchar(64)
+  error_message varchar(255)
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (profile_version_id, purpose, step_index) [unique, name: 'mat_prof_step_ver_purpose_idx_uq']
+    (profile_chunk_id) [unique, name: 'mat_prof_step_chunk_id_uq']
+    (profile_version_id, status) [name: 'mat_prof_step_version_status_idx']
+  }
+
+  Note: 'Lifecycle source of truth. Map requires profile_chunk_id. Reduce uses purpose=reduce, step_index=0, profile_chunk_id null. Unique nullable profile_chunk_id allows one map step per chunk and multiple reduce nulls.'
+}
+
+Table material_profile_elements {
+  profile_element_id bigint [pk, increment]
+  profile_version_id bigint [not null]
+  source_chunk_id bigint
+  kind material_profile_element_kind [not null]
+  text text [not null]
+  origin material_profile_element_origin [not null]
+  evidence_excerpt text
+  evidence_locator varchar(255)
+  char_start int
+  char_end int
+  sort_order int [not null, default: 0]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (profile_version_id, sort_order) [name: 'mat_prof_elem_version_sort_idx']
+  }
+
+  Note: 'Extracted elements require source_chunk_id on the same Profile Version. Suggested elements may omit chunk context.'
+}
+
+Table material_profile_attempts {
+  profile_attempt_id bigint [pk, increment]
+  profile_version_id bigint [not null]
+  profile_step_id bigint [not null]
+  attempt_number int [not null]
+  provider varchar(32) [not null]
+  model varchar(100) [not null]
+  prompt_version varchar(32) [not null]
+  purpose material_profile_step_purpose [not null]
+  status material_profile_attempt_status [not null]
+  input_tokens int
+  output_tokens int
+  total_tokens int
+  latency_ms int
+  error_code varchar(64)
+  started_at timestamp [not null]
+  finished_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (profile_step_id, attempt_number) [unique, name: 'mat_prof_attempt_step_number_uq']
+    (profile_version_id) [name: 'mat_prof_attempt_version_idx']
+  }
+
+  Note: 'No raw prompt or raw provider response. Attempt error codes are provider_timeout, provider_http, schema_invalid, and validation_failed.'
 }
 
 //////////////////////////////////////////////////////
@@ -593,6 +755,15 @@ Ref: subscriptions.subscription_id < subscription_upgrade_requests.approved_subs
 
 Ref: users.id < materials.user_id
 Ref: materials.material_id < material_topics.material_id [delete: cascade]
+Ref: materials.material_id < material_profile_versions.material_id [delete: restrict]
+Ref: users.id < material_profile_versions.user_id [delete: restrict]
+Ref: material_profile_versions.profile_version_id < material_profile_chunks.profile_version_id [delete: restrict]
+Ref: material_profile_versions.profile_version_id < material_profile_steps.profile_version_id [delete: restrict]
+Ref: material_profile_chunks.profile_chunk_id < material_profile_steps.profile_chunk_id [delete: restrict]
+Ref: material_profile_versions.profile_version_id < material_profile_elements.profile_version_id [delete: restrict]
+Ref: material_profile_chunks.profile_chunk_id < material_profile_elements.source_chunk_id [delete: restrict]
+Ref: material_profile_versions.profile_version_id < material_profile_attempts.profile_version_id [delete: restrict]
+Ref: material_profile_steps.profile_step_id < material_profile_attempts.profile_step_id [delete: restrict]
 
 Ref: users.id < prompt_versions.created_by
 Ref: users.id < ai_generations.user_id [delete: restrict]

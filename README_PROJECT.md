@@ -32,7 +32,7 @@ Question type MVP:
 - Authentication: Google OAuth only.
 - AI: Google Gemini.
 - Processing: queue for long-running operation.
-- Database: MySQL 8+ (Laragon for local development; `DB_CONNECTION=mysql`). Canonical DBML documents 18 domain entities.
+- Database: MySQL 8+ (Laragon for local development; `DB_CONNECTION=mysql`). 23 domain entities documented in the canonical DBML.
 - Automated tests: SQLite in-memory via `phpunit.xml`.
 
 ## Product Modules
@@ -65,6 +65,7 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 - Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine (`COMPLETE`; 4.1–4.6 including owner generation UI and stale recovery).
 - Phase 5: question bank (`COMPLETE`; MCQ-only MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). True/false and essay Question Bank remain later.
+- Phase 5.7: pre-Phase-6 enhancements (`IN PROGRESS`). Phase 5.7A upload-only create is `COMPLETE`. Phase 5.7B1 Material Profile foundation is `COMPLETE` (schema, tokens, leases, recovery; no production AI/HTTP/UI). Phase 5.7B2+ has not started.
 - Phase 6: admin dashboard dan MVP release (`PLANNED`).
 - Phase 7: WhatsApp CRM.
 - Phase 8: optimization dan scaling.

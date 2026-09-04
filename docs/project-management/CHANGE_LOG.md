@@ -26,6 +26,48 @@ Notes:
 -
 ```
 
+## v0.15.1 Phase 5.7B1 Material Profile foundation
+
+- Date: 4 September 2026
+- Version: 0.15.1
+- Phase: Phase 5.7B1 - Material Profile Foundation
+- Type: Feature implementation
+
+Added:
+
+- Material Profile persistence: versions, chunks, steps, elements, attempts.
+- Canonical UTF-8 hasher and boundary-aware splitter (core 12,000, overlap 400 extra, max 20 chunks, max 240,000 characters).
+- Eligibility, queue, claim, heartbeat, ready/failure finalization, and stale recovery Actions.
+- Scheduler command `profiles:recover-stale` every minute without overlapping.
+
+Changed:
+
+- Docs record Phase 5.7B1 `COMPLETE` as foundation only. Phase 5.7 remains `IN PROGRESS`. Phase 5.7B2+ remains not started. Phase 6 remains `PLANNED`.
+
+Fixed:
+
+- None.
+
+Database Impact:
+
+- Five migrations after `2026_09_01_140003`: `material_profile_versions`, `material_profile_chunks`, `material_profile_steps`, `material_profile_elements`, `material_profile_attempts`.
+- Unique `(profile_version_id, purpose, step_index)` and unique nullable `profile_chunk_id` on steps.
+- Unique `(profile_step_id, attempt_number)` on attempts.
+- No `ai_usage_logs` writes. No Composer dependency.
+
+Notes:
+
+- B1 does not call Gemini or any AI provider.
+- B1 does not dispatch a production profile job.
+- B1 does not add profile HTTP routes, controllers, or UI.
+- One `workflow_token` per Profile Version.
+- Phase 5.7B1 stores a caller-supplied `step_execution_token` during claim.
+- Phase 5.7B2 will mint the token when dispatching each step job.
+- Automatic retry of the same serialized job will retain the same token.
+- Processing lease is 120 seconds; queued abandonment is 900 seconds.
+- Canonical profile eligibility does not use the generation 80,000-character cap.
+- Historical CHANGE_LOG entries are not rewritten.
+
 ## v0.15.0 Phase 5.7A upload-only Material creation
 
 - Date: 3 September 2026

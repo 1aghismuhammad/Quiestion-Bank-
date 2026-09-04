@@ -8,8 +8,8 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.0
-- Domain entities: 18
+- Version: 0.15.1
+- Domain entities: 23 domain entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, dan `option_id` mengikuti custom PK
 - Timestamp style: `created_at`, `updated_at`, dan `deleted_at` jika diperlukan
@@ -22,6 +22,11 @@ Tabel bawaan Laravel seperti sessions, cache, jobs, job batches, dan failed jobs
 flowchart LR
     U[users] --> M[materials]
     M --> T[material_topics]
+    M --> PV[material_profile_versions]
+    PV --> PC[material_profile_chunks]
+    PV --> PS[material_profile_steps]
+    PV --> PE[material_profile_elements]
+    PS --> PA[material_profile_attempts]
     U --> Sub[subscriptions]
     Pl[plans] --> Sub
     Pl --> Off[plan_offers]
@@ -154,6 +159,39 @@ Bab, sub-bab, topik, focus area, urutan, dan rentang halaman yang berasal dari s
 
 Kombinasi material, chapter, sub-chapter, dan topic dibuat unique. Index `(material_id, sort_order)` dipakai untuk membaca topik sesuai urutan.
 
+### Material Profile (Phase 5.7B1 foundation)
+
+Phase 5.7B1 menambahkan persistence dan lifecycle Material Profile tanpa pemanggilan AI, tanpa production job, dan tanpa HTTP/UI.
+
+Eligible materials:
+
+- READY text dengan `extraction_status=not_required`
+- READY upload dengan `extraction_status=completed`
+
+Batas kanonis adalah 240.000 UTF-8 code point. Batas generation 80.000 karakter tidak dipakai. Owner isolation tetap; Admin tidak bypass.
+
+#### `material_profile_versions`
+
+Aggregate workflow. Satu `workflow_token` di-mint sekali oleh `QueueMaterialProfileAnalysis`. Status: `queued`, `processing`, `ready`, `failed`. Unique `(material_id, version)`. Paling banyak satu versi `queued` atau `processing` per Material.
+
+#### `material_profile_chunks`
+
+Struktur konten deterministik. Offset UTF-8 code point (`char_start` inklusif, `char_end` eksklusif). Overlap opsional di luar core. Tidak menyimpan status, token, atau lease.
+
+#### `material_profile_steps`
+
+Sumber kebenaran lifecycle. Unique `(profile_version_id, purpose, step_index)`. Unique nullable `profile_chunk_id` (paling banyak satu map step per chunk; reduce memakai `null`). Map: `purpose=map`, `profile_chunk_id` wajib. Reduce: `purpose=reduce`, `step_index=0`, `profile_chunk_id` null. `step_execution_token` diisi saat claim, bukan saat queue.
+
+#### `material_profile_elements`
+
+Elemen `extracted` atau `suggested`. Kind B1: `topic`, `objective`, `indicator`, `other`. Extracted memerlukan `source_chunk_id` pada versi yang sama.
+
+#### `material_profile_attempts`
+
+Audit per step. Unique `(profile_step_id, attempt_number)`. Tidak menyimpan raw prompt atau raw provider body.
+
+Lock order: User → Material → Profile Version → Steps ascending `profile_step_id` → Chunks ascending `profile_chunk_id`. Processing lease 120 detik terpisah dari queued abandonment 900 detik. `profiles:recover-stale` setiap menit `withoutOverlapping`. Recovery tidak menulis `ai_usage_logs`.
+
 ### AI Engine
 
 #### `prompt_versions`
@@ -280,6 +318,15 @@ erDiagram
     SUBSCRIPTIONS |o--o| SUBSCRIPTION_UPGRADE_REQUESTS : approved_from
     USERS ||--o{ MATERIALS : owns
     MATERIALS ||--o{ MATERIAL_TOPICS : contains
+    MATERIALS ||--o{ MATERIAL_PROFILE_VERSIONS : profiles
+    USERS ||--o{ MATERIAL_PROFILE_VERSIONS : owns
+    MATERIAL_PROFILE_VERSIONS ||--o{ MATERIAL_PROFILE_CHUNKS : splits
+    MATERIAL_PROFILE_VERSIONS ||--o{ MATERIAL_PROFILE_STEPS : steps
+    MATERIAL_PROFILE_CHUNKS |o--o| MATERIAL_PROFILE_STEPS : map_step
+    MATERIAL_PROFILE_VERSIONS ||--o{ MATERIAL_PROFILE_ELEMENTS : elements
+    MATERIAL_PROFILE_CHUNKS |o--o{ MATERIAL_PROFILE_ELEMENTS : evidence
+    MATERIAL_PROFILE_VERSIONS ||--o{ MATERIAL_PROFILE_ATTEMPTS : attempts
+    MATERIAL_PROFILE_STEPS ||--o{ MATERIAL_PROFILE_ATTEMPTS : attempts
     USERS ||--o{ PROMPT_VERSIONS : creates
     USERS ||--o{ AI_GENERATIONS : requests
     MATERIALS ||--o{ AI_GENERATIONS : sources
@@ -321,6 +368,14 @@ Phase 2:
 1. materials, setelah users Phase 1
 2. material_topics, setelah materials
 
+Phase 5.7B1 (setelah materials):
+
+1. material_profile_versions
+2. material_profile_chunks
+3. material_profile_steps
+4. material_profile_elements
+5. material_profile_attempts
+
 Phase 3 (setelah materials):
 
 1. plans
@@ -361,16 +416,21 @@ Urutan target schema lengkap:
 7. subscription_upgrade_requests
 8. materials
 9. material_topics
-10. prompt_versions (planned; not migrated)
-11. ai_generations
-12. ai_usage_logs
-13. ai_generation_attempts
-14. question_sets
-15. questions
-16. question_options
-17. whatsapp_contacts
-18. broadcast_campaigns
-19. broadcast_logs
+10. material_profile_versions
+11. material_profile_chunks
+12. material_profile_steps
+13. material_profile_elements
+14. material_profile_attempts
+15. prompt_versions (planned; not migrated)
+16. ai_generations
+17. ai_usage_logs
+18. ai_generation_attempts
+19. question_sets
+20. questions
+21. question_options
+22. whatsapp_contacts
+23. broadcast_campaigns
+24. broadcast_logs
 
 Self-reference `ai_generations.parent_generation_id` dapat ditambahkan setelah tabel dibuat jika database membutuhkan langkah terpisah.
 

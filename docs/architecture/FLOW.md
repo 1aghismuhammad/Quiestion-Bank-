@@ -90,14 +90,15 @@ flowchart LR
 6. Kombinasi user dan file hash unique sehingga duplikat user yang sama ditolak.
 7. Materi teks **lama** menggunakan extraction status `not_required` dan tetap dapat diedit. Pembuatan materi teks baru tidak tersedia. Upload berjalan pending, processing, lalu completed/failed. Penggantian file tidak didukung.
 8. Material berubah dari draft menjadi ready setelah content text tersedia atau extraction berhasil.
-9. Seluruh upload yang belum dihapus tetap dihitung pada storage usage, termasuk archived dan extraction failed.
-10. Owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
-11. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.
-12. Credit direservasi pada Start generation (satu request = satu reservation) agar request paralel tidak melewati quota. Generation tidak memerlukan draft `question_sets`.
-13. Credit hanya ditagihkan (`charged`) setelah output valid. Terminal failure me-release reservation.
-14. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` counts started HTTP calls, 0 at queue, max 3). Manual retry setelah terminal `failed` membuat Generation baru dan reservation baru; `parent_generation_id` ditulis dalam transaksi Start. `execution_token` membedakan resume Job yang sama vs Job kompetitor.
-15. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview completed `result_json` adalah Phase 4.5 (read-only). Question Bank mengimpor generation completed MCQ ke Question Set `draft`, mengizinkan edit draf, dan publish ke `published` tanpa mengubah data generasi.
-16. Stale queued (`queued_at`) atau processing (`updated_at`) + reserved di-recover ke `failed` + `released` (`stale_recovery`) tanpa HTTP provider. User cancel ditunda.
+9. Phase 5.7B1 Material Profile adalah fondasi internal: Queue/Claim/Heartbeat/Ready/Failure/Recovery tanpa rute HTTP, tombol UI, atau pemanggilan Gemini. Scheduler `profiles:recover-stale` berjalan setiap menit `withoutOverlapping`.
+10. Seluruh upload yang belum dihapus tetap dihitung pada storage usage, termasuk archived dan extraction failed.
+11. Owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
+12. Assessment type, difficulty, dan question type adalah konfigurasi berbeda.
+13. Credit direservasi pada Start generation (satu request = satu reservation) agar request paralel tidak melewati quota. Generation tidak memerlukan draft `question_sets`.
+14. Credit hanya ditagihkan (`charged`) setelah output valid. Terminal failure me-release reservation.
+15. Automatic provider/job retry memakai Generation dan reservation yang sama (`attempt_number` counts started HTTP calls, 0 at queue, max 3). Manual retry setelah terminal `failed` membuat Generation baru dan reservation baru; `parent_generation_id` ditulis dalam transaksi Start. `execution_token` membedakan resume Job yang sama vs Job kompetitor.
+16. Jangan persist raw prompt atau full raw Gemini/provider response secara default. Error/diagnostik disanitasi. Preview completed `result_json` adalah Phase 4.5 (read-only). Question Bank mengimpor generation completed MCQ ke Question Set `draft`, mengizinkan edit draf, dan publish ke `published` tanpa mengubah data generasi.
+17. Stale queued (`queued_at`) atau processing (`updated_at`) + reserved di-recover ke `failed` + `released` (`stale_recovery`) tanpa HTTP provider. User cancel ditunda.
 
 ## AI Generation State Flow
 

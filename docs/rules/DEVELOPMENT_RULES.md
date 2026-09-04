@@ -34,6 +34,7 @@ Rules:
 - Provider-specific response tidak boleh menyebar ke domain layer.
 - Repository tidak wajib; gunakan hanya untuk query kompleks atau sumber data alternatif.
 - Semua mutation multi-tabel menggunakan database transaction.
+- Material Profile mutations mengunci User → Material → Profile Version → required Steps (ascending `profile_step_id`) → required Chunks (ascending `profile_chunk_id`). Jangan membalik urutan ini.
 
 ## Suggested Locations
 
@@ -180,6 +181,7 @@ Minimum coverage khusus:
 - Phase 4.1+4.2 runtime: quota reservation, charge, release, ownership vs eligibility, dan concurrency generation.
 - Phase 4.5+4.6: generation owner UI/preview, status JSON, manual retry, dan stale recovery. Jangan mengklaim SQLite membuktikan row lock.
 - Phase 5.1–5.6 (`COMPLETE`, MCQ-only): import completed MCQ ke Question Set draft, edit draf atomik, publish `draft → published`, unique `generation_id`, ownership 404, dan UI index/show/edit. Jangan mengklaim SQLite membuktikan row lock.
+- Phase 5.7B1 (`COMPLETE`, foundation only): schema/index Material Profile, eligibility, hasher/splitter UTF-8, satu `workflow_token` per versi, `step_execution_token` per claim, lease 120s vs abandonment 900s, ready/failure invariants, recovery bounded/idempotent, zero `ai_usage_logs`, zero rute HTTP profil. Jangan mengklaim SQLite membuktikan first-lock-wins.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

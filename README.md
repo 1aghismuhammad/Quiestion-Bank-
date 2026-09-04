@@ -32,12 +32,13 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 5 - Question Bank: `COMPLETE` (MCQ-only MVP: completed-Generation import to draft, owner list/detail, draft edit, atomic whole-set save, `draft → published`, published read-only)
 - Phase 5.7 - Pre-Phase-6 enhancements: `IN PROGRESS`
 - Phase 5.7A - Upload-only Material Transition: `COMPLETE` (new Material creation is upload-only; legacy `source_type=text` rows remain readable/editable)
+- Phase 5.7B1 - Material Profile Foundation: `COMPLETE` (persistence, hashing, splitting, eligibility, tokens, leases, recovery; no production AI, HTTP, or UI)
 - Next numbered main phase: Phase 6 Admin Dashboard (`PLANNED`)
-- Documentation version: 0.15.0
+- Documentation version: 0.15.1
 - MVP target: Phase 0-6
-- Database design: 18 domain entities
+- Database design: 23 domain entities documented in the canonical DBML
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP is MCQ-only; true/false and essay Question Bank remain later. Phase 5.7 is `IN PROGRESS`; Phase 5.7A is `COMPLETE`. New Material creation is upload-only; legacy `source_type=text` rows remain readable and editable. Phase 6 remains `PLANNED`.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP is MCQ-only; true/false and essay Question Bank remain later. Phase 5.7 is `IN PROGRESS`; Phase 5.7A and Phase 5.7B1 are `COMPLETE`. Phase 5.7B1 is foundation only: no production Gemini execution and no profile HTTP/UI. Phase 5.7B2+ has not started. New Material creation is upload-only; legacy `source_type=text` rows remain readable and editable. Phase 6 remains `PLANNED`.
 
 ## Architecture Decisions
 

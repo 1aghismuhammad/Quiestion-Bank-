@@ -67,6 +67,11 @@ class User extends Authenticatable
         return $this->hasMany(QuestionSet::class);
     }
 
+    public function profileVersions(): HasMany
+    {
+        return $this->hasMany(MaterialProfileVersion::class);
+    }
+
     public function usageLogs(): HasMany
     {
         return $this->hasMany(AiUsageLog::class);
