@@ -73,16 +73,16 @@ Technical slices complete:
 - Topic management (`COMPLETE`): chapter, sub-chapter, topic, focus area, sort order, and optional page range via Material Topic Actions.
 - Material ownership / authorization (`COMPLETE`): owner-only `MaterialPolicy`; ADMIN does not receive global Material access.
 - Archive / restore lifecycle (`COMPLETE`): owner `draft|ready -> archived` and `archived -> ready`; archive is Material status, not soft delete.
-- Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, create text/upload, detail, edit, topics, archive, and restore.
+- Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Next phase: Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
 - Material menu berdiri sendiri dari dashboard tanpa dependency question set.
 - Material upload PDF, DOCX, dan TXT dengan batas 10 MB per file (tetap berlaku; terpisah dari quota storage akun).
-- Text input.
+- Legacy text rows (`source_type=text`) remain readable/editable. New HTTP text creation was retired in Phase 5.7A.
 - File validation dan private storage.
 - Content extraction queue.
 - Chapter, sub-chapter, topic, dan focus.
@@ -239,7 +239,21 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
 
-Next phase: Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B+ has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+
+## Phase 5.7 - Pre-Phase-6 enhancements
+
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; 5.7B+ not started)
+
+Phase 5.7A — Upload-only Material Transition:
+
+- New Material creation is upload-only (PDF, DOCX, TXT; 10 MB per file).
+- `POST /materials/text` and `materials.store-text` are removed.
+- Legacy `source_type=text` rows remain readable and editable (title and content); archive/restore and generation eligibility are unchanged.
+- `CreateTextMaterial` and `SourceType::TEXT` remain for legacy/internal use. No file replacement. No schema migration.
+- Users above effective storage quota cannot create a new Material because upload is the only creation path.
+
+Out of scope for 5.7A: Material Profile, blueprint, generation run, multi-credit quota, Advanced Mode, DOCX export.
 
 ## Phase 6 - Admin Dashboard
 

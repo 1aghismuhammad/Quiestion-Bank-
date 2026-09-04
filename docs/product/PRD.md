@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.14.1
+- Version: 0.15.0
 - Updated: 3 September 2026
-- Status: Phase 0 through Phase 5 are complete. Phase 5 Question Bank MVP is MCQ-only (import completed Generation to draft, owner list/detail, draft edit, atomic save, draft → published, published read-only). Phase 6 Admin Dashboard is PLANNED.
+- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank is MCQ-only. Phase 5.7 is `IN PROGRESS`. Phase 5.7A (upload-only Material creation) is complete; legacy text Materials remain readable and editable. Phase 6 Admin Dashboard remains `PLANNED`.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -45,7 +45,7 @@ Pengelola platform yang memonitor user, question bank, penggunaan AI, dan subscr
 
 1. Login dan pembuatan akun otomatis melalui Google.
 2. Sinkronisasi profil dasar dan role user/admin.
-3. Input materi melalui upload file atau teks manual.
+3. Input materi melalui unggah file PDF, DOCX, atau TXT. Pembuatan materi teks baru tidak lagi tersedia; baris teks lama tetap ada.
 4. Pengelolaan topik, bab, sub-bab, dan fokus materi.
 5. Konfigurasi assessment, difficulty, question type, dan jumlah soal.
 6. Pemeriksaan quota sebelum generation.
@@ -78,9 +78,9 @@ Detail alur dan kegagalan tersedia di `docs/architecture/FLOW.md`.
 ### Phase 2 Material Journey
 
 1. User membuka menu Material Management langsung dari dashboard.
-2. User membuat material melalui upload PDF, DOCX, TXT, atau input teks manual.
-3. Sistem memvalidasi input; setiap file upload maksimal 10 MB. Batas itu tetap berlaku di MVP. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah dan tidak menggantikan batas per file.
-4. Text material langsung siap, sedangkan upload diproses melalui extraction queue.
+2. User membuat material baru hanya melalui unggah PDF, DOCX, atau TXT. Materi teks yang sudah ada tetap dapat dilihat dan diedit; pembuatan teks baru tidak tersedia.
+3. Sistem memvalidasi input; setiap file upload maksimal 10 MB. Batas itu tetap berlaku di MVP. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah dan tidak menggantikan batas per file. Karena unggah adalah satu-satunya jalur pembuatan, user di atas kuota penyimpanan efektif tidak dapat membuat Material baru.
+4. Upload diproses melalui extraction queue. Materi teks lama tetap siap tanpa ekstraksi.
 5. Automatic Laravel queue retry is implemented for extraction jobs. Manual user extraction retry is not part of the current implementation: there is no `RetryMaterialExtraction` Action or Material UI retry control. Manual retry remains deferred until a later explicitly authorized lifecycle/UI decision.
 6. User mengatur chapter, sub-chapter, topic, focus area, serta optional page range.
 7. User dapat mengarsipkan material draft/ready dan memulihkan material archived menjadi ready.
@@ -100,7 +100,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Question Bank
 
 ### Material Management
 
-- FR-MAT-01: User dapat membuat materi dari upload file atau teks manual.
+- FR-MAT-01: User dapat membuat materi baru hanya dari unggah file (PDF, DOCX, TXT). Pembuatan materi teks baru melalui HTTP/UI tidak tersedia. Materi `source_type=text` yang sudah ada tetap dapat dilihat dan diedit (judul dan konten). Penggantian file unggahan tidak didukung.
 - FR-MAT-02: Sistem menyimpan metadata file, ukuran, MIME type, hash, dan status ekstraksi.
 - FR-MAT-03: User dapat menentukan bab, sub-bab, topik, serta focus area.
 - FR-MAT-04: User hanya dapat melihat dan mengubah materi miliknya.
@@ -110,7 +110,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Question Bank
 - FR-MAT-08: Kombinasi user dan file hash wajib unique untuk menolak upload duplikat milik user yang sama.
 - FR-MAT-09: User dapat mengubah material draft/ready menjadi archived dan memulihkan material archived menjadi ready.
 - FR-MAT-10: Phase 2 Material Management dapat digunakan langsung dari dashboard tanpa membuat question set.
-- FR-MAT-11: Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap ada; akses Material existing tetap; create teks, archive, dan restore tetap diizinkan; upload FILE baru ditolak sampai usage kembali di bawah limit entitlement efektif.
+- FR-MAT-11: Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap ada; akses Material existing tetap; archive dan restore tetap diizinkan; upload FILE baru ditolak sampai usage kembali di bawah limit entitlement efektif. Karena pembuatan baru hanya melalui unggah, user di atas kuota tidak dapat membuat Material baru.
 
 ### AI Generation
 

@@ -23,7 +23,7 @@
             @if ($archived)
                 <p>Tidak ada materi terarsip.</p>
             @else
-                <p>Belum ada materi. Buat materi teks atau unggah PDF, DOCX, atau TXT.</p>
+                <p>Belum ada materi. Unggah PDF, DOCX, atau TXT.</p>
                 <a class="button" href="{{ route('materials.create') }}">Buat materi</a>
             @endif
         </div>

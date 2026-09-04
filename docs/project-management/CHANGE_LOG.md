@@ -26,6 +26,37 @@ Notes:
 -
 ```
 
+## v0.15.0 Phase 5.7A upload-only Material creation
+
+- Date: 3 September 2026
+- Version: 0.15.0
+- Phase: Phase 5.7A - Upload-only Material Transition
+- Type: Feature implementation
+
+Added:
+
+- None. Upload creation, extraction, and legacy text editing already existed.
+
+Changed:
+
+- New Material creation is upload-only. `POST /materials/text` / `materials.store-text` and the create-page text form are removed.
+- `StoreTextMaterialRequest` is deleted. `MaterialController::storeText` is removed.
+- Spoofed `source_type` / `content` on the upload endpoint cannot create a text Material; a valid file still yields `source_type=upload`.
+- Material `{material}`/`{topic}` numeric constraints are applied together (`whereNumber(['material', 'topic'])`) so `POST /materials/text` is 404, not 405.
+- Users above effective storage quota cannot create a new Material because upload is the only creation path. Archive, restore, and existing rows remain.
+- Docs distinguish new upload-only create from retained legacy text rows. No file replacement.
+
+Database Impact:
+
+- None. No migration. `source_type=text` remains in the enum and existing rows. DBML note-only update.
+
+Notes:
+
+- `CreateTextMaterial` is kept as a legacy/internal Action. `SourceType::TEXT` is unchanged.
+- Spoofed `source_type`/`content` on upload are removed in `prepareForValidation` and ignored; a valid file still creates `source_type=upload`. Product does not return a validation error for those fields.
+- Historical CHANGE_LOG entries that describe text creation at the time they shipped are not rewritten.
+- Phase 6 remains `PLANNED`. Phase 5.7B+ is not started.
+
 ## v0.14.1 Phase 5 Question Bank closure
 
 - Date: 3 September 2026

@@ -30,12 +30,14 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 4.5 - Generation Web UI / Result Preview: `COMPLETE`
 - Phase 4.6 - Reliability / Stale Recovery / Phase Closure: `COMPLETE`
 - Phase 5 - Question Bank: `COMPLETE` (MCQ-only MVP: completed-Generation import to draft, owner list/detail, draft edit, atomic whole-set save, `draft → published`, published read-only)
-- Next: Phase 6 Admin Dashboard (`PLANNED`)
-- Documentation version: 0.14.1
+- Phase 5.7 - Pre-Phase-6 enhancements: `IN PROGRESS`
+- Phase 5.7A - Upload-only Material Transition: `COMPLETE` (new Material creation is upload-only; legacy `source_type=text` rows remain readable/editable)
+- Next numbered main phase: Phase 6 Admin Dashboard (`PLANNED`)
+- Documentation version: 0.15.0
 - MVP target: Phase 0-6
 - Database design: 18 domain entities
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 6 is `PLANNED`. Phase 5 Question Bank MVP is MCQ-only; true/false and essay Question Bank remain later.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP is MCQ-only; true/false and essay Question Bank remain later. Phase 5.7 is `IN PROGRESS`; Phase 5.7A is `COMPLETE`. New Material creation is upload-only; legacy `source_type=text` rows remain readable and editable. Phase 6 remains `PLANNED`.
 
 ## Architecture Decisions
 

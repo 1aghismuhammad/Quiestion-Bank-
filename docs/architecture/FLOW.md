@@ -84,11 +84,11 @@ flowchart LR
 
 1. Login pertama membuat user dan role default; login berikutnya memperbarui profil Google. Entitlement default adalah Plan Free; OAuth tidak membuat baris subscription.
 2. Phase 2 Material Management dibuka langsung dari dashboard dan tidak bergantung pada question set.
-3. Material upload hanya menerima PDF, DOCX, atau TXT. Setiap file maksimal 10 MB. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah: `CreateUploadMaterial` mengunci baris user, menolak duplikat dulu, lalu menolak file baru jika usage terhitung + ukuran file melebihi limit Plan efektif.
+3. Material upload hanya menerima PDF, DOCX, atau TXT. Setiap file maksimal 10 MB. Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) adalah kontrol terpisah: `CreateUploadMaterial` mengunci baris user, menolak duplikat dulu, lalu menolak file baru jika usage terhitung + ukuran file melebihi limit Plan efektif. Materi baru hanya dibuat melalui unggah. `POST /materials/text` tidak ada. Field `source_type`/`content` pada unggah diabaikan; hasil tetap `source_type=upload`.
 4. Material upload harus lolos MIME, extension, size, dan ownership validation.
 5. Upload wajib menyimpan internal file path, file size, MIME type, SHA-256 hash, dan extraction status.
 6. Kombinasi user dan file hash unique sehingga duplikat user yang sama ditolak.
-7. Material text menggunakan extraction status `not_required`; upload berjalan pending, processing, lalu completed/failed.
+7. Materi teks **lama** menggunakan extraction status `not_required` dan tetap dapat diedit. Pembuatan materi teks baru tidak tersedia. Upload berjalan pending, processing, lalu completed/failed. Penggantian file tidak didukung.
 8. Material berubah dari draft menjadi ready setelah content text tersedia atau extraction berhasil.
 9. Seluruh upload yang belum dihapus tetap dihitung pada storage usage, termasuk archived dan extraction failed.
 10. Owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.

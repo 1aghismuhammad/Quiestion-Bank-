@@ -9,7 +9,6 @@ use App\Actions\Materials\UpdateMaterial;
 use App\Enums\ExtractionStatus;
 use App\Enums\MaterialStatus;
 use App\Enums\SourceType;
-use App\Http\Requests\Materials\StoreTextMaterialRequest;
 use App\Http\Requests\Materials\UpdateMaterialRequest;
 use App\Models\Material;
 use App\Models\User;
@@ -44,39 +43,6 @@ class MaterialCreationTest extends TestCase
         $this->assertNull($material->mime_type);
         $this->assertTrue($user->fresh()->materials->first()->is($material));
         $this->assertDatabaseCount('materials', 1);
-    }
-
-    public function test_text_material_validation_rejects_missing_title_and_content(): void
-    {
-        $validator = Validator::make([], (new StoreTextMaterialRequest)->rules());
-
-        $this->assertTrue($validator->fails());
-        $this->assertArrayHasKey('title', $validator->errors()->toArray());
-        $this->assertArrayHasKey('content', $validator->errors()->toArray());
-        $this->assertDatabaseCount('materials', 0);
-    }
-
-    public function test_invalid_text_input_does_not_create_a_material(): void
-    {
-        $user = User::factory()->create();
-        $validator = Validator::make(
-            ['title' => '', 'content' => ''],
-            (new StoreTextMaterialRequest)->rules(),
-        );
-
-        $this->assertTrue($validator->fails());
-        $this->assertDatabaseCount('materials', 0);
-
-        (new CreateTextMaterial)->handle($user, 'Valid title', 'Valid content');
-
-        $this->assertDatabaseCount('materials', 1);
-        $this->assertDatabaseHas('materials', [
-            'user_id' => $user->id,
-            'title' => 'Valid title',
-            'source_type' => SourceType::TEXT->value,
-            'extraction_status' => ExtractionStatus::NOT_REQUIRED->value,
-            'status' => MaterialStatus::READY->value,
-        ]);
     }
 
     public function test_material_title_can_be_updated(): void

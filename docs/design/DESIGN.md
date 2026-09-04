@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.14.1
+- Version: 0.15.0
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -115,8 +115,8 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 ### Material Management
 
 - Menu material berdiri sendiri dan dapat dibuka langsung dari dashboard tanpa membuat question set.
-- Upload hanya mendukung PDF, DOCX, dan TXT. Setiap file maksimal 10 MB (batas keselamatan MVP). Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) ditegakkan pada upload dan tidak menggantikan batas per file.
-- Input teks manual langsung menghasilkan material ready.
+- Upload hanya mendukung PDF, DOCX, dan TXT. Setiap file maksimal 10 MB (batas keselamatan MVP). Quota storage akun Plan (Free 50 MiB / Pro 500 MiB total) ditegakkan pada upload dan tidak menggantikan batas per file. Materi baru hanya dibuat melalui unggah file.
+- Materi `source_type=text` lama tetap readable/editable (judul dan konten). `CreateTextMaterial` tetap ada sebagai invariant internal/legacy. Penggantian file unggahan tidak didukung. Pembuatan teks baru melalui HTTP/UI tidak tersedia.
 - Metadata file, hash, extraction status, dan storage usage.
 - Chapter, sub-chapter, topic, dan focus area.
 - Ownership policy.
@@ -134,7 +134,7 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
 - Paling banyak satu window efektif per instant. Resolver memvalidasi seluruh antrian `active` current/future sebagai Pro; overlap efektif fail-closed; data stale historis tidak mengunci akun. Plan Pro inactive tidak mencabut window yang sudah dibayar.
 - Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, dan `ai_usage_logs`. Gemini MCQ + `GenerateQuestionsJob` are Phase 4.3+4.4. Owner Blade generation UI, quota Terpakai/Diproses/Tersedia, and manual retry are Phase 4.5. Stale recovery is Phase 4.6.
-- Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; create teks, archive, dan restore tetap; upload FILE baru ditolak.
+- Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; archive dan restore tetap; upload FILE baru ditolak. User di atas kuota tidak dapat membuat Material baru karena unggah adalah satu-satunya jalur create.
 - UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests`. Approval menulis tepat satu baris `subscriptions` `status=active`: tanpa antrian Pro current/future, `starts_at` = waktu approval; jika antrian ada, `starts_at` = `max(ends_at)` antrian itu. `ends_at` memakai durasi bulan kalender no-overflow. Satu pembelian 3 bulan = satu baris Subscription. Window masa depan tetap `active`; tidak ada status Subscription `scheduled`/`pending`.
 - Verifikasi pembayaran Admin tidak menembus `MaterialPolicy`. Admin tidak memperoleh akses global ke Material privat. Halaman admin user-detail penuh bukan bagian Phase 3.
 

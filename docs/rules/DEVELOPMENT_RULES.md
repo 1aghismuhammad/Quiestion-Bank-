@@ -152,7 +152,7 @@ Additional rules:
 - Content extraction dijalankan melalui queue.
 - Storage usage menghitung seluruh upload non-deleted termasuk archived dan extraction failed.
 - Archive mempertahankan file; owner dapat melakukan `draft|ready -> archived` dan `archived -> ready`.
-- Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap; akses/read Material existing tetap; create teks, archive, dan restore tetap diizinkan; upload FILE baru ditolak sampai usage di bawah limit entitlement efektif.
+- Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap; akses/read Material existing tetap; archive dan restore tetap diizinkan; upload FILE baru ditolak sampai usage di bawah limit entitlement efektif. User di atas kuota tidak dapat membuat Material baru karena unggah adalah satu-satunya jalur create. Pembuatan teks baru melalui HTTP tidak tersedia.
 
 ## Security
 

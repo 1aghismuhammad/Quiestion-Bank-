@@ -6,14 +6,12 @@ namespace App\Http\Controllers;
 
 use App\Actions\Generations\AssertMaterialEligibleForGeneration;
 use App\Actions\Materials\ArchiveMaterial;
-use App\Actions\Materials\CreateTextMaterial;
 use App\Actions\Materials\CreateUploadMaterial;
 use App\Actions\Materials\ListMaterialTopics;
 use App\Actions\Materials\RestoreMaterial;
 use App\Actions\Materials\UpdateMaterial;
 use App\Enums\MaterialStatus;
 use App\Enums\SourceType;
-use App\Http\Requests\Materials\StoreTextMaterialRequest;
 use App\Http\Requests\Materials\StoreUploadMaterialRequest;
 use App\Http\Requests\Materials\UpdateMaterialRequest;
 use App\Models\Material;
@@ -67,18 +65,6 @@ class MaterialController extends Controller
         $this->authorize('create', Material::class);
 
         return view('materials.create');
-    }
-
-    public function storeText(StoreTextMaterialRequest $request, CreateTextMaterial $createTextMaterial): RedirectResponse
-    {
-        $material = $createTextMaterial->handle(
-            $request->user(),
-            $request->validated('title'),
-            $request->validated('content'),
-        );
-
-        return to_route('materials.show', $material)
-            ->with('success', 'Materi teks berhasil dibuat.');
     }
 
     public function storeUpload(StoreUploadMaterialRequest $request, CreateUploadMaterial $createUploadMaterial): RedirectResponse

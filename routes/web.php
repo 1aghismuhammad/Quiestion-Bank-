@@ -77,8 +77,6 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
             ->name('materials.archived');
         Route::get('/materials/create', [MaterialController::class, 'create'])
             ->name('materials.create');
-        Route::post('/materials/text', [MaterialController::class, 'storeText'])
-            ->name('materials.store-text');
         Route::post('/materials/upload', [MaterialController::class, 'storeUpload'])
             ->name('materials.store-upload');
 
@@ -113,8 +111,7 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
             });
 
         Route::scopeBindings()
-            ->whereNumber('material')
-            ->whereNumber('topic')
+            ->whereNumber(['material', 'topic'])
             ->group(function (): void {
                 Route::get('/materials/{material}', [MaterialController::class, 'show'])
                     ->name('materials.show');

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Materials;
 
 use App\Actions\Materials\ArchiveMaterial;
-use App\Actions\Materials\CreateTextMaterial;
 use App\Actions\Materials\CreateUploadMaterial;
 use App\Actions\Materials\RestoreMaterial;
 use App\Enums\ExtractionStatus;
@@ -171,10 +170,6 @@ class UploadStorageQuotaTest extends TestCase
         $this->assertTrue($existing->fresh()->is($existing));
         $this->assertSame(314_572_800, $this->usage($user));
         $this->assertSame(1, Material::query()->where('user_id', $user->id)->count());
-
-        $text = (new CreateTextMaterial)->handle($user, 'Notes', 'Text still allowed.');
-        $this->assertSame(MaterialStatus::READY, $text->status);
-        $this->assertSame(2, Material::query()->where('user_id', $user->id)->count());
 
         $archived = (new ArchiveMaterial)->handle($user, $existing);
         $this->assertSame(MaterialStatus::ARCHIVED, $archived->status);

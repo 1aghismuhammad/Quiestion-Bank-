@@ -291,7 +291,7 @@ Table materials {
     (user_id, file_hash) [unique]
   }
 
-  Note: 'Upload PDF/DOCX/TXT maksimal 10 MB per file (MVP safety; not replaced by Plan quota). Account storage quota is Plan.storage_limit_bytes, enforced on file upload. Text requires content and uses not_required. All non-deleted uploads including archived/failed count as storage usage. Owner lifecycle: draft/ready to archived and archived to ready.'
+  Note: 'New Material creation is upload-only (PDF/DOCX/TXT, max 10 MB per file; MVP safety, not replaced by Plan quota). Account storage quota is Plan.storage_limit_bytes, enforced on file upload. Over-quota users cannot create a new Material. Legacy source_type=text rows remain readable/editable; HTTP text creation is retired. Text uses not_required. No file replacement. All non-deleted uploads including archived/failed count as storage usage. Owner lifecycle: draft/ready to archived and archived to ready.'
 }
 
 Table material_topics {

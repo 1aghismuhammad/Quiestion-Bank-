@@ -10,7 +10,7 @@ AI Question Bank membantu pendidik mengubah materi pembelajaran menjadi bank soa
 Landing
 -> Google OAuth
 -> Dashboard
--> Material upload/text
+-> Material upload
 -> Topic and assessment configuration
 -> Quota check
 -> Gemini generation
@@ -61,7 +61,7 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 
 - Phase 0: foundation dan dokumentasi (`COMPLETE`).
 - Phase 1: authentication (`COMPLETE`).
-- Phase 2: standalone material management dari dashboard untuk PDF, DOCX, TXT, dan text input (`COMPLETE`).
+- Phase 2: standalone material management dari dashboard (`COMPLETE`). Originally delivered upload (PDF, DOCX, TXT) and manual-text creation. Phase 5.7A later retired HTTP/UI text creation; new Material creation is upload-only. Legacy `source_type=text` rows remain readable/editable.
 - Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine (`COMPLETE`; 4.1–4.6 including owner generation UI and stale recovery).
 - Phase 5: question bank (`COMPLETE`; MCQ-only MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). True/false and essay Question Bank remain later.

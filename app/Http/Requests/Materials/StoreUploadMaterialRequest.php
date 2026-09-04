@@ -24,6 +24,12 @@ class StoreUploadMaterialRequest extends FormRequest
         return $this->user()?->can('create', Material::class) === true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->request->remove('source_type');
+        $this->request->remove('content');
+    }
+
     /**
      * @return array<string, list<mixed>>
      */
