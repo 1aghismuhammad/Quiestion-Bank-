@@ -36,7 +36,7 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 5.7B2 - Sequential Material Profile Map/Reduce Provider Calls: `COMPLETE` (dedicated provider boundary, lossless bounded reduce, fingerprint revalidation, sequential `material-intelligence` jobs, no generation credits)
 - Phase 5.7B3 - Owner Activation, Progress, Review, and Regeneration UI: `COMPLETE` (owner start, status polling, review, regenerate; no element editing or blueprint)
 - Next numbered main phase: Phase 6 Admin Dashboard (`PLANNED`)
-- Documentation version: 0.15.3
+- Documentation version: 0.15.5
 - MVP target: Phase 0-6
 - Database design: 23 domain entities documented in the canonical DBML
 

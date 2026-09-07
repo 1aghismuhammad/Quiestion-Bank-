@@ -7,21 +7,27 @@ namespace App\Actions\MaterialProfiles;
 use App\Data\MaterialProfiles\ProfileProviderAttemptMetadata;
 use App\Enums\MaterialProfileAttemptErrorCode;
 use App\Enums\MaterialProfileAttemptStatus;
+use App\Enums\MaterialProfileErrorCode;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 use App\Models\MaterialProfileAttempt;
 use App\Models\MaterialProfileStep;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Closes a started Attempt as failed, but only while the delivery still holds
- * execution authority. A late worker persists nothing.
+ * Atomically closes a started Attempt and terminal-fails its workflow.
+ *
+ * There is no committed window in which the Attempt is failed while the same
+ * Step and Version remain processing. Lost authority writes nothing.
  */
-class FailMaterialProfileAttempt
+class FailMaterialProfileAttemptAndWorkflow
 {
     use LocksMaterialProfileWorkflow;
     use PersistsMaterialProfileAttempts;
 
-    public function __construct(private AssertMaterialProfileWorkflowAuthority $assertAuthority) {}
+    public function __construct(
+        private AssertMaterialProfileWorkflowAuthority $assertAuthority,
+        private FinalizeMaterialProfileFailure $finalizeFailure,
+    ) {}
 
     public function handle(
         int $profileVersionId,
@@ -29,7 +35,8 @@ class FailMaterialProfileAttempt
         string $workflowToken,
         string $stepExecutionToken,
         int $attemptId,
-        MaterialProfileAttemptErrorCode $errorCode,
+        MaterialProfileAttemptErrorCode $attemptErrorCode,
+        MaterialProfileErrorCode $workflowErrorCode,
         ?ProfileProviderAttemptMetadata $metadata = null,
     ): bool {
         return DB::transaction(function () use (
@@ -38,7 +45,8 @@ class FailMaterialProfileAttempt
             $workflowToken,
             $stepExecutionToken,
             $attemptId,
-            $errorCode,
+            $attemptErrorCode,
+            $workflowErrorCode,
             $metadata,
         ): bool {
             $version = $this->lockUserMaterialAndVersion($profileVersionId);
@@ -46,11 +54,17 @@ class FailMaterialProfileAttempt
             $this->lockChunksAscending($profileVersionId);
             $attempts = $this->lockAttemptsAscending($profileVersionId);
 
+            if ((int) $version->profile_version_id !== $profileVersionId) {
+                return false;
+            }
+
             $step = $steps->first(
                 fn (MaterialProfileStep $candidate): bool => (int) $candidate->profile_step_id === $profileStepId,
             );
 
-            if ($step === null) {
+            if ($step === null
+                || (int) $step->profile_version_id !== (int) $version->profile_version_id
+                || (int) $step->profile_step_id !== $profileStepId) {
                 return false;
             }
 
@@ -70,8 +84,8 @@ class FailMaterialProfileAttempt
                 return false;
             }
 
-            $this->applyAttemptOutcome($attempt, MaterialProfileAttemptStatus::FAILED, $metadata, $errorCode);
-            $this->refreshStepLease($step);
+            $this->applyAttemptOutcome($attempt, MaterialProfileAttemptStatus::FAILED, $metadata, $attemptErrorCode);
+            $this->finalizeFailure->apply($version, $steps, $workflowErrorCode, $profileStepId);
 
             return true;
         });

@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.15.3
-- Updated: 4 September 2026
-- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank is MCQ-only. Phase 5.7 is `IN PROGRESS`. Phase 5.7A, Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are complete. Phase 5.7C has not started. Legacy text Materials remain readable and editable. Phase 6 Admin Dashboard remains `PLANNED`.
+- Version: 0.15.5
+- Updated: 7 September 2026
+- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank is MCQ-only. Phase 5.7 is `IN PROGRESS`. Phase 5.7A, Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are complete after post-commit corrective QA through v0.15.5. Phase 5.7C has not started. Legacy text Materials remain readable and editable. Phase 6 Admin Dashboard remains `PLANNED`.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision

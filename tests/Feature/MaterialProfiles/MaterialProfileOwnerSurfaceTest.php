@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Support\MaterialProfiles\MaterialProfileOwnerMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use RuntimeException;
 use Tests\Support\MaterialProfiles\FakeMaterialProfileAnalysisProvider;
 use Tests\Support\MaterialProfiles\RunsMaterialProfileWorkflows;
 use Tests\TestCase;
@@ -381,6 +382,60 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
         // The stale Version is untouched by rendering it.
         $this->assertSame(MaterialProfileStatus::READY, $ready->fresh()->status);
         $this->assertNotNull($ready->fresh()->completed_at);
+    }
+
+    public function test_failed_regeneration_is_visible_while_the_previous_ready_profile_is_labelled_separately(): void
+    {
+        $ready = $this->completeProfileAnalysis($this->owner, $this->material);
+        $secret = 'SECRET_REGENERATION_THROWABLE_do-not-expose';
+        $this->provider->mapUsing = static fn () => throw new RuntimeException($secret);
+
+        $this->actingAs($this->owner)
+            ->post(route('materials.profile.regenerate', $this->material))
+            ->assertRedirect(route('materials.profile.show', $this->material));
+
+        $this->drainProfileJobs();
+
+        $failed = MaterialProfileVersion::query()->orderByDesc('version')->firstOrFail();
+        $this->assertSame((int) $ready->version + 1, (int) $failed->version);
+        $this->assertSame(MaterialProfileStatus::FAILED, $failed->status);
+        $this->assertSame(MaterialProfileStatus::READY, $ready->fresh()->status);
+
+        $html = $this->actingAs($this->owner)->get(route('materials.profile.show', $this->material));
+        $html->assertOk()
+            ->assertSee('Gagal')
+            ->assertSee('Analisis tidak selesai')
+            ->assertSee(MaterialProfileOwnerMessages::forCode(MaterialProfileErrorCode::ProviderFailed))
+            ->assertSee('Profil sebelumnya')
+            ->assertSee('Profil lama yang masih dapat dipakai, bukan hasil analisis yang gagal')
+            ->assertDontSee('Profil terkini untuk konten materi saat ini')
+            ->assertDontSee($secret, false)
+            ->assertDontSee((string) $failed->workflow_token, false)
+            ->assertDontSee((string) $ready->workflow_token, false);
+
+        $payload = $this->actingAs($this->owner)
+            ->getJson(route('materials.profile.status', $this->material))
+            ->assertOk()
+            ->json();
+
+        $this->assertSame('failed', $payload['state']);
+        $this->assertTrue($payload['terminal']);
+        $this->assertSame(MaterialProfileErrorCode::ProviderFailed->value, $payload['error_code']);
+        $this->assertSame(
+            MaterialProfileOwnerMessages::forCode(MaterialProfileErrorCode::ProviderFailed),
+            $payload['error_message'],
+        );
+        $this->assertNull($payload['profile_url']);
+        $this->assertTrue($payload['can_regenerate']);
+
+        $serialized = (string) json_encode($payload);
+        $this->assertStringNotContainsString($secret, $serialized);
+        $this->assertStringNotContainsString((string) $failed->workflow_token, $serialized);
+        $this->assertStringNotContainsString((string) $ready->workflow_token, $serialized);
+        $this->assertStringNotContainsString((string) $this->mapStep($failed, 0)->step_execution_token, $serialized);
+        $this->assertArrayNotHasKey('previous_ready', $payload);
+        $this->assertArrayNotHasKey('workflow_token', $payload);
+        $this->assertArrayNotHasKey('attempts', $payload);
     }
 
     public function test_previous_ready_profile_is_labelled_separately_during_regeneration(): void

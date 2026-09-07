@@ -56,6 +56,7 @@ class BeginMaterialProfileAttempt
             $version = $this->lockUserMaterialAndVersion($profileVersionId);
             $steps = $this->lockStepsAscending($profileVersionId);
             $this->lockChunksAscending($profileVersionId);
+            $attempts = $this->lockAttemptsAscending($profileVersionId);
 
             $step = $steps->first(
                 fn (MaterialProfileStep $candidate): bool => (int) $candidate->profile_step_id === $profileStepId,
@@ -76,10 +77,13 @@ class BeginMaterialProfileAttempt
             $this->assertMaterialFingerprint($version, $material, $this->hasher);
             $this->assertAttemptIdentityFits($provider, $model, $promptVersion);
 
+            if ($this->stepHasStartedAttempt($attempts, $step)) {
+                return null;
+            }
+
             $maxAttempts = max(1, (int) config('material_profile.max_provider_attempts', 3));
-            $lastAttemptNumber = (int) MaterialProfileAttempt::query()
-                ->where('profile_step_id', $step->profile_step_id)
-                ->lockForUpdate()
+            $lastAttemptNumber = (int) $attempts
+                ->filter(fn (MaterialProfileAttempt $attempt): bool => (int) $attempt->profile_step_id === (int) $step->profile_step_id)
                 ->max('attempt_number');
             $attemptNumber = $lastAttemptNumber + 1;
 

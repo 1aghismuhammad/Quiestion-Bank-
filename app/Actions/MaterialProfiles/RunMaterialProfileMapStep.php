@@ -10,6 +10,8 @@ use App\Exceptions\MaterialProfiles\MaterialProfileAttemptBudgetExhaustedExcepti
 use App\Exceptions\MaterialProfiles\MaterialProfileCandidateValidationException;
 use App\Exceptions\MaterialProfiles\MaterialProfileProviderException;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
+use App\Support\MaterialProfiles\MaterialProfileUnexpectedProviderFailure;
+use Throwable;
 
 /**
  * Runs one map Step end to end. Database locks are always released before the
@@ -24,6 +26,7 @@ class RunMaterialProfileMapStep
         private BuildMaterialProfileMapRequest $buildRequest,
         private BeginMaterialProfileAttempt $beginAttempt,
         private FailMaterialProfileAttempt $failAttempt,
+        private FailMaterialProfileAttemptAndWorkflow $failAttemptAndWorkflow,
         private FailMaterialProfileWorkflowForStep $failWorkflow,
         private PersistMaterialProfileMapSuccess $persistSuccess,
         private DispatchNextMaterialProfileStep $dispatcher,
@@ -124,6 +127,18 @@ class RunMaterialProfileMapStep
                 $attemptId,
                 $attemptNumber,
                 $exception,
+            );
+
+            return;
+        } catch (Throwable $exception) {
+            $this->recordProviderFailure(
+                $profileVersionId,
+                $profileStepId,
+                $workflowToken,
+                $stepExecutionToken,
+                $attemptId,
+                $attemptNumber,
+                MaterialProfileUnexpectedProviderFailure::classify($exception),
             );
 
             return;

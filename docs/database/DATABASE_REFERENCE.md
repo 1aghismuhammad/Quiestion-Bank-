@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.3
+- Version: 0.15.5
 - Domain entities: 23 domain entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, dan `option_id` mengikuti custom PK
@@ -161,7 +161,7 @@ Kombinasi material, chapter, sub-chapter, dan topic dibuat unique. Index `(mater
 
 ### Material Profile (Phase 5.7B1–B3)
 
-Phase 5.7B1 menambahkan persistence dan lifecycle Material Profile. Phase 5.7B2 menambahkan pemanggilan Gemini sekuensial dan Job produksi di schema yang sama. Phase 5.7B3 menambahkan HTTP/UI owner tanpa tabel baru. Tidak ada migration setelah lima tabel B1.
+Phase 5.7B1 menambahkan persistence dan lifecycle Material Profile. Phase 5.7B2 menambahkan pemanggilan Gemini sekuensial dan Job produksi di schema yang sama. Phase 5.7B3 menambahkan HTTP/UI owner tanpa tabel baru. v0.15.4 adalah hardening B2+B3 tanpa migration. v0.15.5 menambahkan kegagalan Attempt/workflow yang atomik dan topologi map immediate-next yang ketat, tetap tanpa migration. Tidak ada migration setelah lima tabel B1.
 
 Eligible materials:
 

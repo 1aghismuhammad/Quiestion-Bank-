@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE`. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4 and v0.15.5 corrective QA. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; 5.7C not started)
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4 and v0.15.5 B2+B3 corrective hardening; 5.7C not started)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -272,6 +272,8 @@ Phase 5.7B2 — Sequential Material Profile Map/Reduce Provider Calls (`COMPLETE
 - Reduce input includes every persisted extracted Element; `max_map_candidates * max_chunks <= max_reduce_summaries`. Reduce revalidates the Material fingerprint before Attempt/HTTP. Reduce output requires at least one topic, objective, and indicator.
 - Started Attempt provider/model/prompt/purpose are immutable. Ready finalization independently proves extracted vs suggested Element invariants.
 - Three provider Attempts per Step maximum, provider HTTP outside transactions, atomic map persistence, and atomic reduce-ready plus Version-ready finalization.
+- v0.15.4: a live started Attempt blocks same-token resume and a second Begin; map success requires exactly one legal next Step; catchable unexpected provider Throwables close the Attempt with a sanitized allow-listed code.
+- v0.15.5: terminal Attempt and workflow failure commit together; map success proves complete ordered topology and dispatches only the immediate next Step.
 - No migration, no Composer dependency, no generation credit, and no `ai_usage_logs` write.
 
 Phase 5.7B3 — Owner Activation, Progress, Review, and Regeneration UI (`COMPLETE`):
@@ -282,6 +284,7 @@ Phase 5.7B3 — Owner Activation, Progress, Review, and Regeneration UI (`COMPLE
 - Review page groups topics, learning objectives, indicators, and other constraints, distinguishes extracted from suggested items, and shows escaped evidence only for validated extracted elements.
 - Explicit POST regeneration that creates a new Version, rejects an active workflow, respects the throttle, and never mutates terminal data.
 - Centralized owner-safe Indonesian error mapping; internal authority/concurrency codes are never copied into owner JSON. No token, Attempt, provider payload, or raw exception text is exposed.
+- v0.15.4: a failed regeneration remains owner state `failed` even when an older fingerprint-matching ready Version exists; that older Version is labelled as a previous usable profile.
 
 Out of scope for 5.7B2 and 5.7B3: profile element editing, approve/reject persistence, manual ordering, blueprint creation, generation-run integration, Advanced Mode, DOCX changes, admin profile management, notification workflow, and any credit or usage accounting.
 

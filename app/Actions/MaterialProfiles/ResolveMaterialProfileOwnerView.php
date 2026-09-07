@@ -50,6 +50,7 @@ class ResolveMaterialProfileOwnerView
 
         $inFlight = $this->inFlightVersion($material);
         $matchingReady = $this->matchingReadyVersion($material, $contentHash, $extractor);
+        $latest = $this->latestVersion($material);
 
         if ($inFlight !== null) {
             $steps = $this->steps($inFlight);
@@ -65,6 +66,30 @@ class ResolveMaterialProfileOwnerView
                 activePurpose: $this->activePurpose($steps),
                 canStart: false,
                 canRegenerate: false,
+            );
+        }
+
+        if ($latest !== null && $latest->status === MaterialProfileStatus::FAILED) {
+            $steps = $this->steps($latest);
+            $previousReady = $matchingReady !== null
+                && (int) $matchingReady->profile_version_id !== (int) $latest->profile_version_id
+                ? $matchingReady
+                : null;
+
+            return new MaterialProfileOwnerView(
+                state: MaterialProfileOwnerState::Failed,
+                version: $latest,
+                previousReady: $previousReady,
+                totalSteps: $steps->count(),
+                completedSteps: $this->completedSteps($steps),
+                canStart: $eligible,
+                canRegenerate: $eligible,
+                errorCode: MaterialProfileOwnerMessages::publicCode(
+                    $latest->error_code === null ? null : (string) $latest->error_code,
+                ),
+                errorMessage: MaterialProfileOwnerMessages::forErrorCode(
+                    $latest->error_code === null ? null : (string) $latest->error_code,
+                ),
             );
         }
 
@@ -84,8 +109,6 @@ class ResolveMaterialProfileOwnerView
             );
         }
 
-        $latest = $this->latestVersion($material);
-
         if ($latest === null) {
             return new MaterialProfileOwnerView(
                 state: MaterialProfileOwnerState::None,
@@ -101,23 +124,6 @@ class ResolveMaterialProfileOwnerView
                 version: $latest,
                 canStart: $eligible,
                 canRegenerate: $eligible,
-            );
-        }
-
-        if ($latest->status === MaterialProfileStatus::FAILED) {
-            return new MaterialProfileOwnerView(
-                state: MaterialProfileOwnerState::Failed,
-                version: $latest,
-                totalSteps: $this->steps($latest)->count(),
-                completedSteps: $this->completedSteps($this->steps($latest)),
-                canStart: $eligible,
-                canRegenerate: $eligible,
-                errorCode: MaterialProfileOwnerMessages::publicCode(
-                    $latest->error_code === null ? null : (string) $latest->error_code,
-                ),
-                errorMessage: MaterialProfileOwnerMessages::forErrorCode(
-                    $latest->error_code === null ? null : (string) $latest->error_code,
-                ),
             );
         }
 

@@ -30,6 +30,7 @@ class ClaimMaterialProfileStep
             $version = $this->lockUserMaterialAndVersion($profileVersionId);
             $steps = $this->lockStepsAscending($profileVersionId);
             $this->lockChunksAscending($profileVersionId);
+            $attempts = $this->lockAttemptsAscending($profileVersionId);
 
             $step = $steps->first(
                 fn (MaterialProfileStep $candidate): bool => (int) $candidate->profile_step_id === $profileStepId,
@@ -96,6 +97,13 @@ class ClaimMaterialProfileStep
 
                 if (! $this->assertAuthority->hasLiveProcessingLease($step)) {
                     return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Expired);
+                }
+
+                // A live started Attempt means another same-token delivery is
+                // already in the provider call. Resume would mint a second
+                // Attempt and a second HTTP call.
+                if ($this->stepHasStartedAttempt($attempts, $step)) {
+                    return MaterialProfileClaimResult::of(MaterialProfileClaimOutcome::Duplicate);
                 }
 
                 $this->touchLease($step);

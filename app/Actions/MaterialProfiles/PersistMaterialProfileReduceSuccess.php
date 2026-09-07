@@ -58,6 +58,7 @@ class PersistMaterialProfileReduceSuccess
             $version = $this->lockUserMaterialAndVersion($profileVersionId);
             $steps = $this->lockStepsAscending($profileVersionId);
             $chunks = $this->lockChunksAscending($profileVersionId);
+            $attempts = $this->lockAttemptsAscending($profileVersionId);
 
             $step = $steps->first(
                 fn (MaterialProfileStep $candidate): bool => (int) $candidate->profile_step_id === $profileStepId,
@@ -77,12 +78,11 @@ class PersistMaterialProfileReduceSuccess
                 throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
             }
 
-            $attempt = MaterialProfileAttempt::query()
-                ->whereKey($attemptId)
-                ->where('profile_step_id', $step->profile_step_id)
-                ->where('profile_version_id', $version->profile_version_id)
-                ->lockForUpdate()
-                ->first();
+            $attempt = $attempts->first(
+                fn (MaterialProfileAttempt $candidate): bool => (int) $candidate->profile_attempt_id === $attemptId
+                    && (int) $candidate->profile_step_id === (int) $step->profile_step_id
+                    && (int) $candidate->profile_version_id === (int) $version->profile_version_id,
+            );
 
             if ($attempt === null || $attempt->status !== MaterialProfileAttemptStatus::STARTED) {
                 return MaterialProfileStepPersistResult::discarded();

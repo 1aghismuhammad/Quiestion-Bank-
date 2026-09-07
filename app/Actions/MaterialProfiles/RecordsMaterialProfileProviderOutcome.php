@@ -11,13 +11,16 @@ use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 
 /**
  * Shared retry and terminal-failure policy for both provider Steps.
+ *
+ * Terminal outcomes persist Attempt failure and workflow failure in one
+ * transaction. Retryable outcomes close only the current Attempt.
  */
 trait RecordsMaterialProfileProviderOutcome
 {
     /**
-     * Persist the failed Attempt, then either hand the delivery back to the queue
-     * for a retry that reuses the same Step execution token, or terminal-fail the
-     * workflow when the cause is permanent or the attempt budget is spent.
+     * Persist a provider-boundary failure. The terminal vs retry decision is
+     * made before any write so a failed Attempt cannot be observed while the
+     * Step and Version are still processing.
      *
      * @throws MaterialProfileProviderException When the queue should retry.
      */
@@ -30,6 +33,23 @@ trait RecordsMaterialProfileProviderOutcome
         int $attemptNumber,
         MaterialProfileProviderException $exception,
     ): void {
+        $terminal = ! $exception->isRetryable()
+            || $this->beginAttempt->isFinalAttempt($attemptNumber);
+
+        if ($terminal) {
+            $this->failAttemptAndWorkflow->handle(
+                $profileVersionId,
+                $profileStepId,
+                $workflowToken,
+                $stepExecutionToken,
+                $attemptId,
+                $exception->attemptErrorCode,
+                MaterialProfileErrorCode::ProviderFailed,
+            );
+
+            return;
+        }
+
         $this->failAttempt->handle(
             $profileVersionId,
             $profileStepId,
@@ -39,27 +59,12 @@ trait RecordsMaterialProfileProviderOutcome
             $exception->attemptErrorCode,
         );
 
-        $terminal = ! $exception->isRetryable()
-            || $this->beginAttempt->isFinalAttempt($attemptNumber);
-
-        if ($terminal) {
-            $this->failWorkflow->handle(
-                $profileVersionId,
-                $profileStepId,
-                $workflowToken,
-                $stepExecutionToken,
-                MaterialProfileErrorCode::ProviderFailed,
-            );
-
-            return;
-        }
-
         throw $exception;
     }
 
     /**
-     * The persisted workflow context is no longer usable, so the Version fails
-     * with the domain cause instead of being retried.
+     * The persisted workflow context is no longer usable. When an Attempt has
+     * already started, Attempt and workflow failure commit together.
      */
     private function recordInvalidContext(
         int $profileVersionId,
@@ -70,14 +75,17 @@ trait RecordsMaterialProfileProviderOutcome
         MaterialProfileRejectedException $exception,
     ): void {
         if ($attemptId !== null) {
-            $this->failAttempt->handle(
+            $this->failAttemptAndWorkflow->handle(
                 $profileVersionId,
                 $profileStepId,
                 $workflowToken,
                 $stepExecutionToken,
                 $attemptId,
                 MaterialProfileAttemptErrorCode::ValidationFailed,
+                $exception->errorCode,
             );
+
+            return;
         }
 
         $this->failWorkflow->handle(

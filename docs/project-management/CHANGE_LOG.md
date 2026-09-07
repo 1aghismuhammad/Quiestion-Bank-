@@ -26,6 +26,70 @@ Notes:
 -
 ```
 
+## v0.15.5 Phase 5.7B2+B3 atomic terminal failure and strict sequential topology
+
+- Date: 7 September 2026
+- Version: 0.15.5
+- Phase: Phase 5.7B2+B3 - Sequential map/reduce and owner UI corrective hardening
+- Type: Bugfix
+
+Added:
+-
+
+Changed:
+
+- Docs record version 0.15.5. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 remain `COMPLETE`. Phase 5.7 remains `IN PROGRESS`. Phase 5.7C has not started. Phase 6 remains `PLANNED`.
+
+Fixed:
+
+- Terminal provider outcomes persist Attempt failure and workflow failure in one transaction. There is no committed window in which the Attempt is failed while the same Step and Version remain processing. Permanent provider failure, sanitized unexpected Throwables, exhausted Attempt budget, invalid persisted context after an Attempt has started, and map-success topology rejection all use this atomic path. Lost or expired authority still writes nothing.
+- Map success proves the complete ordered topology before writing. Prefix maps must be ready, the current map must be the canonical expected Step, suffix maps must remain queued, and the sole reduce Step must stay queued until every map is ready. The only legal next Step is the map immediately after the current map by `step_index`, or the sole reduce Step when the current map is last. A null or different dispatcher result rolls back the success transaction, atomically terminal-fails the workflow with `validation_failed`, and dispatches no Job.
+
+Database Impact:
+
+- None. No migration added and no committed B1 migration edited.
+
+Notes:
+
+- Retryable provider failure with Attempts remaining still closes only the current Attempt, refreshes the live Step lease, retains the same `step_execution_token`, and creates `attempt_number + 1` on the next delivery.
+- Duplicate map `step_index` remains blocked by the existing unique constraint; invalid non-corresponding `step_index` is rejected at map success.
+- Isolated MySQL same-token and terminalization race tests remain required for Phase 5.7G / pre-production.
+
+## v0.15.4 Phase 5.7B2+B3 post-commit corrective hardening
+
+- Date: 7 September 2026
+- Version: 0.15.4
+- Phase: Phase 5.7B2+B3 - Sequential map/reduce and owner UI corrective hardening
+- Type: Bugfix
+
+Added:
+-
+
+Changed:
+
+- Docs record version 0.15.4. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 remain `COMPLETE` after corrective QA. Phase 5.7 remains `IN PROGRESS`. Phase 5.7C has not started. Phase 6 remains `PLANNED`.
+
+Fixed:
+
+- Same-token concurrent deliveries cannot open a second provider call: a processing Step with a live started Attempt is classified as duplicate/in-progress, refreshes no lease, and `BeginMaterialProfileAttempt` rechecks Attempt state under the canonical locks before allocating `attempt_number`.
+- Map success cannot commit without exactly one legal next Step. A broken topology rolls back the success writes, fails the Attempt with `validation_failed`, terminal-fails the workflow, aborts later Steps, and dispatches nothing.
+- Catchable unexpected Throwables at the provider boundary close the started Attempt through a sanitized policy: recognized transients keep the retry path; unknown adapter or programming failures become a permanent allow-listed `provider_http` failure. Raw messages never reach the database or owner surface. Database exceptions are not swallowed.
+- A failed regeneration is the owner-visible current state even when an older fingerprint-matching ready Version exists. That older Version is labelled as a previous usable profile and is never presented as the successful result of the failed run.
+
+Database Impact:
+
+- None. No migration added and no committed B1 migration edited.
+
+Notes:
+
+- Automatic retry after a failed Attempt still reuses the serialized `step_execution_token` and creates `attempt_number + 1`.
+- `ShouldBeUnique` and `WithoutOverlapping` remain defence-in-depth only.
+- Dispatch after commit is unchanged. Repeated normal dispatcher calls may still reuse an existing queued token.
+- Hard process termination can still leave a historical started Attempt; recovery remains the escape hatch. This entry covers catchable Throwables in a live PHP process.
+- Rendering and polling stay read-only. No workflow token, Step token, Attempt row, or provider metadata is exposed to the owner.
+- No Question Blueprint, Generation Run, credit, `ai_usage_logs`, public/admin route, Composer, or NPM change. Phase 5.7C was not started.
+- Historical CHANGE_LOG entries are not rewritten.
+
 ## v0.15.3 Phase 5.7B3 Material Profile owner activation and review UI
 
 - Date: 4 September 2026

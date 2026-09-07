@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.15.3
+- Version: 0.15.5
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -127,8 +127,8 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Storage usage menghitung seluruh upload yang belum dihapus, termasuk archived dan extraction failed.
 - Lifecycle material mendukung `draft|ready -> archived` dan owner restore `archived -> ready`.
 - Phase 5.7B1 menambahkan fondasi Material Profile: versi, chunk UTF-8, step lifecycle, attempt, element, hasher, splitter, eligibility, `workflow_token`, `step_execution_token`, lease 120 detik, abandonment 900 detik, dan `profiles:recover-stale`. Batas kanonis 240.000 karakter; batas generation 80.000 tidak dipakai. Admin tidak bypass owner isolation.
-- Phase 5.7B2 menambahkan provider Gemini tersendiri (`MaterialProfileAnalysisProvider`), identity provider yang netral di domain Action, reuse versi ready, throttle tiga per jam, Job map/reduce sekuensial pada antrian `material-intelligence`, validasi evidence UTF-8, reduce lossless terbatas, verifikasi fingerprint sebelum HTTP reduce, dan finalisasi reduce-ready plus Version-ready yang atomik. `failed()` yang leasenya kedaluwarsa tidak punya otoritas tulis. Analisis profil tidak memotong credit generation dan tidak menulis `ai_usage_logs`.
-- Phase 5.7B3 membuka start, polling status, review, dan regenerasi kepada owner materi. Hasil stale tidak ditampilkan sebagai profil terkini. Tidak ada editing element, blueprint, atau integrasi generation.
+- Phase 5.7B2 menambahkan provider Gemini tersendiri (`MaterialProfileAnalysisProvider`), identity provider yang netral di domain Action, reuse versi ready, throttle tiga per jam, Job map/reduce sekuensial pada antrian `material-intelligence`, validasi evidence UTF-8, reduce lossless terbatas, verifikasi fingerprint sebelum HTTP reduce, dan finalisasi reduce-ready plus Version-ready yang atomik. `failed()` yang leasenya kedaluwarsa tidak punya otoritas tulis. Analisis profil tidak memotong credit generation dan tidak menulis `ai_usage_logs`. v0.15.5: kegagalan terminal Attempt dan workflow commit bersama; map success hanya boleh mengirim Step immediate-next.
+- Phase 5.7B3 membuka start, polling status, review, dan regenerasi kepada owner materi. Hasil stale tidak ditampilkan sebagai profil terkini. Regenerasi yang gagal tetap terlihat sebagai `failed` meskipun ada versi ready lama yang dilabeli terpisah. Tidak ada editing element, blueprint, atau integrasi generation.
 
 ### Subscription and Quota
 

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\MaterialProfiles;
 
+use App\Enums\MaterialProfileAttemptStatus;
 use App\Enums\MaterialProfileErrorCode;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 use App\Models\Material;
+use App\Models\MaterialProfileAttempt;
 use App\Models\MaterialProfileChunk;
 use App\Models\MaterialProfileStep;
 use App\Models\MaterialProfileVersion;
@@ -97,5 +99,28 @@ trait LocksMaterialProfileWorkflow
             ->orderBy('profile_chunk_id')
             ->lockForUpdate()
             ->get();
+    }
+
+    /**
+     * @return Collection<int, MaterialProfileAttempt>
+     */
+    private function lockAttemptsAscending(int $profileVersionId): Collection
+    {
+        return MaterialProfileAttempt::query()
+            ->where('profile_version_id', $profileVersionId)
+            ->orderBy('profile_attempt_id')
+            ->lockForUpdate()
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, MaterialProfileAttempt>  $attempts
+     */
+    private function stepHasStartedAttempt(Collection $attempts, MaterialProfileStep $step): bool
+    {
+        return $attempts->contains(
+            fn (MaterialProfileAttempt $attempt): bool => (int) $attempt->profile_step_id === (int) $step->profile_step_id
+                && $attempt->status === MaterialProfileAttemptStatus::STARTED,
+        );
     }
 }

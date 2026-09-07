@@ -206,6 +206,15 @@
                 Riwayat analisis sebelumnya tetap tersimpan. Menjalankan analisis baru akan membuat versi profil baru
                 tanpa mengubah versi lama.
             </p>
+
+            @if ($profile->previousReady !== null)
+                <h3>Profil sebelumnya</h3>
+                <p class="status status-muted">Profil lama yang masih dapat dipakai, bukan hasil analisis yang gagal</p>
+                <p class="muted">
+                    Versi {{ $profile->previousReady->version }} masih tersedia dan cocok dengan konten materi saat ini.
+                    Analisis yang gagal tidak menggantikan profil ini.
+                </p>
+            @endif
         </div>
     @endif
 

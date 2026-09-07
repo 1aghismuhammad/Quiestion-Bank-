@@ -65,6 +65,7 @@ class PersistMaterialProfileMapSuccess
             $version = $this->lockUserMaterialAndVersion($profileVersionId);
             $steps = $this->lockStepsAscending($profileVersionId);
             $chunks = $this->lockChunksAscending($profileVersionId);
+            $attempts = $this->lockAttemptsAscending($profileVersionId);
 
             $step = $steps->first(
                 fn (MaterialProfileStep $candidate): bool => (int) $candidate->profile_step_id === $profileStepId,
@@ -84,12 +85,11 @@ class PersistMaterialProfileMapSuccess
                 throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
             }
 
-            $attempt = MaterialProfileAttempt::query()
-                ->whereKey($attemptId)
-                ->where('profile_step_id', $step->profile_step_id)
-                ->where('profile_version_id', $version->profile_version_id)
-                ->lockForUpdate()
-                ->first();
+            $attempt = $attempts->first(
+                fn (MaterialProfileAttempt $candidate): bool => (int) $candidate->profile_attempt_id === $attemptId
+                    && (int) $candidate->profile_step_id === (int) $step->profile_step_id
+                    && (int) $candidate->profile_version_id === (int) $version->profile_version_id,
+            );
 
             if ($attempt === null || $attempt->status !== MaterialProfileAttemptStatus::STARTED) {
                 return MaterialProfileStepPersistResult::discarded();
@@ -118,6 +118,13 @@ class PersistMaterialProfileMapSuccess
 
             $this->assertExtractedBudget((int) $version->profile_version_id, count($elements));
 
+            $expectedNext = $this->dispatcher->assertMapSuccessHasExactlyOneNextStep(
+                $version,
+                $steps,
+                $chunks,
+                $step,
+            );
+
             $this->applyAttemptOutcome($attempt, MaterialProfileAttemptStatus::SUCCEEDED, $result->metadata);
             $this->insertElements($version->profile_version_id, (int) $chunk->chunk_index, $elements);
 
@@ -128,10 +135,13 @@ class PersistMaterialProfileMapSuccess
             $step->error_message = null;
             $step->save();
 
-            return new MaterialProfileStepPersistResult(
-                true,
-                $this->dispatcher->prepareLocked($version, $steps),
-            );
+            $dispatch = $this->dispatcher->prepareLocked($version, $steps);
+
+            if ($dispatch === null || (int) $dispatch->profileStepId !== (int) $expectedNext->profile_step_id) {
+                throw new MaterialProfileRejectedException(MaterialProfileErrorCode::ValidationFailed);
+            }
+
+            return new MaterialProfileStepPersistResult(true, $dispatch);
         });
     }
 

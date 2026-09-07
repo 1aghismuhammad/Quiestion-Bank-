@@ -10,6 +10,8 @@ use App\Exceptions\MaterialProfiles\MaterialProfileAttemptBudgetExhaustedExcepti
 use App\Exceptions\MaterialProfiles\MaterialProfileCandidateValidationException;
 use App\Exceptions\MaterialProfiles\MaterialProfileProviderException;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
+use App\Support\MaterialProfiles\MaterialProfileUnexpectedProviderFailure;
+use Throwable;
 
 /**
  * Runs the reduce Step end to end. On success the reduce Step and the Profile
@@ -24,6 +26,7 @@ class RunMaterialProfileReduceStep
         private BuildMaterialProfileReduceRequest $buildRequest,
         private BeginMaterialProfileAttempt $beginAttempt,
         private FailMaterialProfileAttempt $failAttempt,
+        private FailMaterialProfileAttemptAndWorkflow $failAttemptAndWorkflow,
         private FailMaterialProfileWorkflowForStep $failWorkflow,
         private PersistMaterialProfileReduceSuccess $persistSuccess,
         private MaterialProfileAnalysisProvider $provider,
@@ -123,6 +126,18 @@ class RunMaterialProfileReduceStep
                 $attemptId,
                 $attemptNumber,
                 $exception,
+            );
+
+            return;
+        } catch (Throwable $exception) {
+            $this->recordProviderFailure(
+                $profileVersionId,
+                $profileStepId,
+                $workflowToken,
+                $stepExecutionToken,
+                $attemptId,
+                $attemptNumber,
+                MaterialProfileUnexpectedProviderFailure::classify($exception),
             );
 
             return;
