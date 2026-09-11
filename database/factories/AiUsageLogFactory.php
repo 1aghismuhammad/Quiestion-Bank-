@@ -23,6 +23,8 @@ class AiUsageLogFactory extends Factory
     {
         return [
             'generation_id' => AiGeneration::factory(),
+            'generation_run_id' => null,
+            'credits' => 1,
             'user_id' => fn (array $attributes): int => (int) AiGeneration::query()->findOrFail($attributes['generation_id'])->user_id,
             'plan_id' => fn (): int => (int) Plan::query()->where('code', PlanCode::FREE)->firstOrFail()->plan_id,
             'subscription_id' => null,

@@ -207,18 +207,47 @@ class GenerateQuestionsJobTest extends TestCase
 
     public function test_attempt_prompt_version_matches_builder_version_used_for_the_call(): void
     {
-        config(['generation.prompt_version' => 'mcq-runtime']);
+        config(['generation.prompt_version' => 'mcq-v2']);
         $generation = $this->startGeneration(User::factory()->create(), questionCount: 1);
-        Http::fake([
-            'generativelanguage.googleapis.com/*' => Http::response(
+        $captured = [];
+        Http::fake(function ($request) use (&$captured) {
+            $captured[] = $request->body();
+
+            return Http::response(
                 GeminiFakeResponses::success(GeminiFakeResponses::questions(1)),
                 200,
-            ),
-        ]);
+            );
+        });
 
         $this->runJob($generation);
 
-        $this->assertSame('mcq-runtime', AiGenerationAttempt::query()->first()->prompt_version);
+        $this->assertSame('mcq-v2', AiGenerationAttempt::query()->first()->prompt_version);
+        $this->assertNotEmpty($captured);
+        $decoded = json_decode($captured[0], true);
+        $this->assertIsArray($decoded);
+        $this->assertStringContainsString(
+            'No Blueprint row is attached',
+            (string) data_get($decoded, 'contents.0.parts.0.text', ''),
+        );
+        $this->assertStringNotContainsString(
+            '<<<BLUEPRINT_ROW>>>',
+            (string) data_get($decoded, 'contents.0.parts.0.text', ''),
+        );
+    }
+
+    public function test_unsupported_prompt_version_fails_without_http(): void
+    {
+        config(['generation.prompt_version' => 'mcq-runtime']);
+        $generation = $this->startGeneration(User::factory()->create(), questionCount: 1);
+        Http::fake();
+
+        $this->runJob($generation);
+
+        Http::assertNothingSent();
+        $this->assertSame(0, AiGenerationAttempt::query()->count());
+        $this->assertSame(GenerationStatus::FAILED, $generation->fresh()->generation_status);
+        $this->assertSame(GenerationErrorCode::Configuration->value, $generation->fresh()->error_code);
+        $this->assertSame(UsageStatus::RELEASED, $generation->fresh()->usageLog->status);
     }
 
     public function test_queued_under_v1_then_executed_with_v2_records_v2(): void

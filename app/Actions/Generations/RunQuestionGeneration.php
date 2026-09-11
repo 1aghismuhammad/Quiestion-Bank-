@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Generations;
 
+use App\Actions\GenerationRuns\RunGenerationRunChild;
 use App\Contracts\AI\QuestionGenerationProvider;
 use App\Data\Generations\GenerationProviderRequest;
 use App\Data\Generations\ValidatedMcqQuestion;
@@ -40,10 +41,19 @@ class RunQuestionGeneration
         private McqPromptBuilder $promptBuilder,
         private FinalizeGenerationSuccess $finalizeSuccess,
         private FinalizeGenerationFailure $finalizeFailure,
+        private RunGenerationRunChild $runChild,
     ) {}
 
     public function handle(int $generationId, string $executionToken): void
     {
+        $runId = AiGeneration::query()->whereKey($generationId)->value('generation_run_id');
+
+        if ($runId !== null) {
+            $this->runChild->handle($generationId, $executionToken);
+
+            return;
+        }
+
         $claim = $this->claim->handle($generationId, $executionToken);
 
         if (! $claim->shouldRun) {
@@ -316,6 +326,8 @@ class RunQuestionGeneration
         if (! is_string($primary) || $primary === '') {
             throw new GenerationConfigurationException('The generation model is not configured.');
         }
+
+        $this->promptBuilder->version();
     }
 
     private function backoff(int $startedAttempts, ?int $retryAfterSeconds): void

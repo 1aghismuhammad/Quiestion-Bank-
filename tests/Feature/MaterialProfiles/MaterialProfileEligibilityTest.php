@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\MaterialProfiles;
 
+use App\Actions\MaterialProfiles\AssertMaterialEligibleForProfileAnalysis;
 use App\Actions\MaterialProfiles\QueueMaterialProfileAnalysis;
 use App\Enums\ExtractionStatus;
+use App\Enums\MaterialProfileEligibilityReason;
 use App\Enums\MaterialProfileErrorCode;
 use App\Enums\MaterialStatus;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 use App\Models\AiUsageLog;
 use App\Models\Material;
 use App\Models\User;
+use App\Support\MaterialProfiles\MaterialProfileOwnerMessages;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\MaterialProfiles\CreatesQueuedMaterialProfiles;
@@ -147,5 +150,44 @@ class MaterialProfileEligibilityTest extends TestCase
 
         $this->assertNotNull($version->profile_version_id);
         $this->assertGreaterThan(1, $version->chunks()->count());
+    }
+
+    public function test_inspect_distinguishes_ready_extraction_empty_and_oversized_reasons(): void
+    {
+        $assert = app(AssertMaterialEligibleForProfileAnalysis::class);
+        $user = User::factory()->create();
+
+        $ready = Material::factory()->text()->for($user)->create(['content' => 'Konten siap.']);
+        $this->assertTrue($assert->inspect($ready)->isEligible());
+        $this->assertSame(MaterialProfileEligibilityReason::Eligible, $assert->inspect($ready)->reason);
+
+        $archived = Material::factory()->text()->for($user)->archived()->create(['content' => 'Arsip']);
+        $this->assertSame(
+            MaterialProfileEligibilityReason::MaterialNotReady,
+            $assert->inspect($archived)->reason,
+        );
+
+        $pending = Material::factory()->upload()->for($user)->create([
+            'status' => MaterialStatus::READY,
+            'extraction_status' => ExtractionStatus::PENDING,
+            'content' => 'Pending',
+        ]);
+        $this->assertSame(
+            MaterialProfileEligibilityReason::ExtractionIncomplete,
+            $assert->inspect($pending)->reason,
+        );
+
+        $empty = Material::factory()->text()->for($user)->create(['content' => '']);
+        $this->assertSame(MaterialProfileEligibilityReason::MaterialEmpty, $assert->inspect($empty)->reason);
+
+        $tooLarge = Material::factory()->text()->for($user)->create(['content' => str_repeat('a', 240_001)]);
+        $this->assertSame(
+            MaterialProfileEligibilityReason::MaterialTooLarge,
+            $assert->inspect($tooLarge)->reason,
+        );
+        $this->assertSame(
+            MaterialProfileOwnerMessages::materialTooLarge(),
+            $assert->inspect($tooLarge)->message,
+        );
     }
 }

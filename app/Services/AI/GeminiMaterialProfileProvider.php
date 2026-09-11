@@ -38,7 +38,7 @@ class GeminiMaterialProfileProvider implements MaterialProfileAnalysisProvider
     {
         $decoded = $this->call(
             $request->model,
-            $this->promptBuilder->mapSystemInstruction(),
+            $this->promptBuilder->mapSystemInstruction($request->promptVersion),
             $this->promptBuilder->mapUserPrompt($request),
             $this->promptBuilder->mapResponseSchema(),
             MaterialProfileStepPurpose::MAP,

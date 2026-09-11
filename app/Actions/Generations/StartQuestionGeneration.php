@@ -17,6 +17,7 @@ use App\Models\AiGeneration;
 use App\Models\AiUsageLog;
 use App\Models\Material;
 use App\Models\User;
+use App\Support\Generations\UsageSubjectXor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -98,6 +99,9 @@ class StartQuestionGeneration
             $generation = AiGeneration::query()->create([
                 'user_id' => $owner->id,
                 'material_id' => $lockedMaterial->material_id,
+                'generation_run_id' => null,
+                'generation_run_item_id' => null,
+                'child_index' => null,
                 'assessment_type' => $assessmentType,
                 'difficulty_level' => $difficultyLevel,
                 'question_type' => $questionType,
@@ -115,11 +119,15 @@ class StartQuestionGeneration
                 'failed_at' => null,
             ]);
 
+            UsageSubjectXor::assert((int) $generation->generation_id, null);
+
             AiUsageLog::query()->create([
                 'user_id' => $owner->id,
                 'plan_id' => $quota->entitlement->plan->plan_id,
                 'subscription_id' => $quota->entitlement->subscription?->subscription_id,
                 'generation_id' => $generation->generation_id,
+                'generation_run_id' => null,
+                'credits' => 1,
                 'status' => UsageStatus::RESERVED,
                 'window_start' => $quota->windowStart,
                 'window_end' => $quota->windowEnd,

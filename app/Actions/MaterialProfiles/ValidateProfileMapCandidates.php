@@ -14,8 +14,10 @@ use App\Support\MaterialProfiles\MaterialProfileBudgets;
  * Server-side evidence validation for map output.
  *
  * Offsets arriving from the provider are UTF-8 code-point offsets relative to
- * the canonical chunk core. Anything that cannot be proven against the core is
- * rejected, and one invalid candidate rejects the complete response.
+ * the canonical chunk core. An exact offset hit is preserved. Incorrect integer
+ * offsets may be replaced only when the excerpt occurs exactly once, character
+ * for character, inside the core. Overlap is never searched. One invalid
+ * candidate rejects the complete response.
  */
 class ValidateProfileMapCandidates
 {
@@ -48,36 +50,33 @@ class ValidateProfileMapCandidates
             $start = $this->candidateInteger($candidate->evidenceStart);
             $end = $this->candidateInteger($candidate->evidenceEnd);
 
-            // Offsets are core-relative, so a negative start is the only way to
-            // reference the preceding overlap and is always rejected.
-            if ($start < 0) {
-                throw new MaterialProfileCandidateValidationException('Evidence starts before the canonical core.');
-            }
-
-            if ($end <= $start) {
-                throw new MaterialProfileCandidateValidationException('Evidence end is not after evidence start.');
-            }
-
-            if ($end > $coreLength) {
-                throw new MaterialProfileCandidateValidationException('Evidence ends beyond the canonical core.');
-            }
-
-            if (($end - $start) > $maxEvidence) {
-                throw new MaterialProfileCandidateValidationException('Evidence exceeds the safe length limit.');
-            }
-
             if (! is_string($candidate->evidenceExcerpt)) {
                 throw new MaterialProfileCandidateValidationException('Evidence excerpt is not a string.');
             }
 
-            $expected = mb_substr($coreText, $start, $end - $start, 'UTF-8');
+            $excerpt = $candidate->evidenceExcerpt;
+            $excerptLength = mb_strlen($excerpt, 'UTF-8');
 
-            if ($candidate->evidenceExcerpt !== $expected) {
-                throw new MaterialProfileCandidateValidationException('Evidence excerpt does not match the canonical core.');
+            if ($excerptLength === 0) {
+                throw new MaterialProfileCandidateValidationException('Evidence excerpt is empty.');
             }
 
-            $canonicalStart = $coreCharStart + $start;
-            $canonicalEnd = $coreCharStart + $end;
+            if ($excerptLength > $maxEvidence) {
+                throw new MaterialProfileCandidateValidationException('Evidence exceeds the safe length limit.');
+            }
+
+            [$relativeStart, $relativeEnd] = $this->relativeCoreOffsets(
+                $coreText,
+                $coreLength,
+                $excerpt,
+                $start,
+                $end,
+                $maxEvidence,
+            );
+
+            $expected = mb_substr($coreText, $relativeStart, $relativeEnd - $relativeStart, 'UTF-8');
+            $canonicalStart = $coreCharStart + $relativeStart;
+            $canonicalEnd = $coreCharStart + $relativeEnd;
 
             $validated[] = new ValidatedProfileElement(
                 kind: $kind,
@@ -97,6 +96,96 @@ class ValidateProfileMapCandidates
     public static function evidenceLocator(int $chunkIndex, int $charStart, int $charEnd): string
     {
         return 'core-'.$chunkIndex.':'.$charStart.'-'.$charEnd;
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function relativeCoreOffsets(
+        string $coreText,
+        int $coreLength,
+        string $excerpt,
+        int $start,
+        int $end,
+        int $maxEvidence,
+    ): array {
+        if ($this->offsetsIdentifyExactSlice($coreText, $coreLength, $excerpt, $start, $end, $maxEvidence)) {
+            return [$start, $end];
+        }
+
+        $starts = $this->exactCoreOccurrenceStarts($coreText, $excerpt);
+
+        if ($starts === []) {
+            throw new MaterialProfileCandidateValidationException('Evidence excerpt does not match the canonical core.');
+        }
+
+        if (count($starts) > 1) {
+            throw new MaterialProfileCandidateValidationException('Evidence excerpt is ambiguous in the canonical core.');
+        }
+
+        $derivedStart = $starts[0];
+        $derivedEnd = $derivedStart + mb_strlen($excerpt, 'UTF-8');
+
+        if ($derivedStart < 0
+            || $derivedEnd <= $derivedStart
+            || $derivedEnd > $coreLength
+            || ($derivedEnd - $derivedStart) > $maxEvidence) {
+            throw new MaterialProfileCandidateValidationException('Evidence excerpt does not match the canonical core.');
+        }
+
+        return [$derivedStart, $derivedEnd];
+    }
+
+    private function offsetsIdentifyExactSlice(
+        string $coreText,
+        int $coreLength,
+        string $excerpt,
+        int $start,
+        int $end,
+        int $maxEvidence,
+    ): bool {
+        if ($start < 0 || $end <= $start || $end > $coreLength) {
+            return false;
+        }
+
+        if (($end - $start) > $maxEvidence) {
+            return false;
+        }
+
+        return $excerpt === mb_substr($coreText, $start, $end - $start, 'UTF-8');
+    }
+
+    /**
+     * Exact, case-sensitive, character-for-character occurrences inside the
+     * canonical core. The search advances one UTF-8 code point so overlapping
+     * repeats such as "aa" in "aaa" are counted as two.
+     *
+     * @return list<int>
+     */
+    private function exactCoreOccurrenceStarts(string $coreText, string $excerpt): array
+    {
+        $excerptLength = mb_strlen($excerpt, 'UTF-8');
+        $coreLength = mb_strlen($coreText, 'UTF-8');
+
+        if ($excerptLength === 0 || $excerptLength > $coreLength) {
+            return [];
+        }
+
+        $starts = [];
+        $from = 0;
+
+        while ($from <= ($coreLength - $excerptLength)) {
+            $found = mb_strpos($coreText, $excerpt, $from, 'UTF-8');
+
+            if ($found === false) {
+                break;
+            }
+
+            $starts[] = $found;
+            $from = $found + 1;
+        }
+
+        return $starts;
     }
 
     /**

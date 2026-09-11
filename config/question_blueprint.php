@@ -1,0 +1,38 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'title_max_chars' => 120,
+    'row_text_max_chars' => 500,
+    'max_rows' => 5,
+    'min_requested_count' => 1,
+    'max_requested_count' => 10,
+    'max_total_requested' => 10,
+    'processing_lease_seconds' => 120,
+    'queued_abandonment_seconds' => 900,
+    'job_timeout_seconds' => 270,
+    'provider_http_timeout_seconds' => 60,
+    'provider_connect_timeout_seconds' => 10,
+    'max_provider_attempts' => 3,
+    'new_fills_per_hour' => 3,
+    'throttle_window_seconds' => 3_600,
+    'stale_recovery_batch_size' => 50,
+    'queue_connection' => env('QUESTION_BLUEPRINT_QUEUE_CONNECTION', 'database-generation'),
+    'queue' => env('QUESTION_BLUEPRINT_QUEUE', 'material-intelligence'),
+    'api_key' => env('GEMINI_API_KEY'),
+    'api_base' => env('QUESTION_BLUEPRINT_API_BASE', 'https://generativelanguage.googleapis.com/v1beta'),
+    'primary_model' => env('QUESTION_BLUEPRINT_PRIMARY_MODEL', 'gemini-3.5-flash-lite'),
+    'prompt_version' => env('QUESTION_BLUEPRINT_PROMPT_VERSION', 'blueprint-fill-v1'),
+    'max_output_tokens' => (int) env('QUESTION_BLUEPRINT_MAX_OUTPUT_TOKENS', 4096),
+    'backoff_seconds' => [5, 15],
+    'status_poll_interval_ms' => 5_000,
+    'run_item_span_max_chars' => 16_000,
+    'run_item_span_context_chars' => 2_000,
+    'max_profile_elements' => 40,
+    'max_chunk_refs' => 12,
+    'max_chars_per_context' => 400,
+    'max_total_context_chars' => 3_200,
+    'max_serialized_request_chars' => 16_000,
+    'max_contexts_per_row' => 4,
+];

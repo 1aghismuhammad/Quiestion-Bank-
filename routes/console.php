@@ -15,3 +15,11 @@ Schedule::command('generations:recover-stale')
 Schedule::command('profiles:recover-stale')
     ->everyMinute()
     ->withoutOverlapping(10);
+
+Schedule::command('blueprints:recover-stale')
+    ->everyMinute()
+    ->withoutOverlapping(10);
+
+Schedule::command('generation-runs:recover-stale')
+    ->everyMinute()
+    ->withoutOverlapping(10);

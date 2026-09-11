@@ -9,4 +9,13 @@ enum QuestionType: string
     case MULTIPLE_CHOICE = 'multiple_choice';
     case TRUE_FALSE = 'true_false';
     case ESSAY = 'essay';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::MULTIPLE_CHOICE => 'Pilihan Ganda',
+            self::TRUE_FALSE => 'Benar/Salah',
+            self::ESSAY => 'Esai',
+        };
+    }
 }

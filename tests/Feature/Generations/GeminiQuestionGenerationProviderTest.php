@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Generations;
 
+use App\Data\Generations\BlueprintGenerationContext;
 use App\Data\Generations\GenerationProviderRequest;
 use App\Enums\AssessmentType;
+use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
 use App\Enums\GenerationAttemptPurpose;
 use App\Enums\GenerationErrorCode;
@@ -167,6 +169,50 @@ class GeminiQuestionGenerationProviderTest extends TestCase
 
         config(['generation.prompt_version' => 'mcq-v2']);
         $this->assertSame('mcq-v2', $builder->version());
+    }
+
+    public function test_v2_http_payload_includes_blueprint_row_and_forbids_heading_recall(): void
+    {
+        config(['generation.prompt_version' => McqPromptBuilder::V2]);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::questions(1)),
+                200,
+            ),
+        ]);
+
+        $this->provider()->generate(new GenerationProviderRequest(
+            outputLanguage: OutputLanguage::ID,
+            difficultyLevel: DifficultyLevel::MEDIUM,
+            assessmentType: AssessmentType::FORMATIVE,
+            requestedCount: 1,
+            acceptedQuestionTexts: [],
+            materialContent: 'Fotosintesis membutuhkan cahaya.',
+            purpose: GenerationAttemptPurpose::INITIAL,
+            model: (string) config('generation.primary_model'),
+            blueprintContext: new BlueprintGenerationContext(
+                objective: 'Tujuan provider.',
+                topic: 'Topik provider',
+                indicator: 'Indikator provider.',
+                cognitiveLevel: CognitiveLevel::Evaluate,
+                difficulty: DifficultyLevel::HARD,
+                assessmentType: AssessmentType::SUMMATIVE,
+                requestedCount: 1,
+            ),
+        ));
+
+        Http::assertSent(function ($request): bool {
+            $system = $request->data()['systemInstruction']['parts'][0]['text'] ?? '';
+            $user = $request->data()['contents'][0]['parts'][0]['text'] ?? '';
+            $this->assertStringContainsString('which heading appears', $system);
+            $this->assertStringContainsString('plausible statements from the same subject domain', $system);
+            $this->assertStringContainsString('<<<BLUEPRINT_ROW>>>', $user);
+            $this->assertStringContainsString('Tujuan provider.', $user);
+            $this->assertStringContainsString('Cognitive level: evaluate', $user);
+            $this->assertStringContainsString('<<<MATERIAL>>>', $user);
+
+            return true;
+        });
     }
 
     public function test_repair_prompt_asks_only_for_the_requested_count(): void

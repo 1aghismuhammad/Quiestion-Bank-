@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\MaterialProfiles;
 
+use App\Data\MaterialProfiles\ProfileProviderAttemptMetadata;
 use App\Enums\MaterialProfileAttemptErrorCode;
 use App\Enums\MaterialProfileErrorCode;
 use App\Exceptions\MaterialProfiles\MaterialProfileProviderException;
@@ -32,6 +33,7 @@ trait RecordsMaterialProfileProviderOutcome
         int $attemptId,
         int $attemptNumber,
         MaterialProfileProviderException $exception,
+        ?ProfileProviderAttemptMetadata $metadata = null,
     ): void {
         $terminal = ! $exception->isRetryable()
             || $this->beginAttempt->isFinalAttempt($attemptNumber);
@@ -45,6 +47,7 @@ trait RecordsMaterialProfileProviderOutcome
                 $attemptId,
                 $exception->attemptErrorCode,
                 MaterialProfileErrorCode::ProviderFailed,
+                $metadata,
             );
 
             return;
@@ -57,6 +60,7 @@ trait RecordsMaterialProfileProviderOutcome
             $stepExecutionToken,
             $attemptId,
             $exception->attemptErrorCode,
+            $metadata,
         );
 
         throw $exception;
@@ -73,6 +77,7 @@ trait RecordsMaterialProfileProviderOutcome
         string $stepExecutionToken,
         ?int $attemptId,
         MaterialProfileRejectedException $exception,
+        ?ProfileProviderAttemptMetadata $metadata = null,
     ): void {
         if ($attemptId !== null) {
             $this->failAttemptAndWorkflow->handle(
@@ -83,6 +88,7 @@ trait RecordsMaterialProfileProviderOutcome
                 $attemptId,
                 MaterialProfileAttemptErrorCode::ValidationFailed,
                 $exception->errorCode,
+                $metadata,
             );
 
             return;

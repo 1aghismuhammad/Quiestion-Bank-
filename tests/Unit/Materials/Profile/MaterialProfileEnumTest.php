@@ -8,6 +8,7 @@ use App\Enums\MaterialProfileAttemptErrorCode;
 use App\Enums\MaterialProfileAttemptStatus;
 use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileElementOrigin;
+use App\Enums\MaterialProfileEligibilityReason;
 use App\Enums\MaterialProfileErrorCode;
 use App\Enums\MaterialProfileOwnerState;
 use App\Enums\MaterialProfileStartOutcome;
@@ -59,6 +60,16 @@ class MaterialProfileEnumTest extends TestCase
         $this->assertSame(
             ['none', 'queued', 'processing', 'ready', 'failed', 'stale'],
             array_column(MaterialProfileOwnerState::cases(), 'value'),
+        );
+        $this->assertSame(
+            [
+                'eligible',
+                'extraction_incomplete',
+                'material_not_ready',
+                'material_empty',
+                'material_too_large',
+            ],
+            array_column(MaterialProfileEligibilityReason::cases(), 'value'),
         );
     }
 }

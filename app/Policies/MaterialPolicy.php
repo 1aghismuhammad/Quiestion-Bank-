@@ -62,6 +62,16 @@ class MaterialPolicy
         return $this->ownsActiveMaterial($user, $material);
     }
 
+    public function viewBlueprints(User $user, Material $material): bool
+    {
+        return $this->ownsActiveMaterial($user, $material);
+    }
+
+    public function manageBlueprints(User $user, Material $material): bool
+    {
+        return $this->ownsActiveMaterial($user, $material);
+    }
+
     private function ownsMaterial(User $user, Material $material): bool
     {
         return (int) $material->user_id === (int) $user->id;

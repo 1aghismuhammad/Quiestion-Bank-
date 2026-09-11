@@ -22,7 +22,23 @@ class FinalizeGenerationFailure
     public function handle(int $generationId, string $executionToken, GenerationErrorCode $errorCode): AiGeneration
     {
         return DB::transaction(function () use ($generationId, $executionToken, $errorCode): AiGeneration {
+            if (AiGeneration::query()->whereKey($generationId)->value('generation_run_id') !== null) {
+                throw new InvalidGenerationUsageException(
+                    'The generation usage cannot be finalized.',
+                    generationId: $generationId,
+                );
+            }
+
             $generation = $this->lockUserAndGeneration($generationId);
+
+            if ($generation->generation_run_id !== null) {
+                throw new InvalidGenerationUsageException(
+                    'The generation usage cannot be finalized.',
+                    (int) $generation->user_id,
+                    (int) $generation->generation_id,
+                );
+            }
+
             $usage = $this->lockStoredReservation($generation);
 
             if (

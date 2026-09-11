@@ -11,6 +11,7 @@
         "laravel/framework": "^13.0",
         "laravel/socialite": "^5.30",
         "laravel/tinker": "^3.0",
+        "phpoffice/phpword": "1.4.0",
         "smalot/pdfparser": "^2.12.5"
     },
     "require-dev": {

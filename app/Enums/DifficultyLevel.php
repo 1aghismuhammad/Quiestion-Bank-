@@ -10,4 +10,14 @@ enum DifficultyLevel: string
     case MEDIUM = 'medium';
     case HARD = 'hard';
     case HOTS = 'hots';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::EASY => 'Mudah',
+            self::MEDIUM => 'Sedang',
+            self::HARD => 'Sulit',
+            self::HOTS => 'HOTS',
+        };
+    }
 }

@@ -129,10 +129,7 @@
                 </form>
             @else
                 <p class="status status-warn">Materi belum bisa dianalisis</p>
-                <p class="muted">
-                    Analisis profil hanya tersedia untuk materi berstatus siap yang sudah memiliki konten teks
-                    dan tidak diarsipkan. Pastikan ekstraksi materi sudah selesai lebih dahulu.
-                </p>
+                <p class="muted">{{ $profile->eligibilityMessage }}</p>
             @endif
         </div>
     @endif
@@ -230,24 +227,17 @@
         </div>
     @endif
 
-    @if ($profile->canStart || $profile->canRegenerate)
+    @if ($profile->canRegenerate)
         <div class="card">
-            <h2>{{ $profile->canRegenerate ? 'Analisis ulang' : 'Mulai analisis' }}</h2>
+            <h2>Analisis ulang</h2>
             <p class="muted">
                 Maksimal tiga analisis profil baru per jam. Analisis profil tidak memotong kuota generasi soal.
             </p>
 
-            @if ($profile->canRegenerate)
-                <form method="POST" action="{{ route('materials.profile.regenerate', $material) }}">
-                    @csrf
-                    <button class="button" type="submit">Jalankan analisis baru</button>
-                </form>
-            @else
-                <form method="POST" action="{{ route('materials.profile.store', $material) }}">
-                    @csrf
-                    <button class="button" type="submit">Mulai analisis profil</button>
-                </form>
-            @endif
+            <form method="POST" action="{{ route('materials.profile.regenerate', $material) }}">
+                @csrf
+                <button class="button" type="submit">Jalankan analisis baru</button>
+            </form>
         </div>
     @endif
 @endsection

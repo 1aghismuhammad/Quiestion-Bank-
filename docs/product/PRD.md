@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.15.5
-- Updated: 7 September 2026
-- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank is MCQ-only. Phase 5.7 is `IN PROGRESS`. Phase 5.7A, Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are complete after post-commit corrective QA through v0.15.5. Phase 5.7C has not started. Legacy text Materials remain readable and editable. Phase 6 Admin Dashboard remains `PLANNED`.
+- Version: 0.15.9
+- Updated: 8 September 2026
+- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank is MCQ-only. Phase 5.7 is `IN PROGRESS`. Phase 5.7A through Phase 5.7B3 are `COMPLETE`. Phase 5.7C+D third corrective QA passed and is pending review (v0.15.9). Phase 5.7E has not started. Simple Mode only. Legacy text Materials remain readable and editable. Phase 6 Admin Dashboard remains `PLANNED`.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -68,7 +68,7 @@ Pengelola platform yang memonitor user, question bank, penggunaan AI, dan subscr
 1. User membuka landing page dan login melalui Google.
 2. Sistem memvalidasi OAuth, membuat atau memperbarui profil, lalu membuka dashboard.
 3. User memilih materi ready (bukan draft question set) dan menentukan assessment, difficulty, question type, serta jumlah soal.
-4. Sistem memvalidasi materi, konfigurasi, dan quota, lalu mereservasi satu generation credit.
+4. Sistem memvalidasi materi, konfigurasi, dan quota, lalu mereservasi credit. Legacy Start mereservasi satu credit per Generation. Simple Generation Run mereservasi `ceil(n/10)` credit pada subjek Run (1–10 soal = 1 credit).
 5. Sistem mengantrekan generation dan memanggil Google Gemini. Automatic retry memakai Generation dan reservation yang sama.
 6. Output valid ditagihkan (`charged`) dan disimpan sebagai hasil runtime generation (preview Phase 4). Invalid/partial output bukan success; credit di-release pada terminal failure.
 7. Phase 5: owner dapat mengimpor generation completed MCQ ke Question Set `draft`, mengedit MCQ pada satu halaman, lalu menerbitkan (`draft → published`). Published bersifat read-only. Pembuatan manual, TF/essay, unpublish, dan archive belum.
@@ -113,7 +113,16 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Question Bank
 - FR-MAT-11: Jika Pro berakhir dan counted storage melebihi limit Free: data yang sudah ada tetap ada; akses Material existing tetap; archive dan restore tetap diizinkan; upload FILE baru ditolak sampai usage kembali di bawah limit entitlement efektif. Karena pembuatan baru hanya melalui unggah, user di atas kuota tidak dapat membuat Material baru.
 - FR-MAT-12: Material Profile persistence exists (versions, chunks, steps, elements, attempts) with eligibility, hashing, splitting, tokens, leases, and stale recovery. Phase 5.7B1 delivered this foundation.
 - FR-MAT-13: Sequential map/reduce analysis uses a dedicated Gemini provider boundary, reuses a fingerprint-matching ready Version, rejects in-flight workflows, throttles three new Versions per user per rolling hour, and never consumes generation credits or writes `ai_usage_logs`.
-- FR-MAT-14: The Material owner can start, poll, review, and regenerate a profile through authenticated owner-scoped routes. Results are immutable; stale fingerprints are not shown as current; there is no element editing, blueprint, or generation-run integration.
+- FR-MAT-14: The Material owner can start, poll, review, and regenerate a profile through authenticated owner-scoped routes. Results are immutable; stale fingerprints are not shown as current; there is no element editing.
+
+- FR-BP-01: Owner dapat membuat kisi-kisi (Question Blueprint) manual dari Profil ready yang fingerprint-nya cocok. Paling banyak satu draf per Series. Konfirmasi menyimpan fingerprint materi dan bersifat idempotent. Mengedit versi confirmed mengkloning satu draf pada Series yang sama.
+- FR-BP-02: Bentuk Simple saja: 1–5 baris MCQ, satu tingkat kesulitan, total 1–10. Setiap baris wajib punya mapping konteks bounded yang tervalidasi dari elemen/chunk Profil. Confirm dan AI fill menolak Profil missing/stale/foreign/failed/queued/processing tanpa menulis kuota. First-N/full-book fallback dilarang.
+- FR-BP-03: AI fill memakai provider Blueprint tersendiri. Paling banyak tiga **accepted queue events** per user per jam bergulir, termasuk retry draf yang sama. Satu fill in-flight per Material, tetap `draft`, tidak auto-confirm, dan tidak menulis `ai_usage_logs`. Offset provider bersifat relatif terhadap excerpt `context_ref`; server yang mengonversi ke offset kanonis.
+- FR-BP-04: DOCX kisi-kisi hanya untuk Blueprint confirmed milik owner (PhpWord 1.4.0). Temp file dibersihkan lewat try/finally. Versi confirmed yang stale tetap dapat diunduh dan dilabeli historis. Tidak ada token, secret, prompt, atau metadata provider.
+
+- FR-RUN-01: Owner dapat memulai Simple Generation Run dari Blueprint confirmed yang masih current plus Profil ready yang cocok. Total 1–10, MCQ, satu difficulty. Advanced, shuffle, mixed difficulties, dan total 11+ ditolak tanpa reservasi.
+- FR-RUN-02: Satu reservasi per Run pada `generation_run_id` dengan `credits = ceil(n/10)`. Child Generation tidak punya baris usage. Sukses menagih sekali; gagal me-release sekali.
+- FR-RUN-03: Question Bank import tetap generation-only. Run tidak mengimpor ke Question Bank. Question teacher/student DOCX belum. Owner dapat melihat soal completed secara read-only dan escaped.
 
 ### AI Generation
 
@@ -150,8 +159,8 @@ Phase 5 delivered constraints:
 
 - FR-SUB-01: Plan mendefinisikan entitlement: `storage_limit_bytes`, `generation_limit`, dan `generation_reset_strategy` (`lifetime` atau `monthly`). Plan bukan harga atau durasi komersial.
 - FR-SUB-02: Subscription menyimpan window Pro berbatas waktu. Paling banyak satu window efektif pada satu instant; unique `(user_id, status)` tidak dipakai. Free bukan baris subscription. Resolver entitlement memakai `[starts_at, ends_at)` dan memvalidasi seluruh antrian `active` current/future sebagai Pro.
-- FR-SUB-03: Penggunaan generation dicatat pada `ai_usage_logs` dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window yang di-snapshot saat reservasi.
-- FR-SUB-04: Credit generation direservasi saat Start (`reserved`), ditagihkan saat Consume (`charged` ≡ consumed), dan dilepas saat Release (`released`). Satu request = satu credit. `available = allowance - charged - reserved`. Tidak ada HTTP idempotency key. Stale queued/processing reservations are recovered to `failed` + `released` with `error_code=stale_recovery` (minimum safe floor 1800s; operators may configure a higher threshold; no `reservation_expires_at`). User cancellation remains deferred.
+- FR-SUB-03: Penggunaan generation dicatat pada `ai_usage_logs` dengan `plan_id` wajib. `subscription_id` nullable: Free lifetime usage memakai Plan Free tanpa baris subscription; Pro monthly usage memakai Plan Pro dan window yang di-snapshot saat reservasi. Subjek XOR: tepat satu dari `generation_id` (legacy) atau `generation_run_id` (Run).
+- FR-SUB-04: Credit generation direservasi saat Start (`reserved`), ditagihkan saat Consume (`charged` ≡ consumed), dan dilepas saat Release (`released`). Occupancy = `SUM(credits)` untuk `reserved` + `charged`; `released` tidak dihitung. Legacy Start menulis `credits=1`. Simple Run menulis `ceil(n/10)` (1–10 = 1). Blueprint AI = 0 credit. `available = allowance - SUM(charged) - SUM(reserved)`. Tidak ada HTTP idempotency key pada Start legacy. Stale queued/processing reservations are recovered to `failed` + `released` with `error_code=stale_recovery` (minimum safe floor 1800s; operators may configure a higher threshold; no `reservation_expires_at`). User cancellation remains deferred. RecoverStaleGenerations hanya subjek legacy (`generation_run_id` null).
 - FR-SUB-05: User memilih offer Pro 1 bulan atau 3 bulan, membayar via QRIS statis, dan mengonfirmasi via WhatsApp. Paling banyak satu permintaan upgrade `pending` total per user (bukan per Offer). User tidak dapat membatalkan permintaan pending miliknya. Admin menyetujui, menolak (alasan wajib), atau membatalkan permintaan. Setelah rejected atau cancelled, user boleh membuat pending baru.
 - FR-SUB-06: Persetujuan menulis tepat satu baris Subscription `status=active` memakai snapshot permintaan. Tidak ada status Subscription `scheduled` atau `pending`. Satu pembelian 3 bulan (`pro_3m`) = satu baris yang mencakup 3 bulan kalender. Jika tidak ada antrian Pro current/future yang valid, `starts_at` = waktu approval. Jika antrian itu ada, `starts_at` = akhir antrian berbayar tersebut (`max(ends_at)`). `ends_at` = `starts_at` plus `duration_months` dengan aritmetika kalender no-overflow. Window masa depan tetap `active`.
 
@@ -207,15 +216,15 @@ Satu Plan entitlement. Storage 500 MiB (`524288000` bytes). Generation 100 per w
 
 ### Institution Plan
 
-Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, dan shared ownership belum termasuk dalam 18 entitas database saat ini.
+Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, dan shared ownership belum termasuk dalam 31 entitas database saat ini.
 
 ## MVP Acceptance Criteria
 
 - User dapat login hanya melalui Google dan masuk ke dashboard.
 - Admin menggunakan login yang sama, tetapi aksesnya dibatasi role.
 - User dapat membuat materi upload atau teks dan memilih topik/fokus.
-- Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2; Gemini MCQ job Phase 4.3+4.4; owner UI Phase 4.5).
-- Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). True/false dan essay belum dijalankan provider. Owner dapat mengonfigurasi generasi, memantau queued/processing, melihat pratinjau completed, dan retry failed.
+- Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2; Gemini MCQ job Phase 4.3+4.4; owner UI Phase 4.5; SUM ledger dan Simple Run Phase 5.7D).
+- Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). True/false dan essay belum dijalankan provider. Owner dapat mengonfigurasi generasi, memantau queued/processing, melihat pratinjau completed, dan retry failed. Owner dapat membuat kisi-kisi, mengonfirmasi, mengisi dengan AI (0 credit), mengunduh DOCX confirmed, dan menjalankan Simple Generation Run (1 credit untuk 1–10 soal). Advanced, shuffle, Run Question Bank import, dan question DOCX belum.
 - Failure AI tidak mengurangi credit secara permanen (Release pada terminal failure via `FinalizeGenerationFailure` atau stale recovery).
 - User dapat mengimpor generation completed MCQ ke Question Set `draft`, mengedit MCQ secara atomik, dan menerbitkan ke `published` (Phase 5 `COMPLETE`). Published read-only. Manual create, add/delete/reorder, TF/essay Question Bank, unpublish, archive, public visibility, and admin review are later.
 - Admin dapat menjalankan modul Phase 6 pada flow admin; branch broadcast baru wajib pada Phase 7.

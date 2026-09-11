@@ -72,6 +72,21 @@ class User extends Authenticatable
         return $this->hasMany(MaterialProfileVersion::class);
     }
 
+    public function blueprintSeries(): HasMany
+    {
+        return $this->hasMany(QuestionBlueprintSeries::class);
+    }
+
+    public function blueprints(): HasMany
+    {
+        return $this->hasMany(QuestionBlueprint::class);
+    }
+
+    public function generationRuns(): HasMany
+    {
+        return $this->hasMany(AiGenerationRun::class);
+    }
+
     public function usageLogs(): HasMany
     {
         return $this->hasMany(AiUsageLog::class);

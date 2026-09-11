@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Actions\GenerationRuns\FinalizeRunChildFailure;
 use App\Actions\Generations\FinalizeGenerationFailure;
 use App\Actions\Generations\RunQuestionGeneration;
 use App\Enums\GenerationErrorCode;
 use App\Exceptions\Generations\StaleGenerationExecutionException;
+use App\Models\AiGeneration;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Str;
+use PDOException;
 use Throwable;
 
 class GenerateQuestionsJob implements ShouldBeUnique, ShouldQueue
@@ -64,7 +68,25 @@ class GenerateQuestionsJob implements ShouldBeUnique, ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
+        if ($exception instanceof QueryException || $exception instanceof PDOException) {
+            return;
+        }
+
         try {
+            $runId = AiGeneration::query()
+                ->whereKey($this->generationId)
+                ->value('generation_run_id');
+
+            if ($runId !== null) {
+                app(FinalizeRunChildFailure::class)->handle(
+                    $this->generationId,
+                    $this->executionToken,
+                    GenerationErrorCode::JobFailed,
+                );
+
+                return;
+            }
+
             app(FinalizeGenerationFailure::class)->handle(
                 $this->generationId,
                 $this->executionToken,

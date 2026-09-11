@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) completed v0.15.9 third corrective QA; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI) and remains pending final manual QA. Phase 5.7E has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4 and v0.15.5 corrective QA. Phase 5.7C has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D completed v0.15.9 third corrective QA; v0.15.11 records the post-manual-QA content/UX corrective and remains pending final manual QA. Phase 5.7E has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4 and v0.15.5 B2+B3 corrective hardening; 5.7C not started)
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D v0.15.9 third corrective QA passed; v0.15.11 content/UX corrective passed automated QA, pending final manual QA; Phase 5.7E `NOT STARTED`)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -274,6 +274,7 @@ Phase 5.7B2 — Sequential Material Profile Map/Reduce Provider Calls (`COMPLETE
 - Three provider Attempts per Step maximum, provider HTTP outside transactions, atomic map persistence, and atomic reduce-ready plus Version-ready finalization.
 - v0.15.4: a live started Attempt blocks same-token resume and a second Begin; map success requires exactly one legal next Step; catchable unexpected provider Throwables close the Attempt with a sanitized allow-listed code.
 - v0.15.5: terminal Attempt and workflow failure commit together; map success proves complete ordered topology and dispatches only the immediate next Step.
+- v0.15.10: exact unique-core evidence reconciliation (never fuzzy); typed map/reduce results that fail validation persist bounded token/latency metadata when authority and identity remain valid.
 - No migration, no Composer dependency, no generation credit, and no `ai_usage_logs` write.
 
 Phase 5.7B3 — Owner Activation, Progress, Review, and Regeneration UI (`COMPLETE`):
@@ -285,8 +286,36 @@ Phase 5.7B3 — Owner Activation, Progress, Review, and Regeneration UI (`COMPLE
 - Explicit POST regeneration that creates a new Version, rejects an active workflow, respects the throttle, and never mutates terminal data.
 - Centralized owner-safe Indonesian error mapping; internal authority/concurrency codes are never copied into owner JSON. No token, Attempt, provider payload, or raw exception text is exposed.
 - v0.15.4: a failed regeneration remains owner state `failed` even when an older fingerprint-matching ready Version exists; that older Version is labelled as a previous usable profile.
+- v0.15.10: owner `none` shows exactly one start form; ready/failed/stale show exactly one regenerate form; queued/processing show none. Pre-start ineligibility is a typed presentation result (extraction incomplete, not ready/archived, empty, too large) and is not written onto a failed Version. Oversized copy uses the configured canonical-character cap: “Materi terlalu panjang untuk dianalisis. Batas maksimal 240.000 karakter.” Status JSON allowlist is unchanged except `can_start`/`can_regenerate` semantics.
 
 Out of scope for 5.7B2 and 5.7B3: profile element editing, approve/reject persistence, manual ordering, blueprint creation, generation-run integration, Advanced Mode, DOCX changes, admin profile management, notification workflow, and any credit or usage accounting.
+
+Phase 5.7C — Question Blueprint Domain, AI Fill, and Confirmed Kisi-Kisi DOCX (`COMPLETE`):
+
+- Series plus immutable versions: at most one draft per Series (application validation). Confirm stores the live Material fingerprint and is idempotent. Editing a confirmed version clones into one draft on the same Series.
+- Simple shape only: 1–5 MCQ rows, one difficulty, total requested 1–10. Confirm and AI fill require a current matching ready Profile. Missing/stale Profile on AI fill HTTP redirects to the profile page and calls the Blueprint provider zero times.
+- Dedicated Blueprint provider (`QuestionBlueprintAnalysisProvider` / `GeminiQuestionBlueprintProvider`). Three queued fills per user per rolling hour. One in-flight fill per Material. Same-token plus a started Attempt calls the provider zero times. Expired processing `failed()` is a no-op; `blueprints:recover-stale` closes started Attempts.
+- AI fill remains draft and never auto-confirms. Zero `ai_usage_logs` and zero generation credits.
+- Confirmed DOCX uses PhpWord 1.4.0, try/finally temp cleanup, `deleteFileAfterSend`, filename `Kisi-Kisi-[safe-title].docx`, and a historical label when the Material fingerprint no longer matches. Tokens, secrets, prompts, and provider metadata are absent.
+- v0.15.7: relevant bounded context is mandatory; first-N/full-book fallback is forbidden; provider offsets are context-relative and server-converted; aggregate Blueprint input budgets fail closed; every accepted AI-fill retry consumes a throttle event; unexpected Throwables are sanitized; expired-authority writes nothing.
+- v0.15.8: owner mapping options omit suggested, foreign, stale, and unbounded elements; selectable chunks show a short escaped preview.
+- v0.15.11: confirmed DOCX is A4 landscape with a readable two-column layout, human-readable labels (`Pilihan Ganda`), descriptive sources, and `Total soal`. A single Blueprint row does not render a delete control.
+
+Phase 5.7D — Multi-credit SUM Ledger and Simple Generation Runs (`COMPLETE`):
+
+- `ai_usage_logs.credits` defaults to 1. Occupancy is `SUM(credits)` of reserved + charged. XOR subject: exactly one of `generation_id` or `generation_run_id`. MySQL CHECK; SQLite relies on `UsageSubjectXor`.
+- Legacy Start still writes `credits=1` with `generation_id` set. Simple Run Start writes one Run reservation: `ceil(n/10)` (1–10 = 1 credit). Run children have no usage row.
+- Confirmed current Blueprint plus current matching ready Profile required. Mixed difficulties, totals above 10, non-MCQ, Advanced, and shuffle are rejected with zero reservation.
+- Start idempotency: User lock first; same key + fingerprint returns the original Run without Material lock; same key + different fingerprint rejects with no writes. New-key lock order: User → Material → Profile → Series → Blueprint → Run/Items/children → Usage.
+- Sequential children: one processing child, same-token duplicate calls the provider zero times, next child is selected by `child_index`, success dispatches exactly one next child, final child terminalizes once after the exact 1:1 item/child set. Failure aborts later children, closes started Attempts, and releases the full reservation once. Successful Run charges once. Owner show is a read-only escaped question preview.
+- v0.15.7: malformed topology fails the current started Attempt and Run; Material/Profile fingerprints are rechecked after provider HTTP; recovery closes started Attempts; unexpected provider Throwables are classified and sanitized.
+- v0.15.8: Run children budget reconstructed spans (including separators), not the complete Material; post-HTTP fingerprint/authority recheck is inside the persist transaction; expired Run authority cannot claim, resume, Begin/Finish, or finalize; both element and chunk span references are required; `DispatchQueuedRunChild` recovers stranded next-child dispatch; retry preserves `idempotency_key`.
+- v0.15.9: Begin is the final provider-call authority and refuses a second started Attempt for the same Run child; future children have `queued_at` null until eligible dispatch; redispatch preserves token and `queued_at`; Finish does not rewrite a non-started Attempt.
+- v0.15.11: Start expands each evidence anchor inside its canonical Chunk (must contain the original evidence; never another chunk, the Material prefix, or the complete book); reconstruction accepts historical exact-evidence spans; Run children send `mcq-v2` Blueprint row semantics; create form shows human language labels and `GenerationCredits::required()`; completed preview numbers questions across children and labels `Pembahasan`.
+- Legacy finalize refuses run children. `RecoverStaleGenerations` is `whereNull('generation_run_id')`. Separate `generation-runs:recover-stale`. Failed-run retry creates a new Run, new key, `parent_run_id`, and a new reservation.
+- `migrate:rollback` is not safe after Run usage or `credits>1` exists. Forward-fix only.
+
+Out of scope for 5.7C and 5.7D: Advanced Mode, shuffle UI, Run Question Bank import, question teacher/student DOCX, Blueprint AI credits, and Phase 5.7E/F/G.
 
 ## Phase 6 - Admin Dashboard
 

@@ -21,6 +21,11 @@ enum GenerationErrorCode: string
     case UnsupportedOutputLanguage = 'unsupported_output_language';
     case JobFailed = 'job_failed';
     case StaleRecovery = 'stale_recovery';
+    case RunAborted = 'run_aborted';
+    case HashMismatch = 'hash_mismatch';
+    case BlueprintStale = 'blueprint_stale';
+    case DuplicateStem = 'duplicate_stem';
+    case TopologyInvalid = 'topology_invalid';
 
     public function userMessage(): string
     {
@@ -34,6 +39,9 @@ enum GenerationErrorCode: string
             self::InvalidQuestionCount => 'Jumlah soal tidak valid.',
             self::MalformedOutput, self::IncompleteOutput => 'Gagal menghasilkan soal yang lengkap.',
             self::StaleRecovery => 'Generasi tidak selesai tepat waktu. Silakan coba lagi.',
+            self::RunAborted => 'Generasi dihentikan karena langkah lain gagal.',
+            self::HashMismatch, self::BlueprintStale => 'Konteks materi tidak lagi cocok. Mulai generasi baru.',
+            self::DuplicateStem, self::TopologyInvalid => 'Gagal menghasilkan soal yang lengkap.',
             default => 'Gagal menghasilkan soal. Silakan coba lagi.',
         };
     }
@@ -61,7 +69,12 @@ enum GenerationErrorCode: string
             self::UnsupportedOutputLanguage,
             self::UnsupportedQuestionType,
             self::InvalidQuestionCount,
-            self::StaleRecovery => true,
+            self::StaleRecovery,
+            self::RunAborted,
+            self::HashMismatch,
+            self::BlueprintStale,
+            self::DuplicateStem,
+            self::TopologyInvalid => true,
             default => false,
         };
     }

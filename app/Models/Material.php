@@ -58,6 +58,21 @@ class Material extends Model
             ->orderBy('version');
     }
 
+    public function blueprintSeries(): HasMany
+    {
+        return $this->hasMany(QuestionBlueprintSeries::class, 'material_id', 'material_id');
+    }
+
+    public function blueprints(): HasMany
+    {
+        return $this->hasMany(QuestionBlueprint::class, 'material_id', 'material_id');
+    }
+
+    public function generationRuns(): HasMany
+    {
+        return $this->hasMany(AiGenerationRun::class, 'material_id', 'material_id');
+    }
+
     /**
      * @return array<string, string>
      */

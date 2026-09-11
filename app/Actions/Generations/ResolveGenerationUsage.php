@@ -17,8 +17,8 @@ class ResolveGenerationUsage
     {
         $query = $this->capacityQuery($user, $quota);
 
-        $consumed = (clone $query)->where('status', UsageStatus::CHARGED)->count();
-        $reserved = (clone $query)->where('status', UsageStatus::RESERVED)->count();
+        $consumed = (int) (clone $query)->where('status', UsageStatus::CHARGED)->sum('credits');
+        $reserved = (int) (clone $query)->where('status', UsageStatus::RESERVED)->sum('credits');
         $available = $quota->limit - $consumed - $reserved;
 
         return new GenerationUsageSnapshot(

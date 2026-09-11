@@ -143,6 +143,13 @@ class MaterialProfileReduceTest extends TestCase
                 ->firstOrFail()
                 ->errorCodeEnum(),
         );
+        $reduceAttempt = MaterialProfileAttempt::query()
+            ->where('purpose', MaterialProfileStepPurpose::REDUCE)
+            ->firstOrFail();
+        $this->assertSame(120, (int) $reduceAttempt->input_tokens);
+        $this->assertSame(45, (int) $reduceAttempt->output_tokens);
+        $this->assertSame(165, (int) $reduceAttempt->total_tokens);
+        $this->assertSame(7, (int) $reduceAttempt->latency_ms);
 
         // Exhausting the budget fails the Version once, and the reduce Step never
         // becomes ready with suggested Elements half-written.

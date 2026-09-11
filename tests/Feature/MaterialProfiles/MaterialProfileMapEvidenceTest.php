@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\MaterialProfiles;
 
+use App\Actions\MaterialProfiles\ValidateProfileMapCandidates;
 use App\Data\MaterialProfiles\ExtractedProfileCandidate;
 use App\Data\MaterialProfiles\ProfileMapRequest;
 use App\Enums\MaterialProfileAttemptErrorCode;
@@ -134,6 +135,85 @@ class MaterialProfileMapEvidenceTest extends TestCase
         $this->assertSame(0, (int) $first->char_start);
         $this->assertSame(12, (int) $first->char_end);
         $this->assertSame('core-0:0-12', $first->evidence_locator);
+    }
+
+    public function test_unique_excerpt_with_incorrect_offsets_is_reconciled_and_dispatches_the_next_map(): void
+    {
+        $material = Material::factory()->text()->for($this->user)->create([
+            'content' => $this->multiChunkContent(2),
+        ]);
+        $version = $this->startProfileAnalysis($this->user, $material)->version;
+
+        $this->provider->mapUsing = function (ProfileMapRequest $request) {
+            $excerpt = 'Bagian '.$request->chunkIndex.'.';
+
+            return FakeMaterialProfileAnalysisProvider::mapResult($request, [
+                new ExtractedProfileCandidate(
+                    MaterialProfileElementKind::TOPIC->value,
+                    'Topik '.$request->chunkIndex,
+                    $excerpt,
+                    99,
+                    108,
+                ),
+            ]);
+        };
+
+        $this->runProfileJob($this->pushedMapJobs()[0]);
+
+        $element = MaterialProfileElement::query()
+            ->where('profile_version_id', $version->profile_version_id)
+            ->where('origin', MaterialProfileElementOrigin::EXTRACTED)
+            ->firstOrFail();
+        $chunk = MaterialProfileChunk::query()
+            ->where('profile_version_id', $version->profile_version_id)
+            ->where('chunk_index', 0)
+            ->firstOrFail();
+
+        $this->assertSame('Bagian 0.', $element->evidence_excerpt);
+        $this->assertSame((int) $chunk->char_start, (int) $element->char_start);
+        $this->assertSame((int) $chunk->char_start + mb_strlen('Bagian 0.', 'UTF-8'), (int) $element->char_end);
+        $this->assertSame(
+            ValidateProfileMapCandidates::evidenceLocator(
+                0,
+                (int) $element->char_start,
+                (int) $element->char_end,
+            ),
+            $element->evidence_locator,
+        );
+        $this->assertSame(MaterialProfileStepStatus::READY, $this->mapStep($version, 0)->fresh()->status);
+        $this->assertCount(2, $this->pushedMapJobs());
+        $this->assertSame([], $this->pushedReduceJobs());
+        $this->assertSame(MaterialProfileStatus::PROCESSING, $version->fresh()->status);
+    }
+
+    public function test_reconciled_utf8_excerpt_persists_canonical_code_point_offsets(): void
+    {
+        $content = 'Bab 😀 satu: kalor dan suhu 😀 pada zat.';
+        $material = Material::factory()->text()->for($this->user)->create(['content' => $content]);
+        $start = mb_strpos($content, 'kalor', 0, 'UTF-8');
+        $this->assertIsInt($start);
+        $end = $start + mb_strlen('kalor dan suhu', 'UTF-8');
+
+        $this->provider->mapUsing = fn (ProfileMapRequest $request) => FakeMaterialProfileAnalysisProvider::mapResult($request, [
+            new ExtractedProfileCandidate(
+                MaterialProfileElementKind::TOPIC->value,
+                'Kalor dan suhu',
+                'kalor dan suhu',
+                1,
+                3,
+            ),
+        ]);
+
+        $version = $this->completeProfileAnalysis($this->user, $material);
+        $element = MaterialProfileElement::query()
+            ->where('profile_version_id', $version->profile_version_id)
+            ->where('origin', MaterialProfileElementOrigin::EXTRACTED)
+            ->firstOrFail();
+
+        $this->assertSame('kalor dan suhu', $element->evidence_excerpt);
+        $this->assertSame($start, (int) $element->char_start);
+        $this->assertSame($end, (int) $element->char_end);
+        $this->assertNotSame(strpos($content, 'kalor'), (int) $element->char_start);
     }
 
     public function test_offsets_are_utf8_code_point_offsets(): void
@@ -297,10 +377,10 @@ class MaterialProfileMapEvidenceTest extends TestCase
             10,
         )];
 
-        yield 'end beyond the core' => [fn (ProfileMapRequest $request) => new ExtractedProfileCandidate(
+        yield 'end beyond the core with absent excerpt' => [fn (ProfileMapRequest $request) => new ExtractedProfileCandidate(
             MaterialProfileElementKind::TOPIC->value,
             'Topik',
-            mb_substr($request->coreText, 0, 10, 'UTF-8'),
+            'teks yang tidak ada di inti',
             0,
             $request->coreLength() + 5,
         )];

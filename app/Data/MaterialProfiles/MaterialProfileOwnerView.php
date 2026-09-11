@@ -31,6 +31,7 @@ final readonly class MaterialProfileOwnerView
         public bool $canRegenerate = false,
         public ?string $errorCode = null,
         public ?string $errorMessage = null,
+        public ?string $eligibilityMessage = null,
         public array $extractedByKind = [],
         public array $suggestedByKind = [],
     ) {}

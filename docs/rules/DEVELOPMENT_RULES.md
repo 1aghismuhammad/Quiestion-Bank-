@@ -11,9 +11,10 @@ Keputusan stack:
 - Blade + Livewire + Tailwind CSS
 - Phase 2 Material Management wajib Blade/controller dan tidak menambahkan Livewire dependency atau component
 - Phase 4.5 generation UI wajib Blade/controller + vanilla JS; jangan Livewire, React, Vue, Alpine (kecuali sudah ada), atau websockets
+- Phase 5.7B3 profile UI dan Phase 5.7C+D Blueprint/Run UI wajib Blade/controller + vanilla JS bounded; jangan Livewire, React, Vue, Alpine (kecuali sudah ada), atau websockets
 - Google OAuth melalui Laravel Socialite
 - Google Gemini melalui service/adapter internal
-- Queue untuk AI generation, extraction, serta broadcast ketika Phase 7 dimulai
+- Queue untuk AI generation, extraction, analisis profil, AI fill kisi-kisi, serta broadcast ketika Phase 7 dimulai
 
 ## Architecture
 
@@ -35,6 +36,9 @@ Rules:
 - Repository tidak wajib; gunakan hanya untuk query kompleks atau sumber data alternatif.
 - Semua mutation multi-tabel menggunakan database transaction.
 - Material Profile mutations mengunci User → Material → Profile Version → required Steps (ascending `profile_step_id`) → required Chunks (ascending `profile_chunk_id`). Jangan membalik urutan ini.
+- Blueprint confirm mengunci User → Material → Profile Version → Series → Blueprint → Rows → Contexts. Jangan membalik urutan ini.
+- Generation Run Start (kunci baru) mengunci User → Material → Profile → Series → Blueprint → Run/Items/children → Usage. Same key + fingerprint yang cocok mengunci User → Material → Run → items → children (child_index) → Usage → Attempts, lalu mengembalikan Run asli. `DispatchQueuedRunChild` adalah satu-satunya dispatcher child: persist token di bawah kunci, dispatch setelah commit, idempotent, hanya `child_index` berikutnya. Child masa depan tetap queued dengan `queued_at` null dan tanpa token sampai eligible; `queued_at` diisi sekali saat token pertama di-mint dan tidak di-reset pada redispatch.
+- Generation Run worker, finalize, dan recovery mengunci User → Material → Run → items (sort_order) → children (child_index) → Usage → Attempts. Persistensi pasca-provider di bawah kunci yang sama plus Profile Version → spans → element/chunk yang dirujuk. Recheck token, otoritas processing yang belum kedaluwarsa, fingerprint, hash span, dan topologi terjadi di dalam transaksi finalisasi. `BeginGenerationAttempt` menolak child Run jika sudah ada Attempt `started` (no-op stale/duplicate, bukan budget exhaustion). `FinishGenerationAttempt` tidak menulis ulang Attempt yang bukan `started`. Jangan memilih child berikutnya menurut generation_id.
 
 ## Suggested Locations
 
@@ -100,7 +104,7 @@ php artisan queue:work database-generation \
 - Gunakan `created_at`, `updated_at`, dan soft delete hanya sesuai lifecycle.
 - Cascade delete hanya untuk child yang tidak memiliki nilai audit.
 - Subscription, AI generation, AI usage, dan broadcast log tidak boleh terhapus karena cascade user.
-- Migration harus memiliki rollback yang aman.
+- Migration harus memiliki rollback yang aman, kecuali catatan eksplisit: `ai_usage_logs` XOR/credits (`2026_09_07_150010`) **bukan** rollback-aman setelah ada Run usage atau `credits>1`. Forward-fix only.
 
 Checklist perubahan schema:
 
@@ -114,7 +118,7 @@ Checklist perubahan schema:
 ## Domain Invariants
 
 - Paling banyak satu subscription efektif untuk user pada satu instant. Beberapa row berstatus `active` boleh ada untuk renewal berurutan selama effective windows `[starts_at, ends_at)` tidak overlap. Unique `(user_id, status)` tidak dipakai. Resolver memvalidasi seluruh antrian `active` current/future sebagai Plan Pro dengan window well-formed; overlap efektif fail-closed. Data stale historis tidak mengunci akun.
-- Credit generation direservasi saat Start (`reserved`), charged setelah output valid, dan released ketika gagal. Satu request = satu credit. Automatic reservation TTL sengaja ditunda. Phase 3.5 hanya mendefinisikan limit dan jendela.
+- Credit generation direservasi saat Start (`reserved`), charged setelah output valid, dan released ketika gagal. Occupancy = `SUM(credits)` reserved+charged. Legacy Start = `credits=1` pada `generation_id`. Simple Run = `ceil(n/10)` pada `generation_run_id` (1–10 = 1). Child Run tidak punya baris usage. Blueprint AI = 0 credit. Automatic reservation TTL sengaja ditunda. Phase 3.5 hanya mendefinisikan limit dan jendela.
 - Question count output harus sama dengan request.
 - Multiple choice memiliki minimal empat options dan tepat satu benar.
 - True/false memiliki tepat dua options dan satu benar.
@@ -167,7 +171,7 @@ Additional rules:
 ## Security
 
 - Gunakan CSRF protection untuk semua form.
-- Gunakan policy untuk material, generation (owner-only, no Admin bypass), question set, subscription action, dan admin action.
+- Gunakan policy untuk material, generation (owner-only, no Admin bypass), blueprint, generation run, question set, subscription action, dan admin action.
 - Escape output pada Blade; HTML harus disanitasi jika benar-benar diperlukan.
 - Rate limit Google OAuth redirect/callback and subscription confirm (`throttle:10,1`). Phase 4 generation create/retry does not add a dedicated HTTP limiter; capacity is enforced by quota reservation. Broadcast rate limits belong to Phase 7.
 - Jangan commit `.env`, credentials, token, atau provider response yang sensitif.
@@ -192,7 +196,10 @@ Minimum coverage khusus:
 - Phase 5.1–5.6 (`COMPLETE`, MCQ-only): import completed MCQ ke Question Set draft, edit draf atomik, publish `draft → published`, unique `generation_id`, ownership 404, dan UI index/show/edit. Jangan mengklaim SQLite membuktikan row lock.
 - Phase 5.7B1 (`COMPLETE`, foundation only): schema/index Material Profile, eligibility, hasher/splitter UTF-8, satu `workflow_token` per versi, `step_execution_token` per claim, lease 120s vs abandonment 900s, ready/failure invariants, recovery bounded/idempotent, zero `ai_usage_logs`. Jangan mengklaim SQLite membuktikan first-lock-wins.
 - Phase 5.7B2 (`COMPLETE`): reuse versi ready, penolakan in-flight, throttle tiga per jam bergulir, urutan map naik dan reduce terakhir, reduce lossless terbatas, fingerprint reduce sebelum HTTP, `failed()` kedaluwarsa tanpa otoritas, identity Attempt immutable, satu token workflow vs token Step per Step, retry memakai token Step yang sama, batas tiga Attempt, mapping error provider (timeout, 429, 5xx, schema invalid, auth permanen), validasi evidence UTF-8 dengan penolakan respons penuh, persistensi map atomik, dan reduce-ready plus Version-ready atomik. v0.15.4: same-token tidak boleh memanggil provider kedua selama Attempt `started` hidup; map success mensyaratkan tepat satu next Step sah; Throwable tak terduga menutup Attempt dengan kode allow-listed. v0.15.5: kegagalan terminal Attempt/workflow atomik; topologi map immediate-next ketat. Worker produksi harus mengonsumsi `material-intelligence`. Provider dan HTTP wajib difake; jangan memanggil Gemini nyata. Jangan mengklaim SQLite membuktikan first-lock-wins.
-- Phase 5.7B3 (`COMPLETE`): rute owner profil, otorisasi owner untuk view/status/start/regenerate, allowlist field pada status JSON, polling tanpa side effect, state `none`/`queued`/`processing`/`ready`/`failed`/`stale`, escaping teks turunan provider, regenerasi POST yang tidak mengubah versi terminal, mapping pesan Indonesia yang aman, dan `error_code` publik tanpa kode otoritas internal. v0.15.4: regenerasi gagal tetap `failed` meski ada ready lama yang dilabeli terpisah. Jangan menambah editing element, blueprint, integrasi generation, atau akuntansi credit.
+- Phase 5.7B3 (`COMPLETE`): rute owner profil, otorisasi owner untuk view/status/start/regenerate, allowlist field pada status JSON, polling tanpa side effect, state `none`/`queued`/`processing`/`ready`/`failed`/`stale`, escaping teks turunan provider, regenerasi POST yang tidak mengubah versi terminal, mapping pesan Indonesia yang aman, dan `error_code` publik tanpa kode otoritas internal. v0.15.4: regenerasi gagal tetap `failed` meski ada ready lama yang dilabeli terpisah. Jangan menambah editing element.
+- Phase 5.7C (`COMPLETE` after v0.15.9 third corrective QA, pending final manual QA): draf/confirm/clone Blueprint, mapping konteks eksplisit, satu draf per Series, bentuk Simple, Profil ready wajib, AI fill tanpa auto-confirm dan tanpa `ai_usage_logs`, offset excerpt-relative, anggaran input agregat, throttle event per accepted queue termasuk retry, same-token tanpa provider kedua, recovery vs late result, DOCX confirmed-only dengan try/finally dan tanpa token/secret. Opsi mapping owner hanya element extracted plus chunk sumber yang valid; suggested/foreign/stale tidak ditawarkan. First-N/full-book fallback dilarang. v0.15.11: DOCX landscape terbaca; satu baris tidak menampilkan kontrol hapus. Provider dan HTTP wajib difake.
+- Phase 5.7D (`COMPLETE` after v0.15.9 third corrective QA, pending final manual QA): `SUM(credits)`, XOR subjek, kalkulasi 10/11/20/21, Start Run dengan Blueprint confirmed current dan mapping bounded wajib, anggaran child = span terrekonstruksi (termasuk separator) bukan panjang Material utuh, idempotency key+fingerprint plus `DispatchQueuedRunChild`, child sekuensial menurut `child_index` tanpa baris usage, topologi 1:1, recheck otoritas/fingerprint atomik di transaksi persistensi, cutoff stale Run konsisten, Begin menolak Attempt `started` ganda, jam queued hanya pada child eligible, finalize legacy menolak child Run, recovery Run menutup Attempt started dan me-redispatch next child queued yang terdampar, preview soal completed read-only, retry mempertahankan `idempotency_key`. v0.15.11: Start mengekspansi evidence di dalam Chunk yang sama; rekonstruksi menerima span historis exact-evidence; prompt `mcq-v2` membawa semantik baris Blueprint. Jangan mengklaim SQLite membuktikan first-lock-wins. Isolated MySQL tetap wajib untuk Phase 5.7G / pre-production.
+- Phase 5.7E (`NOT STARTED`): Advanced Mode, shuffle, Run Question Bank import, dan question DOCX. Jangan menambah UI atau kode itu.
 - Prompt validator untuk ketiga question type.
 - Retry lineage dan audit AI.
 - Material ownership, upload validation, entitlement resolution, dan storage quota.

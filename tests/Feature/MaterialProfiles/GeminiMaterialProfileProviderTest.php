@@ -9,10 +9,12 @@ use App\Data\MaterialProfiles\ProfileMapRequest;
 use App\Data\MaterialProfiles\ProfileReduceRequest;
 use App\Enums\MaterialProfileAttemptErrorCode;
 use App\Enums\MaterialProfileElementKind;
+use App\Enums\MaterialProfileErrorCode;
 use App\Enums\MaterialProfileStepPurpose;
 use App\Exceptions\MaterialProfiles\MaterialProfileMalformedResponseException;
 use App\Exceptions\MaterialProfiles\MaterialProfileProviderPermanentException;
 use App\Exceptions\MaterialProfiles\MaterialProfileProviderTransientException;
+use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 use App\Services\AI\GeminiMaterialProfileProvider;
 use App\Services\AI\MaterialProfilePromptBuilder;
 use Illuminate\Http\Client\ConnectionException;
@@ -77,6 +79,14 @@ class GeminiMaterialProfileProviderTest extends TestCase
             $userText = $body['contents'][0]['parts'][0]['text'];
             $this->assertStringContainsString('<<<CORE>>>', $userText);
             $this->assertStringContainsString('Fotosintesis adalah proses', $userText);
+
+            $system = $body['systemInstruction']['parts'][0]['text'];
+            $this->assertSame(
+                $this->app->make(MaterialProfilePromptBuilder::class)
+                    ->mapSystemInstruction('profile-map-v1'),
+                $system,
+            );
+            $this->assertStringNotContainsString('Copy evidence_excerpt verbatim', $system);
 
             return true;
         });
@@ -319,6 +329,96 @@ class GeminiMaterialProfileProviderTest extends TestCase
 
         $this->assertSame('profile-map-v2', $builder->mapVersion());
         $this->assertSame('profile-reduce-v2', $builder->reduceVersion());
+    }
+
+    public function test_map_http_call_uses_the_request_prompt_version_not_the_config_default(): void
+    {
+        config(['material_profile.map_prompt_version' => 'profile-map-v2']);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiProfileFakeResponses::success(GeminiProfileFakeResponses::mapPayload([
+                    GeminiProfileFakeResponses::observation('topic', 'Fotosintesis', 'Fotosintesis', 0, 12),
+                ])),
+                200,
+            ),
+        ]);
+
+        $this->provider()->analyzeChunk($this->mapRequest());
+
+        Http::assertSent(function ($request): bool {
+            $system = $request->data()['systemInstruction']['parts'][0]['text'];
+            $this->assertStringNotContainsString('Copy evidence_excerpt verbatim', $system);
+            $this->assertSame(
+                $this->app->make(MaterialProfilePromptBuilder::class)
+                    ->mapSystemInstruction('profile-map-v1'),
+                $system,
+            );
+
+            return true;
+        });
+    }
+
+    public function test_map_http_call_with_v2_identity_sends_the_verbatim_contract(): void
+    {
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiProfileFakeResponses::success(GeminiProfileFakeResponses::mapPayload([
+                    GeminiProfileFakeResponses::observation('topic', 'Fotosintesis', 'Fotosintesis', 0, 12),
+                ])),
+                200,
+            ),
+        ]);
+
+        $request = $this->mapRequest();
+        $v2Request = new ProfileMapRequest(
+            profileVersionId: $request->profileVersionId,
+            chunkIndex: $request->chunkIndex,
+            coreText: $request->coreText,
+            overlapText: $request->overlapText,
+            coreCharStart: $request->coreCharStart,
+            coreCharEnd: $request->coreCharEnd,
+            model: $request->model,
+            promptVersion: MaterialProfilePromptBuilder::MAP_V2,
+        );
+
+        $result = $this->provider()->analyzeChunk($v2Request);
+        $this->assertSame(MaterialProfilePromptBuilder::MAP_V2, $result->metadata->promptVersion);
+
+        Http::assertSent(function ($httpRequest): bool {
+            $system = $httpRequest->data()['systemInstruction']['parts'][0]['text'];
+            $this->assertStringContainsString('Copy evidence_excerpt verbatim from <<<CORE>>>', $system);
+
+            return true;
+        });
+    }
+
+    public function test_unsupported_map_prompt_identity_does_not_call_the_provider(): void
+    {
+        Http::fake();
+
+        $request = $this->mapRequest();
+        $unsupported = new ProfileMapRequest(
+            profileVersionId: $request->profileVersionId,
+            chunkIndex: $request->chunkIndex,
+            coreText: $request->coreText,
+            overlapText: $request->overlapText,
+            coreCharStart: $request->coreCharStart,
+            coreCharEnd: $request->coreCharEnd,
+            model: $request->model,
+            promptVersion: 'profile-map-custom',
+        );
+
+        try {
+            $this->provider()->analyzeChunk($unsupported);
+            $this->fail('Expected an unsupported map identity to be rejected.');
+        } catch (MaterialProfileRejectedException $exception) {
+            $this->assertSame(
+                MaterialProfileErrorCode::ValidationFailed,
+                $exception->errorCode,
+            );
+        }
+
+        Http::assertNothingSent();
     }
 
     public function test_b1_timeout_configuration_is_preserved(): void

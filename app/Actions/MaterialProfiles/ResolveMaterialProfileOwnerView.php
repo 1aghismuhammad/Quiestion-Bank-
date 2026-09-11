@@ -44,7 +44,9 @@ class ResolveMaterialProfileOwnerView
             return new MaterialProfileOwnerView(MaterialProfileOwnerState::None);
         }
 
-        $eligible = $this->assertEligible->passes($material);
+        $eligibility = $this->assertEligible->inspect($material);
+        $eligible = $eligibility->isEligible();
+        $eligibilityMessage = $eligible ? null : $eligibility->message;
         $contentHash = $this->hasher->hash((string) $material->content);
         $extractor = (string) config('material_profile.extractor_implementation');
 
@@ -82,8 +84,9 @@ class ResolveMaterialProfileOwnerView
                 previousReady: $previousReady,
                 totalSteps: $steps->count(),
                 completedSteps: $this->completedSteps($steps),
-                canStart: $eligible,
+                canStart: false,
                 canRegenerate: $eligible,
+                eligibilityMessage: $eligibilityMessage,
                 errorCode: MaterialProfileOwnerMessages::publicCode(
                     $latest->error_code === null ? null : (string) $latest->error_code,
                 ),
@@ -104,6 +107,7 @@ class ResolveMaterialProfileOwnerView
                 completedSteps: $this->completedSteps($steps),
                 canStart: false,
                 canRegenerate: $eligible,
+                eligibilityMessage: $eligibilityMessage,
                 extractedByKind: $this->groupByKind($elements, MaterialProfileElementOrigin::EXTRACTED),
                 suggestedByKind: $this->groupByKind($elements, MaterialProfileElementOrigin::SUGGESTED),
             );
@@ -113,6 +117,7 @@ class ResolveMaterialProfileOwnerView
             return new MaterialProfileOwnerView(
                 state: MaterialProfileOwnerState::None,
                 canStart: $eligible,
+                eligibilityMessage: $eligibilityMessage,
             );
         }
 
@@ -122,14 +127,16 @@ class ResolveMaterialProfileOwnerView
             return new MaterialProfileOwnerView(
                 state: MaterialProfileOwnerState::Stale,
                 version: $latest,
-                canStart: $eligible,
+                canStart: false,
                 canRegenerate: $eligible,
+                eligibilityMessage: $eligibilityMessage,
             );
         }
 
         return new MaterialProfileOwnerView(
             state: MaterialProfileOwnerState::None,
             canStart: $eligible,
+            eligibilityMessage: $eligibilityMessage,
         );
     }
 

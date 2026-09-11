@@ -20,6 +20,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'user_id',
     'material_id',
+    'generation_run_id',
+    'generation_run_item_id',
+    'child_index',
     'assessment_type',
     'difficulty_level',
     'question_type',
@@ -56,6 +59,21 @@ class AiGeneration extends Model
     public function material(): BelongsTo
     {
         return $this->belongsTo(Material::class, 'material_id', 'material_id');
+    }
+
+    public function generationRun(): BelongsTo
+    {
+        return $this->belongsTo(AiGenerationRun::class, 'generation_run_id', 'generation_run_id');
+    }
+
+    public function generationRunItem(): BelongsTo
+    {
+        return $this->belongsTo(AiGenerationRunItem::class, 'generation_run_item_id', 'generation_run_item_id');
+    }
+
+    public function isRunChild(): bool
+    {
+        return $this->generation_run_id !== null;
     }
 
     public function parent(): BelongsTo
@@ -95,6 +113,7 @@ class AiGeneration extends Model
             'question_type' => QuestionType::class,
             'output_language' => OutputLanguage::class,
             'question_count' => 'integer',
+            'child_index' => 'integer',
             'generation_status' => GenerationStatus::class,
             'attempt_number' => 'integer',
             'result_json' => 'array',

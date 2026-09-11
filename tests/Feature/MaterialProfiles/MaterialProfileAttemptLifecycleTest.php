@@ -85,7 +85,10 @@ class MaterialProfileAttemptLifecycleTest extends TestCase
         }
 
         $this->assertSame(
-            ['profile-map-v1', 'profile-reduce-v1'],
+            [
+                (string) config('material_profile.map_prompt_version'),
+                (string) config('material_profile.reduce_prompt_version'),
+            ],
             $attempts->pluck('prompt_version')->all(),
         );
     }
@@ -143,6 +146,10 @@ class MaterialProfileAttemptLifecycleTest extends TestCase
         $attempt = MaterialProfileAttempt::query()->firstOrFail();
         $this->assertSame(MaterialProfileAttemptStatus::FAILED, $attempt->status);
         $this->assertSame(MaterialProfileAttemptErrorCode::ProviderTimeout, $attempt->errorCodeEnum());
+        $this->assertNull($attempt->input_tokens);
+        $this->assertNull($attempt->output_tokens);
+        $this->assertNull($attempt->total_tokens);
+        $this->assertNull($attempt->latency_ms);
         $this->assertNotNull($attempt->finished_at);
         $this->assertSame(MaterialProfileStatus::PROCESSING, $version->fresh()->status);
         $this->assertSame(0, MaterialProfileElement::query()->count());

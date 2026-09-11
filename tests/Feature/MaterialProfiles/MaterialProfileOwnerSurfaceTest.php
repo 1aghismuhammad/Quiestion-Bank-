@@ -7,14 +7,17 @@ namespace Tests\Feature\MaterialProfiles;
 use App\Data\MaterialProfiles\ExtractedProfileCandidate;
 use App\Data\MaterialProfiles\ProfileMapRequest;
 use App\Data\MaterialProfiles\SuggestedProfileCandidate;
+use App\Enums\ExtractionStatus;
 use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileErrorCode;
 use App\Enums\MaterialProfileStatus;
+use App\Enums\MaterialStatus;
 use App\Jobs\AnalyzeMaterialProfileMapJob;
 use App\Jobs\ReduceMaterialProfileJob;
 use App\Models\AiUsageLog;
 use App\Models\Material;
 use App\Models\MaterialProfileAttempt;
+use App\Models\MaterialProfileChunk;
 use App\Models\MaterialProfileElement;
 use App\Models\MaterialProfileStep;
 use App\Models\MaterialProfileVersion;
@@ -130,6 +133,12 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertSee('action="'.route('materials.profile.store', $this->material).'"', false)
             ->assertSee('Mulai analisis profil');
 
+        $html = (string) $response->getContent();
+        $this->assertSame(1, substr_count($html, 'Mulai analisis profil'));
+        $this->assertSame(1, substr_count($html, 'action="'.route('materials.profile.store', $this->material).'"'));
+        $this->assertSame(0, substr_count($html, 'Jalankan analisis baru'));
+        $this->assertSame(0, substr_count($html, 'action="'.route('materials.profile.regenerate', $this->material).'"'));
+
         $this->assertSame(0, MaterialProfileVersion::query()->count());
         Queue::assertNothingPushed();
     }
@@ -145,6 +154,9 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->get(route('materials.profile.show', $archived))
             ->assertOk()
             ->assertSee('Materi belum bisa dianalisis')
+            ->assertSee(MaterialProfileOwnerMessages::forCode(MaterialProfileErrorCode::MaterialIneligible))
+            ->assertDontSee(MaterialProfileOwnerMessages::extractionIncomplete())
+            ->assertDontSee(MaterialProfileOwnerMessages::materialTooLarge())
             ->assertDontSee('action="'.route('materials.profile.store', $archived).'"', false);
 
         $this->actingAs($this->owner)
@@ -154,6 +166,63 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
 
         $this->assertSame(0, MaterialProfileVersion::query()->count());
         Queue::assertNothingPushed();
+        $this->assertSame(0, AiUsageLog::query()->count());
+    }
+
+    public function test_extraction_pending_ready_upload_shows_the_extraction_message(): void
+    {
+        $pending = Material::factory()->upload()->for($this->owner)->create([
+            'title' => 'Materi menunggu ekstraksi',
+            'status' => MaterialStatus::READY,
+            'extraction_status' => ExtractionStatus::PENDING,
+            'content' => 'Hasil sementara.',
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.profile.show', $pending))
+            ->assertOk()
+            ->assertSee('Materi belum bisa dianalisis')
+            ->assertSee(MaterialProfileOwnerMessages::extractionIncomplete())
+            ->assertDontSee(MaterialProfileOwnerMessages::materialTooLarge())
+            ->assertDontSee('action="'.route('materials.profile.store', $pending).'"', false);
+
+        $this->actingAs($this->owner)
+            ->post(route('materials.profile.store', $pending))
+            ->assertRedirect(route('materials.profile.show', $pending))
+            ->assertSessionHas('error', MaterialProfileOwnerMessages::forCode(MaterialProfileErrorCode::MaterialIneligible));
+
+        $this->assertSame(0, MaterialProfileVersion::query()->count());
+        Queue::assertNothingPushed();
+        $this->assertSame(0, AiUsageLog::query()->count());
+    }
+
+    public function test_oversized_ready_material_shows_the_configured_limit_and_creates_nothing(): void
+    {
+        config(['material_profile.max_canonical_chars' => 240_000]);
+        $oversized = Material::factory()->text()->for($this->owner)->create([
+            'title' => 'Materi terlalu panjang',
+            'content' => str_repeat('a', 240_001),
+        ]);
+        $expected = MaterialProfileOwnerMessages::materialTooLarge();
+
+        $html = $this->actingAs($this->owner)->get(route('materials.profile.show', $oversized));
+        $html->assertOk()
+            ->assertSee('Materi belum bisa dianalisis')
+            ->assertSee($expected)
+            ->assertDontSee(MaterialProfileOwnerMessages::extractionIncomplete())
+            ->assertDontSee('action="'.route('materials.profile.store', $oversized).'"', false);
+
+        $this->actingAs($this->owner)
+            ->post(route('materials.profile.store', $oversized))
+            ->assertRedirect(route('materials.profile.show', $oversized))
+            ->assertSessionHas('error', $expected);
+
+        $this->assertSame(0, MaterialProfileVersion::query()->count());
+        $this->assertSame(0, MaterialProfileChunk::query()->count());
+        $this->assertSame(0, MaterialProfileStep::query()->count());
+        $this->assertSame(0, MaterialProfileAttempt::query()->count());
+        Queue::assertNothingPushed();
+        $this->assertSame(0, AiUsageLog::query()->count());
     }
 
     public function test_start_creates_one_workflow_and_dispatches_only_the_first_map(): void
@@ -244,6 +313,10 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertSee('Muat ulang status')
             ->assertDontSee('Mulai analisis profil')
             ->assertDontSee('Jalankan analisis baru');
+
+        $html = (string) $response->getContent();
+        $this->assertSame(0, substr_count($html, 'action="'.route('materials.profile.store', $this->material).'"'));
+        $this->assertSame(0, substr_count($html, 'action="'.route('materials.profile.regenerate', $this->material).'"'));
     }
 
     public function test_processing_view_renders_bounded_progress(): void
@@ -312,6 +385,11 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertSee('Saran')
             ->assertSee('Jalankan analisis baru');
 
+        $readyHtml = (string) $response->getContent();
+        $this->assertSame(1, substr_count($readyHtml, 'Jalankan analisis baru'));
+        $this->assertSame(1, substr_count($readyHtml, 'action="'.route('materials.profile.regenerate', $material).'"'));
+        $this->assertSame(0, substr_count($readyHtml, 'Mulai analisis profil'));
+
         // Provider-derived text is rendered as escaped text, never as markup.
         $response->assertDontSee('<script>alert(1)</script>', false);
         $response->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false);
@@ -358,6 +436,11 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertSee('Riwayat analisis sebelumnya tetap tersimpan')
             ->assertSee('Jalankan analisis baru');
 
+        $failedHtml = (string) $response->getContent();
+        $this->assertSame(1, substr_count($failedHtml, 'Jalankan analisis baru'));
+        $this->assertSame(1, substr_count($failedHtml, 'action="'.route('materials.profile.regenerate', $this->material).'"'));
+        $this->assertSame(0, substr_count($failedHtml, 'Mulai analisis profil'));
+
         foreach (['google_gemini', 'gemini-3.5', 'provider_http', 'Exception', 'workflow_token', 'lease'] as $forbidden) {
             $response->assertDontSee($forbidden);
         }
@@ -378,6 +461,11 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertDontSee('Profil terkini untuk konten materi saat ini')
             ->assertDontSee('Topik bagian 0')
             ->assertSee('Jalankan analisis baru');
+
+        $staleHtml = (string) $response->getContent();
+        $this->assertSame(1, substr_count($staleHtml, 'Jalankan analisis baru'));
+        $this->assertSame(1, substr_count($staleHtml, 'action="'.route('materials.profile.regenerate', $this->material).'"'));
+        $this->assertSame(0, substr_count($staleHtml, 'Mulai analisis profil'));
 
         // The stale Version is untouched by rendering it.
         $this->assertSame(MaterialProfileStatus::READY, $ready->fresh()->status);
@@ -427,6 +515,7 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
         );
         $this->assertNull($payload['profile_url']);
         $this->assertTrue($payload['can_regenerate']);
+        $this->assertFalse($payload['can_start']);
 
         $serialized = (string) json_encode($payload);
         $this->assertStringNotContainsString($secret, $serialized);
@@ -632,6 +721,7 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
         $this->assertSame(route('materials.profile.show', $this->material), $payload['profile_url']);
         $this->assertNull($payload['error_code']);
         $this->assertTrue($payload['can_regenerate']);
+        $this->assertFalse($payload['can_start']);
         $this->assertSame($version->completed_at->toIso8601String(), $payload['completed_at']);
     }
 
@@ -659,6 +749,7 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             $payload['error_message'],
         );
         $this->assertTrue($payload['can_regenerate']);
+        $this->assertFalse($payload['can_start']);
     }
 
     public function test_internal_authority_codes_are_absent_from_status_json_and_failed_html(): void
@@ -709,6 +800,7 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
 
         $this->assertSame('none', $payload['state']);
         $this->assertTrue($payload['can_start']);
+        $this->assertFalse($payload['can_regenerate']);
         $this->assertSame(0, $payload['total_steps']);
 
         $this->completeProfileAnalysis($this->owner, $this->material);
@@ -722,7 +814,8 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
 
         $this->assertSame('stale', $payload['state']);
         $this->assertNull($payload['profile_url']);
-        $this->assertTrue($payload['can_start']);
+        $this->assertFalse($payload['can_start']);
+        $this->assertTrue($payload['can_regenerate']);
     }
 
     public function test_browser_cannot_supply_workflow_fields(): void

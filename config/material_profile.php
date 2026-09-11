@@ -36,7 +36,7 @@ return [
 
     'primary_model' => env('MATERIAL_PROFILE_PRIMARY_MODEL', 'gemini-3.5-flash-lite'),
 
-    'map_prompt_version' => env('MATERIAL_PROFILE_MAP_PROMPT_VERSION', 'profile-map-v1'),
+    'map_prompt_version' => env('MATERIAL_PROFILE_MAP_PROMPT_VERSION', 'profile-map-v2'),
 
     'reduce_prompt_version' => env('MATERIAL_PROFILE_REDUCE_PROMPT_VERSION', 'profile-reduce-v1'),
 

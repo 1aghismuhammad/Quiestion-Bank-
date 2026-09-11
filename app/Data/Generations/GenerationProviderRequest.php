@@ -24,5 +24,6 @@ final readonly class GenerationProviderRequest
         public GenerationAttemptPurpose $purpose,
         public string $model,
         public ?int $generationId = null,
+        public ?BlueprintGenerationContext $blueprintContext = null,
     ) {}
 }

@@ -47,18 +47,19 @@ class GeminiQuestionGenerationProvider implements QuestionGenerationProvider
 
         $model = $request->model;
         $url = rtrim((string) config('generation.api_base'), '/').'/models/'.$model.':generateContent';
+        $promptVersion = $this->promptBuilder->version();
 
         $payload = [
             'systemInstruction' => [
                 'parts' => [
-                    ['text' => $this->promptBuilder->systemInstruction($request->outputLanguage)],
+                    ['text' => $this->promptBuilder->systemInstruction($request->outputLanguage, $promptVersion)],
                 ],
             ],
             'contents' => [
                 [
                     'role' => 'user',
                     'parts' => [
-                        ['text' => $this->promptBuilder->userPrompt($request)],
+                        ['text' => $this->promptBuilder->userPrompt($request, $promptVersion)],
                     ],
                 ],
             ],

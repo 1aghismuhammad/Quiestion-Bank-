@@ -152,7 +152,7 @@ class MaterialProfileIsolationTest extends TestCase
         );
     }
 
-    public function test_no_phase_five_seven_c_artifacts_exist(): void
+    public function test_no_phase_five_seven_e_artifacts_exist(): void
     {
         foreach ([
             app_path('Models/MaterialProfileBlueprint.php'),
@@ -163,10 +163,13 @@ class MaterialProfileIsolationTest extends TestCase
             $this->assertFileDoesNotExist($path);
         }
 
-        $this->assertStringNotContainsString(
-            'blueprint',
-            strtolower((string) file_get_contents(base_path('routes/web.php'))),
-        );
+        $generationCreate = strtolower((string) file_get_contents(resource_path('views/generation-runs/create.blade.php')));
+        $this->assertStringNotContainsString('shuffle', $generationCreate);
+        $this->assertStringNotContainsString('advanced', $generationCreate);
+
+        $questionSetSource = strtolower((string) file_get_contents(app_path('Http/Controllers/QuestionSetController.php')));
+        $this->assertStringNotContainsString('generation_run_id', $questionSetSource);
+        $this->assertStringNotContainsString('generationrun', $questionSetSource);
     }
 
     public function test_legacy_text_material_lifecycle_is_unchanged(): void

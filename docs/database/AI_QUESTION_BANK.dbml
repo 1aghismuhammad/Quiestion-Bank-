@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.15.5
+// Version: 0.15.9
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -168,6 +168,55 @@ Enum delivery_status {
   delivered
   read
   failed
+}
+
+Enum blueprint_lifecycle_status {
+  draft
+  confirmed
+}
+
+Enum blueprint_source {
+  manual
+  ai
+}
+
+Enum blueprint_ai_fill_status {
+  none
+  queued
+  processing
+  succeeded
+  failed
+}
+
+Enum blueprint_row_origin {
+  manual
+  ai
+}
+
+Enum blueprint_attempt_status {
+  started
+  succeeded
+  failed
+}
+
+Enum cognitive_level {
+  remember
+  understand
+  apply
+  analyze
+  evaluate
+  create
+}
+
+Enum generation_run_status {
+  queued
+  processing
+  completed
+  failed
+}
+
+Enum generation_run_mode {
+  simple
 }
 
 //////////////////////////////////////////////////////
@@ -476,6 +525,230 @@ Table material_profile_attempts {
 }
 
 //////////////////////////////////////////////////////
+// QUESTION BLUEPRINT (Phase 5.7C)
+//////////////////////////////////////////////////////
+
+Table question_blueprint_series {
+  blueprint_series_id bigint [pk, increment]
+  user_id bigint [not null]
+  material_id bigint [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, material_id) [name: 'qbp_series_user_mat_idx']
+  }
+
+  Note: 'Lineage per owner Material. At most one draft Blueprint per Series is enforced in the application, not by a partial unique index.'
+}
+
+Table question_blueprints {
+  blueprint_id bigint [pk, increment]
+  blueprint_series_id bigint [not null]
+  user_id bigint [not null]
+  material_id bigint [not null]
+  profile_version_id bigint [note: 'Nullable in schema. HTTP/Action C+D require a current matching ready Profile.']
+  version int [not null]
+  lifecycle_status blueprint_lifecycle_status [not null, default: 'draft']
+  source blueprint_source [not null, default: 'manual']
+  ai_fill_status blueprint_ai_fill_status [not null, default: 'none']
+  assessment_type assessment_type [not null]
+  title varchar(120) [not null]
+  material_content_hash varchar(64) [not null]
+  material_file_hash varchar(64)
+  extractor_implementation varchar(100) [not null]
+  error_code varchar(64)
+  error_message varchar(255)
+  confirmed_at timestamp
+  workflow_token varchar(36)
+  step_execution_token varchar(36)
+  queued_at timestamp
+  claimed_at timestamp
+  heartbeat_at timestamp
+  lease_expires_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (blueprint_series_id, version) [unique, name: 'qbp_series_version_uq']
+    (user_id, material_id, lifecycle_status) [name: 'qbp_user_mat_life_idx']
+    (material_id, ai_fill_status) [name: 'qbp_mat_ai_fill_idx']
+  }
+
+  Note: 'Confirm is idempotent and stores the live Material fingerprint. Confirmed header/rows/contexts are immutable. AI fill never auto-confirms and writes zero ai_usage_logs.'
+}
+
+Table question_blueprint_rows {
+  blueprint_row_id bigint [pk, increment]
+  blueprint_id bigint [not null]
+  sort_order int [not null]
+  objective varchar(500) [not null]
+  topic varchar(500) [not null]
+  indicator varchar(500) [not null]
+  cognitive_level cognitive_level [not null]
+  difficulty difficulty_level [not null]
+  question_type question_type [not null, default: 'multiple_choice']
+  requested_count int [not null]
+  origin blueprint_row_origin [not null, default: 'manual']
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (blueprint_id, sort_order) [unique, name: 'qbp_row_blueprint_sort_uq']
+  }
+
+  Note: 'Simple shape: 1-5 MCQ rows, one difficulty, total requested 1-10.'
+}
+
+Table question_blueprint_row_contexts {
+  blueprint_row_context_id bigint [pk, increment]
+  blueprint_row_id bigint [not null]
+  profile_element_id bigint
+  profile_chunk_id bigint
+  char_start int [not null]
+  char_end int [not null]
+  context_hash varchar(64) [not null]
+  rank int [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (blueprint_row_id, rank) [unique, name: 'qbp_ctx_row_rank_uq']
+    profile_element_id [name: 'qbp_ctx_element_idx']
+    profile_chunk_id [name: 'qbp_ctx_chunk_idx']
+  }
+
+  Note: 'Server-owned IDs, canonical offsets, and hashes. Used to reconstruct Run spans from persisted mappings only. First-N / full-book fallback is forbidden.'
+}
+
+Table question_blueprint_attempts {
+  blueprint_attempt_id bigint [pk, increment]
+  blueprint_id bigint [not null]
+  attempt_number int [not null]
+  provider varchar(32) [not null]
+  model varchar(100) [not null]
+  prompt_version varchar(64) [not null]
+  status blueprint_attempt_status [not null, default: 'started']
+  input_tokens int
+  output_tokens int
+  total_tokens int
+  latency_ms int
+  error_code varchar(64)
+  started_at timestamp [not null]
+  finished_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (blueprint_id, attempt_number) [unique, name: 'qbp_attempt_blueprint_num_uq']
+  }
+
+  Note: 'No raw prompt or raw provider body. Same-token plus a started Attempt must not call the provider again.'
+}
+
+Table question_blueprint_fill_events {
+  blueprint_fill_event_id bigint [pk, increment]
+  user_id bigint [not null]
+  blueprint_id bigint [not null]
+  queue_request_key varchar(64) [not null]
+  accepted_at timestamp [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    queue_request_key [unique, name: 'qbp_fill_event_request_uq']
+    (user_id, accepted_at) [name: 'qbp_fill_event_user_accepted_idx']
+  }
+
+  Note: 'Durable AI-fill throttle events. Each accepted queue request, including retry of the same draft, consumes one rolling-hour slot. Not generation credits and not ai_usage_logs.'
+}
+
+//////////////////////////////////////////////////////
+// GENERATION RUNS (Phase 5.7D)
+//////////////////////////////////////////////////////
+
+Table ai_generation_runs {
+  generation_run_id bigint [pk, increment]
+  user_id bigint [not null]
+  material_id bigint [not null]
+  blueprint_id bigint [not null]
+  blueprint_series_id bigint [not null]
+  blueprint_version int [not null]
+  profile_version_id bigint
+  assessment_type assessment_type [not null]
+  output_language varchar(8) [not null]
+  mode generation_run_mode [not null, default: 'simple']
+  shuffle_questions boolean [not null, default: false]
+  shuffle_options boolean [not null, default: false]
+  material_content_hash varchar(64) [not null]
+  material_file_hash varchar(64)
+  extractor_implementation varchar(100) [not null]
+  total_requested_questions int [not null]
+  credits_required int [not null]
+  idempotency_key varchar(36) [not null]
+  request_fingerprint varchar(64) [not null]
+  parent_run_id bigint
+  status generation_run_status [not null, default: 'queued']
+  error_code varchar(64)
+  error_message varchar(255)
+  queued_at timestamp
+  started_at timestamp
+  completed_at timestamp
+  failed_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, idempotency_key) [unique, name: 'ai_run_user_idempotency_uq']
+    (user_id, status) [name: 'ai_run_user_status_idx']
+    blueprint_id [name: 'ai_run_blueprint_idx']
+  }
+
+  Note: 'Simple Mode only in 5.7C+D. Same key plus same fingerprint returns the original Run. Children have no usage row. One reservation uses SUM-ready credits = ceil(n/10).'
+}
+
+Table ai_generation_run_items {
+  generation_run_item_id bigint [pk, increment]
+  generation_run_id bigint [not null]
+  blueprint_row_id bigint [not null]
+  objective varchar(500) [not null]
+  topic varchar(500) [not null]
+  indicator varchar(500) [not null]
+  cognitive_level cognitive_level [not null]
+  difficulty difficulty_level [not null]
+  question_type question_type [not null]
+  requested_count int [not null]
+  sort_order int [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (generation_run_id, sort_order) [unique, name: 'ai_run_item_run_sort_uq']
+  }
+
+  Note: 'Immutable Blueprint row snapshot. Simple: one child per item, requested_count <= 10.'
+}
+
+Table ai_generation_run_item_spans {
+  generation_run_item_span_id bigint [pk, increment]
+  generation_run_item_id bigint [not null]
+  char_start int [not null]
+  char_end int [not null]
+  rank int [not null]
+  content_hash varchar(64) [not null]
+  profile_element_id bigint
+  profile_chunk_id bigint
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (generation_run_item_id, rank) [unique, name: 'ai_run_span_item_rank_uq']
+  }
+
+  Note: 'Bounded reconstructed context. Never first-N of the complete book. Hash mismatch fails closed.'
+}
+
+//////////////////////////////////////////////////////
 // AI ENGINE
 //////////////////////////////////////////////////////
 
@@ -525,6 +798,9 @@ Table ai_generations {
   input_tokens int
   output_tokens int
   parent_generation_id bigint
+  generation_run_id bigint [note: 'Null for legacy Start. Set for Phase 5.7D run children.']
+  generation_run_item_id bigint
+  child_index int
   queued_at timestamp
   started_at timestamp
   completed_at timestamp [note: 'Success only']
@@ -537,9 +813,11 @@ Table ai_generations {
     material_id [name: 'ai_gen_material_id_idx']
     generation_status [name: 'ai_gen_status_idx']
     parent_generation_id [name: 'ai_gen_parent_id_idx']
+    generation_run_id [name: 'ai_gen_run_idx']
+    (generation_run_id, child_index) [unique, name: 'ai_gen_run_child_idx_uq']
   }
 
-  Note: 'Phase 4.3–4.6. No topic_id, prompt_version_id, prompt_version, raw_response, or parsed_output. question_count max is configurable (default 10). parent_generation_id is manual retry lineage written in the Start transaction. execution_token is DB-authoritative Job ownership. No reservation_expires_at.'
+  Note: 'Phase 4.3–4.6 plus Phase 5.7D run-child columns. No topic_id, prompt_version_id, prompt_version, raw_response, or parsed_output. question_count max is configurable (default 10). parent_generation_id is manual retry lineage written in the Start transaction. execution_token is DB-authoritative Job ownership. No reservation_expires_at. Legacy finalize refuses rows with generation_run_id set.'
 }
 
 Table ai_usage_logs {
@@ -547,7 +825,9 @@ Table ai_usage_logs {
   user_id bigint [not null]
   plan_id bigint [not null]
   subscription_id bigint [note: 'Null iff Free lifetime reservation; required for Pro window reservation']
-  generation_id bigint [not null, unique]
+  generation_id bigint [unique, note: 'XOR with generation_run_id. Legacy Start sets this and leaves generation_run_id null.']
+  generation_run_id bigint [unique, note: 'XOR with generation_id. Simple Run Start sets this and leaves generation_id null.']
+  credits int [not null, default: 1, note: 'Legacy Start writes 1. Simple Run writes ceil(n/10). Occupancy is SUM(credits) of reserved+charged.']
   status usage_status [not null, default: 'reserved']
   window_start timestamp [note: 'Pro window start captured at reservation; null iff Free']
   window_end timestamp [note: 'Pro exclusive window end captured at reservation; null iff Free']
@@ -558,12 +838,13 @@ Table ai_usage_logs {
 
   indexes {
     generation_id [unique, name: 'ai_usage_generation_unique']
+    generation_run_id [unique, name: 'ai_usage_generation_run_unique']
     (user_id, status) [name: 'ai_usage_user_status_idx']
     (user_id, plan_id, status) [name: 'ai_usage_free_lifetime_idx']
     (user_id, subscription_id, window_start, status) [name: 'ai_usage_pro_window_idx']
   }
 
-  Note: 'Stateful one-row-per-Generation ledger (UNIQUE generation_id). One Generation request = one credit. reserved occupies capacity; charged permanently consumes one credit; released occupies/consumes zero. Counting is by row/state, not credit_used. Free: plan_id=Free AND subscription_id IS NULL (lifetime; survives Free→Pro→Free). Pro: subscription_id + exact persisted window_start/window_end from Start. Live Plan.generation_limit is allowance. Consume/Release finalize the stored reservation only and must not re-resolve current entitlement. No usage_action, credit_used, or reservation_expires_at. Stale reserved queued/processing rows are recovered to failed+released (stale_recovery) without reservation_expires_at.'
+  Note: 'XOR subject: exactly one of generation_id or generation_run_id. MySQL CHECK ai_usage_subject_xor_chk. SQLite tests use UsageSubjectXor. reserved occupies SUM(credits); charged permanently consumes SUM(credits); released occupies/consumes zero. Free: plan_id=Free AND subscription_id IS NULL. Pro: subscription_id + exact persisted window. Consume/Release finalize the stored reservation only. Run children have no usage row. Blueprint AI fill writes zero rows. migrate:rollback is not safe after run usage or credits>1. No usage_action, credit_used, or reservation_expires_at.'
 }
 
 Table ai_generation_attempts {
@@ -764,6 +1045,35 @@ Ref: material_profile_versions.profile_version_id < material_profile_elements.pr
 Ref: material_profile_chunks.profile_chunk_id < material_profile_elements.source_chunk_id [delete: restrict]
 Ref: material_profile_versions.profile_version_id < material_profile_attempts.profile_version_id [delete: restrict]
 Ref: material_profile_steps.profile_step_id < material_profile_attempts.profile_step_id [delete: restrict]
+
+Ref: users.id < question_blueprint_series.user_id [delete: restrict]
+Ref: materials.material_id < question_blueprint_series.material_id [delete: restrict]
+Ref: question_blueprint_series.blueprint_series_id < question_blueprints.blueprint_series_id [delete: restrict]
+Ref: users.id < question_blueprints.user_id [delete: restrict]
+Ref: materials.material_id < question_blueprints.material_id [delete: restrict]
+Ref: material_profile_versions.profile_version_id < question_blueprints.profile_version_id [delete: restrict]
+Ref: question_blueprints.blueprint_id < question_blueprint_rows.blueprint_id [delete: restrict]
+Ref: question_blueprint_rows.blueprint_row_id < question_blueprint_row_contexts.blueprint_row_id [delete: restrict]
+Ref: material_profile_elements.profile_element_id < question_blueprint_row_contexts.profile_element_id [delete: restrict]
+Ref: material_profile_chunks.profile_chunk_id < question_blueprint_row_contexts.profile_chunk_id [delete: restrict]
+Ref: question_blueprints.blueprint_id < question_blueprint_attempts.blueprint_id [delete: restrict]
+Ref: users.id < question_blueprint_fill_events.user_id [delete: restrict]
+Ref: question_blueprints.blueprint_id < question_blueprint_fill_events.blueprint_id [delete: restrict]
+
+Ref: users.id < ai_generation_runs.user_id [delete: restrict]
+Ref: materials.material_id < ai_generation_runs.material_id [delete: restrict]
+Ref: question_blueprints.blueprint_id < ai_generation_runs.blueprint_id [delete: restrict]
+Ref: question_blueprint_series.blueprint_series_id < ai_generation_runs.blueprint_series_id [delete: restrict]
+Ref: material_profile_versions.profile_version_id < ai_generation_runs.profile_version_id [delete: restrict]
+Ref: ai_generation_runs.generation_run_id < ai_generation_runs.parent_run_id [delete: restrict]
+Ref: ai_generation_runs.generation_run_id < ai_generation_run_items.generation_run_id [delete: restrict]
+Ref: question_blueprint_rows.blueprint_row_id < ai_generation_run_items.blueprint_row_id [delete: restrict]
+Ref: ai_generation_run_items.generation_run_item_id < ai_generation_run_item_spans.generation_run_item_id [delete: restrict]
+Ref: material_profile_elements.profile_element_id < ai_generation_run_item_spans.profile_element_id [delete: restrict]
+Ref: material_profile_chunks.profile_chunk_id < ai_generation_run_item_spans.profile_chunk_id [delete: restrict]
+Ref: ai_generation_runs.generation_run_id < ai_generations.generation_run_id [delete: restrict]
+Ref: ai_generation_run_items.generation_run_item_id < ai_generations.generation_run_item_id [delete: restrict]
+Ref: ai_generation_runs.generation_run_id < ai_usage_logs.generation_run_id [delete: restrict]
 
 Ref: users.id < prompt_versions.created_by
 Ref: users.id < ai_generations.user_id [delete: restrict]

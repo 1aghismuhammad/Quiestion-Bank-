@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.15.5
+- Version: 0.15.9
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -82,6 +82,8 @@ app/
 |-- Actions/
 |   |-- Auth/
 |   |-- Materials/
+|   |-- QuestionBlueprints/
+|   |-- GenerationRuns/
 |   |-- QuestionSets/
 |   `-- Subscriptions/
 |-- Contracts/AI/
@@ -128,7 +130,9 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Lifecycle material mendukung `draft|ready -> archived` dan owner restore `archived -> ready`.
 - Phase 5.7B1 menambahkan fondasi Material Profile: versi, chunk UTF-8, step lifecycle, attempt, element, hasher, splitter, eligibility, `workflow_token`, `step_execution_token`, lease 120 detik, abandonment 900 detik, dan `profiles:recover-stale`. Batas kanonis 240.000 karakter; batas generation 80.000 tidak dipakai. Admin tidak bypass owner isolation.
 - Phase 5.7B2 menambahkan provider Gemini tersendiri (`MaterialProfileAnalysisProvider`), identity provider yang netral di domain Action, reuse versi ready, throttle tiga per jam, Job map/reduce sekuensial pada antrian `material-intelligence`, validasi evidence UTF-8, reduce lossless terbatas, verifikasi fingerprint sebelum HTTP reduce, dan finalisasi reduce-ready plus Version-ready yang atomik. `failed()` yang leasenya kedaluwarsa tidak punya otoritas tulis. Analisis profil tidak memotong credit generation dan tidak menulis `ai_usage_logs`. v0.15.5: kegagalan terminal Attempt dan workflow commit bersama; map success hanya boleh mengirim Step immediate-next.
-- Phase 5.7B3 membuka start, polling status, review, dan regenerasi kepada owner materi. Hasil stale tidak ditampilkan sebagai profil terkini. Regenerasi yang gagal tetap terlihat sebagai `failed` meskipun ada versi ready lama yang dilabeli terpisah. Tidak ada editing element, blueprint, atau integrasi generation.
+- Phase 5.7B3 membuka start, polling status, review, dan regenerasi kepada owner materi. Hasil stale tidak ditampilkan sebagai profil terkini. Regenerasi yang gagal tetap terlihat sebagai `failed` meskipun ada versi ready lama yang dilabeli terpisah. Tidak ada editing element.
+- Phase 5.7C menambahkan Question Blueprint: Series/versi, draf/konfirmasi/klon, mapping konteks eksplisit, AI fill terpisah dari generation, anggaran input agregat, offset excerpt-relative, throttle event durable, dan DOCX kisi-kisi confirmed (PhpWord 1.4.0, try/finally). Confirm dan fill mensyaratkan Profil ready yang fingerprint-nya cocok. AI fill tidak auto-confirm dan tidak memotong credit. v0.15.7 menolak first-N/full-book fallback. v0.15.8: opsi mapping owner hanya extracted/source-backed.
+- Phase 5.7D menambahkan ledger `SUM(credits)` dengan XOR subjek Generation vs Run, plus Simple Generation Run sekuensial menurut `child_index`. Child tidak punya baris usage. Attempt started ditutup pada kegagalan/recovery. Owner melihat soal completed read-only. Advanced/shuffle/Run QB import/question DOCX belum. v0.15.8: anggaran child memakai span terikat, recheck pasca-HTTP atomik, cutoff otoritas stale, referensi span ketat, dispatcher next-child kanonis, dan retry mempertahankan `idempotency_key`. v0.15.9: Begin menolak Attempt `started` ganda; jam queued hanya pada child eligible.
 
 ### Subscription and Quota
 
@@ -136,7 +140,7 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Free adalah fallback jika tidak ada window Pro efektif. Tidak ada baris subscription Free.
 - Subscription adalah riwayat window Pro `[starts_at, ends_at)` dengan status `active|expired|cancelled`.
 - Paling banyak satu window efektif per instant. Resolver memvalidasi seluruh antrian `active` current/future sebagai Pro; overlap efektif fail-closed; data stale historis tidak mengunci akun. Plan Pro inactive tidak mencabut window yang sudah dibayar.
-- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, dan `ai_usage_logs`. Gemini MCQ + `GenerateQuestionsJob` are Phase 4.3+4.4. Owner Blade generation UI, quota Terpakai/Diproses/Tersedia, and manual retry are Phase 4.5. Stale recovery is Phase 4.6.
+- Limit dibaca live dari Plan (bukan snapshot di Subscription). Quota storage akun ditegakkan di `GuardUploadStorageQuota` dengan kunci baris `users` per pemilik. Duplikat `(user_id, file_hash)` dicek ulang di bawah kunci sebelum quota. Definisi quota generation: `ResolveGenerationQuota` (limit + jendela bulanan dari anchor `starts_at`). Runtime reservation/charge/release: `StartQuestionGeneration`, `StartGenerationRun`, `ConsumeGenerationCredit`, `ReleaseGenerationCredit`, `ConsumeGenerationRunCredit`, `ReleaseGenerationRunCredit`, dan `ai_usage_logs`. Occupancy = `SUM(credits)` reserved+charged. Gemini MCQ + `GenerateQuestionsJob` are Phase 4.3+4.4. Owner Blade generation UI, quota Terpakai/Diproses/Tersedia, and manual retry are Phase 4.5. Stale recovery is Phase 4.6 for legacy rows and Phase 5.7D for Runs.
 - Jika Pro berakhir dan counted storage melebihi limit Free: data tetap; akses Material existing tetap; archive dan restore tetap; upload FILE baru ditolak. User di atas kuota tidak dapat membuat Material baru karena unggah adalah satu-satunya jalur create.
 - UI `/account/subscription` (Blade), QRIS statis pada disk `public` (`storage/app/public/payment/qris.png`), konfirmasi WhatsApp, dan verifikasi admin minimum `/admin/subscription-upgrades` sudah ada. Tidak ada payment gateway di MVP. Purchase menulis `subscription_upgrade_requests`. Approval menulis tepat satu baris `subscriptions` `status=active`: tanpa antrian Pro current/future, `starts_at` = waktu approval; jika antrian ada, `starts_at` = `max(ends_at)` antrian itu. `ends_at` memakai durasi bulan kalender no-overflow. Satu pembelian 3 bulan = satu baris Subscription. Window masa depan tetap `active`; tidak ada status Subscription `scheduled`/`pending`.
 - Verifikasi pembayaran Admin tidak menembus `MaterialPolicy`. Admin tidak memperoleh akses global ke Material privat. Halaman admin user-detail penuh bukan bagian Phase 3.
@@ -180,8 +184,9 @@ AI Engine consists of:
 - MCQ schema validation and deterministic duplicate detection. Targeted repair requests only missing/invalid slots.
 - Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry after `failed` creates a new Generation with `parent_generation_id` written in the Start transaction.
 - Provider/model/token metadata on attempts and optional Generation aggregates. Do not persist raw prompt or full raw Gemini response. Diagnostic/error metadata is sanitized.
-- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5.1–5.6 import an owned completed MCQ Generation into a draft Question Set, allow draft MCQ edit, and publish without modifying Generation runtime data.
-- Stale queued (`queued_at`) or processing (`updated_at`) reserved generations are terminalized to `failed` + `released` with `stale_recovery` by `generations:recover-stale` (every minute, without overlapping). No provider HTTP and no Job redispatch.
+- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5.1–5.6 import an owned completed MCQ Generation into a draft Question Set, allow draft MCQ edit, and publish without modifying Generation runtime data. Phase 5.7D Simple Runs do not import into Question Bank.
+- Stale queued (`queued_at`) or processing (`updated_at`) reserved **legacy** generations (`generation_run_id` null) are terminalized to `failed` + `released` with `stale_recovery` by `generations:recover-stale`. Run recovery is `generation-runs:recover-stale`. No provider HTTP and no Job redispatch from recovery.
+- Simple Generation Run (Phase 5.7D): confirmed current Blueprint + current ready Profile + persisted bounded mappings; one reservation on the Run; sequential child Generations by `child_index`; same-token duplicate calls the provider zero times; success charges once; failure releases once and closes started Attempts. Legacy finalize refuses run children. Owner preview is read-only.
 
 ### Question Bank
 
@@ -207,7 +212,7 @@ Modul Phase 7 post-MVP yang menambahkan broadcast compose, confirmation, queue, 
 
 ## Data Design
 
-Delapan belas entitas domain dan seluruh relasinya didefinisikan pada:
+Tiga puluh satu entitas domain dan seluruh relasinya didefinisikan pada:
 
 - `docs/database/AI_QUESTION_BANK.dbml`
 - `docs/database/DATABASE_REFERENCE.md`
@@ -219,7 +224,7 @@ Tabel infrastruktur Laravel seperti sessions, cache, jobs, job batches, dan fail
 - Session authentication dan CSRF untuk seluruh UI.
 - OAuth state validation melalui Socialite.
 - Role middleware untuk route admin.
-- Policy untuk material, question set, dan generation. Admin payment review tidak mengubah `MaterialPolicy` owner-only.
+- Policy untuk material, question set, generation, blueprint, dan generation run. Admin payment review tidak mengubah `MaterialPolicy` owner-only.
 - MIME, extension, dan size validation pada upload.
 - Rate limit untuk Google OAuth redirect/callback dan konfirmasi langganan (`throttle:10,1`). Phase 4 generation create/retry tidak menambah HTTP limiter terpisah; kapasitas ditegakkan oleh reservation kuota. Broadcast mulai Phase 7.
 - Environment secret untuk Google dan Gemini.

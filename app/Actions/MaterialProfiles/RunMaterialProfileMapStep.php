@@ -162,6 +162,7 @@ class RunMaterialProfileMapStep
                 $attemptId,
                 $attemptNumber,
                 $exception,
+                $result->metadata,
             );
 
             return;
@@ -173,6 +174,7 @@ class RunMaterialProfileMapStep
                 $stepExecutionToken,
                 $attemptId,
                 $exception,
+                $result->metadata,
             );
 
             return;

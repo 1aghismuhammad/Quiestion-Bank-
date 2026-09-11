@@ -9,6 +9,14 @@ enum OutputLanguage: string
     case ID = 'id';
     case EN = 'en';
 
+    public function ownerLabel(): string
+    {
+        return match ($this) {
+            self::ID => 'Bahasa Indonesia',
+            self::EN => 'English',
+        };
+    }
+
     public function promptLabel(): string
     {
         return match ($this) {

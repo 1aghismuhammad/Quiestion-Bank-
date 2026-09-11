@@ -26,6 +26,224 @@ Notes:
 -
 ```
 
+## v0.15.11 Phase 5.7C+D manual-QA content and presentation corrective
+
+- Date: 10 September 2026
+- Version: 0.15.11
+- Phase: Phase 5.7C+D - Generation Run context expansion, Blueprint-aware MCQ prompt, DOCX/UI presentation
+- Type: Bugfix
+
+Added:
+
+- Deterministic per-chunk Generation Run span expansion around immutable Blueprint evidence anchors (`question_blueprint.run_item_span_context_chars`, default 2000). Overlapping same-chunk windows merge; adjacent touching spans stay separate.
+- Typed `BlueprintGenerationContext` on `GenerationProviderRequest` so a Run child can carry the immutable row snapshot without duplicating provider payloads.
+- Version-aware `McqPromptBuilder`: `mcq-v1` keeps the original exact contract; `mcq-v2` requires objective/indicator measurement, matching cognitive demand, plausible distractors, grounded explanations, and forbids heading/number/text-recall shortcuts unless the objective genuinely requires textual recall.
+
+Changed:
+
+- Docs record version 0.15.11. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D remains implemented and pending final manual QA. Phase 5.7E/F/G are `NOT STARTED`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`.
+- Default `generation.prompt_version` is `mcq-v2`. Unsupported identities are rejected and never sent labelled as another contract. Historical Attempt `prompt_version` rows are not rewritten.
+- Confirmed Blueprint DOCX uses A4 landscape, readable two-column row layout, human-readable assessment/difficulty/cognitive/type labels (`multiple_choice` → `Pilihan Ganda`), descriptive sources, and `Total soal`.
+- Generation Run create form shows `Bahasa Indonesia` / `English` and `GenerationCredits::required()` before submit. Completed Run preview numbers questions across children and labels `Kunci` plus `Pembahasan`.
+
+Fixed:
+
+- New Generation Runs no longer persist exact-evidence-only headings such as “2. Entity Database” as the entire provider context. Surrounding same-chunk text is sent; other chunks and the complete Material are not.
+- Reconstruction now requires span ⊆ chunk and evidence ⊆ span, so expanded hashes validate while historical exact-evidence spans still reconstruct.
+- A single Blueprint row no longer shows an unusable delete control (`.button { display: inline-flex }` had overridden `hidden`).
+
+Database Impact:
+
+- No new migration. No committed migration was edited.
+
+Notes:
+
+- A real Generation Run already completed correctly (2 sequential children, 2 questions each, 4 questions, 1 credit, reserved/processing returned to zero). That orchestration and credit lifecycle is unchanged.
+- Manual QA content failures (narrow context, heading/recall questions, weak distractors/explanations, mixed-language output) are addressed by expansion plus the `mcq-v2` contract. Real Gemini owner rerun is still pending and is not claimed here.
+- Automated QA uses fakes/spies and does not call Gemini. Raw prompts and provider bodies remain unpersisted.
+
+## v0.15.10 Material Profile manual-QA corrective
+
+- Date: 9 September 2026
+- Version: 0.15.10
+- Phase: Phase 5.7B2+B3 - Material Profile manual-QA corrective after Phase 5.7C+D
+- Type: Bugfix
+
+Added:
+
+- Exact unique-core evidence reconciliation in `ValidateProfileMapCandidates`: incorrect integer offsets may be replaced only when `evidence_excerpt` occurs once, character for character, inside the canonical core. Overlapping repeats are counted by advancing one UTF-8 code point. Malformed offsets are not reconciled.
+- Version-aware map prompt selection: `profile-map-v1` keeps the original contract; `profile-map-v2` adds a verbatim-copy rule. Unsupported identities are rejected and never sent as mislabelled content.
+- Typed `MaterialProfileEligibility` / `MaterialProfileEligibilityReason` for owner presentation only.
+
+Changed:
+
+- Docs record version 0.15.10. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D remains implemented and pending final manual QA. Phase 5.7E is `NOT STARTED`. Phase 6 remains `PLANNED`.
+- Default `material_profile.map_prompt_version` is `profile-map-v2`. Gemini map calls use the request prompt identity, not a later config change.
+- Failed map/reduce Attempts after a typed provider result persist bounded token counts and latency when authority and identity still match.
+- Eligible `none` renders exactly one start form. Ready, failed, and stale render exactly one regenerate form. Queued and processing render none. `can_start` is false whenever the mutation is regenerate.
+- Owner status JSON allowlist is unchanged. Eligibility copy is Blade/DTO only.
+
+Fixed:
+
+- Unique exact excerpts with wrong Gemini offsets no longer fail closed as “Evidence excerpt does not match the canonical core.”
+- Oversized but extracted READY Materials show the configured-limit message instead of the extraction-pending sentence.
+- Duplicate “Mulai analisis profil” buttons on eligible `none`.
+
+Database Impact:
+
+- No new migration. No committed migration was edited.
+
+Notes:
+
+- Reconciliation is exact and unique, never fuzzy, case-insensitive, whitespace-normalized, or semantic.
+- Real Gemini owner retest of the previously failed Version is still pending. Automated QA uses fakes and does not call Gemini.
+- No generation-credit or `ai_usage_logs` writes. No Composer or NPM change.
+
+## v0.15.9 Phase 5.7C+D third corrective QA
+
+- Date: 8 September 2026
+- Version: 0.15.9
+- Phase: Phase 5.7C+D - Question Blueprint and Simple Generation Runs third corrective QA
+- Type: Bugfix
+
+Added:
+
+- Generation Run `BeginGenerationAttempt` is the final provider-call authority: under the locked Run graph, a live `started` Attempt for the current child is a duplicate/stale no-op. No second Attempt, heartbeat, usage change, terminal failure, or provider call.
+
+Changed:
+
+- Docs record version 0.15.9. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D third corrective QA passed and is pending review. Phase 5.7E is `NOT STARTED`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`.
+- Future sequential children are created queued with `queued_at` null and no execution token. `DispatchQueuedRunChild::prepareLocked` mints the first token and sets `queued_at = now()` only for the eligible child. Redispatch preserves the stored token and original `queued_at`.
+- `FinishGenerationAttempt` for Run children does not rewrite an Attempt that is no longer `started`. Duplicate/obsolete Finish is a stale no-op with no state mutation.
+- PHPUnit remains sqlite `:memory:`. Destructive artisan migrate commands were not run against `.env` / development MySQL.
+
+Fixed:
+
+- Two same-token Claims before the first Begin can no longer open a second started Attempt or a second provider call.
+- A child waiting behind a live processing predecessor is not stale merely because the Run is old. Completing the predecessor activates the immediate next `child_index`, starts its abandonment clock, and mints one token.
+
+Database Impact:
+
+- No new migration. No committed migration was edited.
+- Isolated MySQL race QA remains required for Phase 5.7G / pre-production. SQLite PHPUnit does not prove first-lock-wins.
+
+Notes:
+
+- Composer: PhpWord 1.4.0 remains pinned. No new Composer or NPM dependency.
+
+## v0.15.8 Phase 5.7C+D second corrective QA
+
+- Date: 8 September 2026
+- Version: 0.15.8
+- Phase: Phase 5.7C+D - Question Blueprint and Simple Generation Runs second corrective QA
+- Type: Bugfix
+
+Added:
+
+- One canonical `DispatchQueuedRunChild` for initial Start, successful child completion, idempotent same-key restart, and bounded recovery of a committed queued next child. The delivery token is persisted before post-commit dispatch. Repeated calls are idempotent and do not mint a second token.
+- Owner mapping options list only extracted, source-backed Profile elements with valid offsets and a matching source chunk, plus chunk labels with a short escaped bounded preview.
+
+Changed:
+
+- Docs record version 0.15.8. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D second corrective QA passed and is pending review. Phase 5.7E is `NOT STARTED`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`.
+- Generation Run children budget the reconstructed bounded context, including `\n\n` separators, against `question_blueprint.run_item_span_max_chars`. Legacy non-Run generation still uses the complete-Material `generation.max_material_chars` cap.
+- Every post-provider write re-locks User → Material → Run → items → children → usage → Attempts → Profile Version → spans → referenced elements/chunks, then rechecks the execution token, live unexpired processing authority, Material/Profile fingerprints, persisted span hashes, and strict topology inside that transaction. A prior unlocked check is not sufficient.
+- Run child processing-authority deadline is `max(1800, generation.stale_after_seconds)`. Expired queued deliveries cannot claim. Expired same-token processing cannot resume. Begin/Finish Attempt and worker finalize cannot mutate after expiry. Recovery remains the terminal authority for expired work.
+- Span reconstruction and locked persistence require both Profile element and chunk references, element membership in the Run Profile Version, span-in-element and span-in-chunk-core bounds, `element.source_chunk_id === profile_chunk_id`, and an exact UTF-8 substring hash.
+- `.env.example` documents optional commented Blueprint queue, API base, model, prompt version, and max-output-token overrides. No credentials.
+- Failed-Run retry and create forms preserve submitted `idempotency_key` with `withInput` on validation redirect, domain rejection, and caught post-commit dispatch errors.
+
+Fixed:
+
+- A Material larger than 80,000 characters with a valid later-book mapping can complete a Run. The provider receives only the mapped span, never the full book or a first-N fallback.
+- A Material change after the unlocked post-HTTP fingerprint check cannot commit a successful Attempt or result. The Run reservation is released once.
+- After-commit next-child dispatch failure leaves the next child queued. Later recovery redispatches the same persisted token, completes the Run, and charges exactly once.
+
+Database Impact:
+
+- No new migration. No committed migration was edited.
+- Isolated MySQL race QA for CHECK constraints, first-lock-wins, recovery versus late persistence, and credit races remains required. SQLite PHPUnit does not prove first-lock-wins.
+
+Notes:
+
+- Composer: PhpWord 1.4.0 remains pinned. No new Composer or NPM dependency.
+- `php artisan migrate:fresh --env=testing` used the application MySQL connection because there is no `.env.testing`. PHPUnit continues to use sqlite `:memory:` via `phpunit.xml`. Isolated MySQL race tests were not run and remain required for Phase 5.7G / pre-production.
+
+## v0.15.7 Phase 5.7C+D final corrective QA
+
+- Date: 7 September 2026
+- Version: 0.15.7
+- Phase: Phase 5.7C+D - Question Blueprint and Simple Generation Runs final corrective QA
+- Type: Bugfix
+
+Added:
+
+- Durable `question_blueprint_fill_events` accounting: every newly accepted AI-fill queue request, including retry of the same draft, consumes one rolling-hour event. Rejected authorization, validation, in-flight, throttle, and stale requests consume zero. Duplicate delivery of the same accepted `queue_request_key` does not double-count.
+- Owner Generation Run show renders escaped completed questions read-only. No Question Bank import and no question DOCX.
+
+Changed:
+
+- Docs record version 0.15.7. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D corrective QA passed and is pending review. Phase 5.7E is `NOT STARTED`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`.
+- Blueprint AI input uses opaque server-issued `context_ref` values plus bounded excerpts. The provider returns excerpt-relative offsets. The server converts them to canonical offsets and hashes. Provider-supplied canonical offsets, ownership, IDs, fingerprint, and sort order are rejected for the whole response.
+- Blueprint fill requests are bounded by aggregate budgets (profile elements, chunk/context refs, characters per context, total context characters, serialized request size) and fail closed.
+- Generation Run items require persisted, verified Blueprint-row context mappings. First-N / full-book fallback is forbidden. Missing mappings reject before credit reservation. Invalid/stale/foreign mappings call no provider, release once, and persist nothing.
+- Unexpected provider Throwables are classified at the provider boundary only. Connection failures are sanitized retryable. Unknown adapter/runtime failures are sanitized allow-listed permanent. `QueryException` / `PDOException` are rethrown. Raw messages, URLs, bodies, prompts, stacks, and credentials are not persisted or logged.
+- Run worker, finalize, and recovery lock User → Material → Run → items (`sort_order`) → children (`child_index`) → Usage → Attempts. Next child is selected by `child_index`. Success requires the exact 1:1 item/child set. Material/Profile fingerprints are rechecked after provider HTTP.
+- Same idempotency key plus matching fingerprint redispatches the first queued child by `child_index` when no child is processing, without a second reservation.
+
+Fixed:
+
+- Terminal Run failure and stale recovery close started `AiGenerationAttempt` rows. `GenerateQuestionsJob::failed()` and Blueprint `failed()` close started Attempts while authority/lease remain valid. Late workers persist no questions, metadata, charge, or dispatch.
+- Confirmed kisi-kisi DOCX temp files are cleaned in `try/finally`. Rename and writer/save failures leave no orphan. Successful downloads still use `deleteFileAfterSend` and do not expose a server filesystem path.
+- Manual Blueprint rows require an explicit owner-selected Profile element or chunk mapping. Browser input cannot set canonical IDs.
+
+Database Impact:
+
+- Additive uncommitted C migration `2026_09_07_150011_create_question_blueprint_fill_events_table`. No committed migration was edited.
+- MySQL race QA for CHECK constraints, AI-fill throttle concurrency, idempotent Run start, duplicate child claim, recovery versus late provider persistence, and atomic Attempt/Run/credit terminalization remains required. SQLite PHPUnit does not prove first-lock-wins.
+
+Notes:
+
+- Composer: PhpWord 1.4.0 remains pinned. No new Composer or NPM dependency.
+- Isolated MySQL race tests remain required for Phase 5.7G / pre-production.
+
+## v0.15.6 Phase 5.7C+D Question Blueprint and Simple Generation Runs
+
+- Date: 7 September 2026
+- Version: 0.15.6
+- Phase: Phase 5.7C+D - Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX, multi-credit SUM ledger, and Simple Generation Runs
+- Type: Feature
+
+Added:
+
+- Question Blueprint series, versions, rows, row contexts, and attempts. Owner HTTP covers manual draft/edit/confirm/clone, AI fill, status polling, and confirmed kisi-kisi DOCX.
+- Dedicated `QuestionBlueprintAnalysisProvider` / `GeminiQuestionBlueprintProvider`. Blueprint AI fill uses `material-intelligence`, never auto-confirms, and writes zero `ai_usage_logs`.
+- Generation Run, Item, and span snapshots with sequential Simple child execution. Children reuse the legacy Generation job path and have no usage row.
+- PhpWord 1.4.0 for confirmed Blueprint DOCX only.
+
+Changed:
+
+- Docs record version 0.15.6. Phase 5.7C is `COMPLETE`. Phase 5.7D is `COMPLETE`. Phase 5.7E is `NOT STARTED`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`. Simple Mode only: Advanced, shuffle, Run Question Bank import, and question DOCX remain unavailable.
+- Quota occupancy is `SUM(credits)` of `reserved` + `charged`. Released rows are excluded. Free lifetime and Pro subscription/window filters are unchanged.
+- Legacy Start still writes `credits=1`, `generation_id` set, and `generation_run_id` null. Simple Run Start writes one Run subject reservation: `ceil(n/10)` credits (1–10 questions = 1 credit).
+- `RecoverStaleGenerations` is legacy-only (`generation_run_id` null). Separate schedulers: `blueprints:recover-stale` and `generation-runs:recover-stale`.
+
+Fixed:
+
+-
+
+Database Impact:
+
+- Additive migrations `2026_09_07_150001` through `2026_09_07_150010`. No committed migration was edited.
+- MySQL adds `ai_usage_logs.credits` (default 1), nullable `generation_id`, unique nullable `generation_run_id`, and CHECK XOR. SQLite rebuilds the table without CHECK; application `UsageSubjectXor` enforces XOR.
+- `migrate:rollback` is not safe after Run usage exists or any `credits > 1` row exists. Forward-fix only.
+
+Notes:
+
+- Confirm and Run Start require a current matching ready Material Profile. Missing/stale/foreign/failed/queued/processing Profiles reject with zero quota writes.
+- Blueprint AI consumes zero generation credits. Isolated MySQL race tests remain required for Phase 5.7G / pre-production.
+- Composer: PhpWord 1.4.0 pinned; `composer audit` reported no advisories. No NPM change.
+
 ## v0.15.5 Phase 5.7B2+B3 atomic terminal failure and strict sequential topology
 
 - Date: 7 September 2026

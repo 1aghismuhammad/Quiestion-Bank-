@@ -47,6 +47,7 @@ class RecoverStaleGenerations
         $batch = max(1, (int) config('generation.stale_recovery_batch', 50));
 
         $queued = AiGeneration::query()
+            ->whereNull('generation_run_id')
             ->where('generation_status', GenerationStatus::QUEUED)
             ->whereNull('execution_token')
             ->where('queued_at', '<=', $cutoff)
@@ -58,6 +59,7 @@ class RecoverStaleGenerations
             ->pluck('generation_id');
 
         $processing = AiGeneration::query()
+            ->whereNull('generation_run_id')
             ->where('generation_status', GenerationStatus::PROCESSING)
             ->where('updated_at', '<=', $cutoff)
             ->whereHas('usageLog', function ($query): void {

@@ -10,4 +10,14 @@ enum MaterialProfileElementKind: string
     case OBJECTIVE = 'objective';
     case INDICATOR = 'indicator';
     case OTHER = 'other';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::TOPIC => 'Topik',
+            self::OBJECTIVE => 'Tujuan',
+            self::INDICATOR => 'Indikator',
+            self::OTHER => 'Catatan',
+        };
+    }
 }

@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'plan_id',
     'subscription_id',
     'generation_id',
+    'generation_run_id',
+    'credits',
     'status',
     'window_start',
     'window_end',
@@ -49,12 +51,18 @@ class AiUsageLog extends Model
         return $this->belongsTo(AiGeneration::class, 'generation_id', 'generation_id');
     }
 
+    public function generationRun(): BelongsTo
+    {
+        return $this->belongsTo(AiGenerationRun::class, 'generation_run_id', 'generation_run_id');
+    }
+
     /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
+            'credits' => 'integer',
             'status' => UsageStatus::class,
             'window_start' => 'datetime',
             'window_end' => 'datetime',

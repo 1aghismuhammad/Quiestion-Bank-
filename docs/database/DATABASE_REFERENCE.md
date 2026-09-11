@@ -8,10 +8,10 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.5
-- Domain entities: 23 domain entities documented in the canonical DBML
+- Version: 0.15.9
+- Domain entities: 32 domain entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
-- Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, dan `option_id` mengikuti custom PK
+- Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, `option_id`, `blueprint_series_id`, `blueprint_id`, `blueprint_row_id`, `generation_run_id`, dan PK custom Profile mengikuti custom PK
 - Timestamp style: `created_at`, `updated_at`, dan `deleted_at` jika diperlukan
 
 Tabel bawaan Laravel seperti sessions, cache, jobs, job batches, dan failed jobs tidak dihitung sebagai domain entity.
@@ -38,13 +38,25 @@ flowchart LR
     U --> L[ai_usage_logs]
     Pl --> L
     Sub -.-> L
-    G --> L
+    G -.-> L
+    R[ai_generation_runs] --> L
+    U --> S[question_blueprint_series]
+    M --> S
+    S --> BP[question_blueprints]
+    PV --> BP
+    BP --> BR[question_blueprint_rows]
+    BR --> BC[question_blueprint_row_contexts]
+    BP --> BA[question_blueprint_attempts]
+    BP --> R
+    R --> RI[ai_generation_run_items]
+    RI --> RS[ai_generation_run_item_spans]
+    R --> G
     G --> QS[question_sets]
     QS --> Q[questions]
     Q --> O[question_options]
 ```
 
-`ai_usage_logs` always belongs to a user and a Plan. Subscription is optional: Free usage is User + Free Plan with `subscription_id` null; Pro usage is User + Pro Plan + the effective Pro window captured at reservation time. `prompt_versions` remains planned and is **not** implemented. Prompt identity in 4.3+4.4 is `ai_generation_attempts.prompt_version` (config/builder string).
+`ai_usage_logs` always belongs to a user and a Plan. Subscription is optional: Free usage is User + Free Plan with `subscription_id` null; Pro usage is User + Pro Plan + the effective Pro window captured at reservation time. Phase 5.7D subjects are XOR: exactly one of `generation_id` (legacy) or `generation_run_id` (Run). Occupancy is `SUM(credits)`. `prompt_versions` remains planned and is **not** implemented. Prompt identity in 4.3+4.4 is `ai_generation_attempts.prompt_version` (config/builder string).
 
 ## Entity Catalog
 
@@ -161,7 +173,7 @@ Kombinasi material, chapter, sub-chapter, dan topic dibuat unique. Index `(mater
 
 ### Material Profile (Phase 5.7B1–B3)
 
-Phase 5.7B1 menambahkan persistence dan lifecycle Material Profile. Phase 5.7B2 menambahkan pemanggilan Gemini sekuensial dan Job produksi di schema yang sama. Phase 5.7B3 menambahkan HTTP/UI owner tanpa tabel baru. v0.15.4 adalah hardening B2+B3 tanpa migration. v0.15.5 menambahkan kegagalan Attempt/workflow yang atomik dan topologi map immediate-next yang ketat, tetap tanpa migration. Tidak ada migration setelah lima tabel B1.
+Phase 5.7B1 menambahkan persistence dan lifecycle Material Profile. Phase 5.7B2 menambahkan pemanggilan Gemini sekuensial dan Job produksi di schema yang sama. Phase 5.7B3 menambahkan HTTP/UI owner tanpa tabel baru. v0.15.4 adalah hardening B2+B3 tanpa migration. v0.15.5 menambahkan kegagalan Attempt/workflow yang atomik dan topologi map immediate-next yang ketat, tetap tanpa migration. Lima tabel B1 tidak diubah. Phase 5.7C+D menambahkan tabel Blueprint dan Run plus alter `ai_generations` / `ai_usage_logs` pada migration dated `2026_09_07_150001`–`150011`.
 
 Eligible materials:
 
@@ -191,6 +203,36 @@ Elemen `extracted` atau `suggested`. Kind B1: `topic`, `objective`, `indicator`,
 Audit per step. Unique `(profile_step_id, attempt_number)`. Tidak menyimpan raw prompt atau raw provider body. Provider/model/prompt version/purpose yang ditulis saat Attempt mulai bersifat immutable; metadata pasca-panggilan hanya token/latency yang terbatas. Phase 5.7B2 memakai tabel ini sebagai satu-satunya audit pemanggilan provider. Analisis profil tidak menulis `ai_usage_logs` dan tidak memotong credit generation.
 
 Lock order: User → Material → Profile Version → Steps ascending `profile_step_id` → Chunks ascending `profile_chunk_id`. Processing lease 120 detik terpisah dari queued abandonment 900 detik. Job `failed()` pada Step processing hanya berwenang selama lease masih `gt(now())`. `profiles:recover-stale` setiap menit `withoutOverlapping`. Recovery tidak menulis `ai_usage_logs`. Worker produksi `database-generation` harus mengonsumsi antrian `material-intelligence` (timeout 270, `retry_after` 360). Owner JSON tidak menampilkan `duplicate_worker`, `not_next_step`, `revoked`, atau `validation_failed` secara verbatim.
+
+### Question Blueprint (Phase 5.7C)
+
+Phase 5.7C menambahkan tabel Blueprint termasuk `question_blueprint_fill_events` (v0.15.7). Phase 5.7D menambahkan tiga tabel Run plus kolom pada `ai_generations` dan `ai_usage_logs`. v0.15.8 tidak menambah migrasi: span Run mensyaratkan kedua referensi element dan chunk.
+
+#### `question_blueprint_series`
+
+Lineage per owner Material. Beberapa Series per Material diizinkan. Paling banyak satu Blueprint `draft` per Series (validasi aplikasi, bukan partial unique index).
+
+#### `question_blueprints`
+
+Versi kisi-kisi. Unique `(blueprint_series_id, version)`. `lifecycle_status` `draft|confirmed`. `source` `manual|ai`. `ai_fill_status` `none|queued|processing|succeeded|failed`. `profile_version_id` nullable di schema; setiap jalur HTTP/Action C+D mensyaratkan Profil ready yang fingerprint-nya cocok. Confirm menyimpan `material_content_hash`, null-safe `material_file_hash`, dan `extractor_implementation`. Confirm idempotent. Header/rows/contexts confirmed immutable. Clone confirmed memakai draf existing jika ada.
+
+#### `question_blueprint_rows`
+
+Baris kisi-kisi. Unique `(blueprint_id, sort_order)`. Simple: 1–5 baris, MCQ, satu difficulty, `requested_count` total 1–10.
+
+#### `question_blueprint_row_contexts`
+
+Span konteks per baris. Unique `(blueprint_row_id, rank)`. ID, offset kanonis, dan `context_hash` server-owned. Dipakai untuk span Run (cap 16.000 UTF-8 di dalam mapping yang sudah ada; jangan first-N buku).
+
+#### `question_blueprint_attempts`
+
+Audit HTTP fill. Unique `(blueprint_id, attempt_number)`. Tidak ada raw prompt/body. Tidak menulis `ai_usage_logs`. Same-token + Attempt `started` = tidak ada panggilan provider kedua. `blueprints:recover-stale` setiap menit. Expired processing `failed()` adalah no-op.
+
+#### `question_blueprint_fill_events`
+
+Akuntansi throttle durable. Unique `queue_request_key` (`sha256` dari `workflow_token`). Setiap accepted AI-fill queue, termasuk retry draf yang sama, menulis satu event. Bukan credit generation dan bukan `ai_usage_logs`.
+
+Confirmed DOCX: PhpWord 1.4.0, try/finally temp file, `deleteFileAfterSend`, filename `Kisi-Kisi-[safe-title].docx`. Stale confirmed tetap dapat diunduh dan dilabeli historis.
 
 ### AI Engine
 
@@ -225,6 +267,7 @@ Audit satu Generation request. Phase 4.1+4.2 created the table; Phase 4.3+4.4 ad
 - `result_json` (validated MCQ array; partial after each attempt; completed must equal `question_count`)
 - `provider_name`, `model_name`, `input_tokens`, `output_tokens` (aggregates)
 - nullable `parent_generation_id` (manual retry lineage; written in the Start transaction)
+- nullable `generation_run_id`, `generation_run_item_id`, `child_index` (Phase 5.7D run children; unique `(generation_run_id, child_index)`; legacy rows remain null)
 - `queued_at`, `started_at`, `completed_at` (success only), `failed_at` (terminal failure)
 
 Ownership/history FKs use `restrict` delete. No `topic_id`, `prompt_version_id`, `prompt_version`, `raw_response`, or `parsed_output`. Do not persist raw prompt or full raw Gemini response.
@@ -237,20 +280,45 @@ Per provider HTTP call. UNIQUE `(generation_id, attempt_number)`. Columns: provi
 
 #### `ai_usage_logs`
 
-Stateful one-row-per-Generation credit ledger. **Implemented in Phase 4.1+4.2.** `generation_id` is UNIQUE. One Generation request = one credit. Counting is by row/state (`reserved` occupies one capacity; `charged` permanently consumes one; `released` occupies/consumes zero). There is no `credit_used`, `usage_action`/`action_type`, or `reservation_expires_at`.
+Stateful credit ledger. Phase 4.1+4.2 created one-row-per-Generation. Phase 5.7D adds `credits` (default 1) and XOR subject: exactly one of nullable unique `generation_id` or unique `generation_run_id`. Occupancy is `SUM(credits)` of `reserved` + `charged`. Released occupies/consumes zero. There is no `credit_used`, `usage_action`/`action_type`, or `reservation_expires_at`.
+
+MySQL enforces XOR with CHECK `ai_usage_subject_xor_chk`. SQLite PHPUnit rebuilds the table without CHECK; application `UsageSubjectXor` plus tests enforce XOR. `migrate:rollback` is **not** safe after Run usage or `credits>1` exists. Forward-fix only.
 
 Each row references a Plan. Subscription is nullable:
 
-- Free: `plan_id` = catalog Free, `subscription_id` null, `window_start`/`window_end` null. Charged and reserved Free rows count toward lifetime capacity. Historical Free usage is not reset by Free → Pro → Free.
+- Free: `plan_id` = catalog Free, `subscription_id` null, `window_start`/`window_end` null. Charged and reserved Free rows count toward lifetime capacity via `SUM(credits)`. Historical Free usage is not reset by Free → Pro → Free.
 - Pro: `plan_id` = catalog Pro, `subscription_id` and exact `window_start`/`window_end` captured at Start from `ResolveGenerationQuota`. Current admission scopes to user + subscription + exact window + status. Live `Plan.generation_limit` is allowance. A queued future Subscription does not add current allowance.
 
 Lifecycle:
 
-1. `StartQuestionGeneration` inserts `ai_generations` (`queued`) and exactly one `ai_usage_logs` (`reserved`) in the same transaction.
-2. `ConsumeGenerationCredit`: `reserved` → `charged` (idempotent if already charged).
-3. `ReleaseGenerationCredit`: `reserved` → `released` (idempotent if already released). Opposite terminal transition is an integrity exception (no silent refund after charged).
+1. Legacy `StartQuestionGeneration` inserts `ai_generations` (`queued`) and exactly one `ai_usage_logs` (`reserved`, `credits=1`, `generation_id` set, `generation_run_id` null) in the same transaction.
+2. `StartGenerationRun` inserts the Run/Items/spans/first child and exactly one `ai_usage_logs` (`reserved`, `credits=ceil(n/10)`, `generation_run_id` set, `generation_id` null). Child Generations have no usage row.
+3. `ConsumeGenerationCredit` / `ConsumeGenerationRunCredit`: `reserved` → `charged` (idempotent if already charged).
+4. `ReleaseGenerationCredit` / `ReleaseGenerationRunCredit`: `reserved` → `released` (idempotent if already released). Opposite terminal transition is an integrity exception (no silent refund after charged).
 
-Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Stale queued/processing reserved orphans are recovered by `RecoverStaleGenerations` to `failed` + `released` with `error_code=stale_recovery`. Runtime TTL is `max(1800, configured generation.stale_after_seconds)`: 1800 seconds is the minimum safe floor; operators may configure a higher threshold. Candidate scan is unlocked; each ID uses User → Generation → Usage locks and re-checks timestamps (`queued_at` for queued, `updated_at` for processing). There is no `reservation_expires_at`. `FinalizeGenerationSuccess` / `FinalizeGenerationFailure` wrap Consume/Release so usage and generation status commit together. Gemini HTTP is never inside that transaction. Recovery does not call the provider or redispatch Jobs.
+Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Stale queued/processing reserved **legacy** orphans are recovered by `RecoverStaleGenerations` (`generation_run_id` null) to `failed` + `released` with `error_code=stale_recovery`. Run orphans use `RecoverStaleGenerationRuns`. Runtime TTL is `max(1800, configured generation.stale_after_seconds)`: 1800 seconds is the minimum safe floor; operators may configure a higher threshold. Candidate scan is unlocked; each ID uses canonical locks and re-checks timestamps (`queued_at` for queued, `updated_at` for processing). There is no `reservation_expires_at`. `FinalizeGenerationSuccess` / `FinalizeGenerationFailure` wrap Consume/Release for **legacy** rows only and refuse run children (check `generation_run_id` before locking the child). Gemini HTTP is never inside that transaction. Recovery does not call the provider or redispatch Jobs. Blueprint AI fill writes zero usage rows.
+
+### Generation Runs (Phase 5.7D)
+
+#### `ai_generation_runs`
+
+Orchestration aggregate. Unique `(user_id, idempotency_key)`. Snapshots Blueprint id/series/version, assessment, language, mode (`simple`), shuffle flags (always false in C+D), fingerprint, `total_requested_questions`, `credits_required`, nullable `parent_run_id`. Status `queued|processing|completed|failed`. Simple eligibility: confirmed current Blueprint, current matching ready Profile, MCQ, one difficulty, total 1–10.
+
+Start idempotency: User lock first; same key + same fingerprint returns the original Run without Material lock; same key + different fingerprint rejects with no writes.
+
+Lock order for a new key: User → Material → Profile → Series → Blueprint → Run/Items/children → Usage. Never child before Run, never Usage before Run, never Material after Run.
+
+Worker, finalize, and recovery: User → Material → Run → items (`sort_order`) → children (`child_index`) → Usage → Attempts. Post-provider persistence continues with Profile Version → item spans → referenced elements/chunks, then rechecks token, live unexpired authority, fingerprints, span hashes, and topology before any Attempt/result/credit write.
+
+#### `ai_generation_run_items`
+
+Immutable row snapshots. Unique `(generation_run_id, sort_order)`. Simple: one child per item, `requested_count <= 10`.
+
+#### `ai_generation_run_item_spans`
+
+Bounded context spans. Unique `(generation_run_item_id, rank)`. Cap 16,000 UTF-8 code points including `\n\n` separators. Both `profile_element_id` and `profile_chunk_id` are required. Contexts or matching Profile chunks; never first-N of the book. Hash mismatch fails closed.
+
+Sequential children: `ClaimRunChildExecution` then `RunGenerationRunChild`. Same-token + started Attempt is refused at Begin (stale/duplicate no-op) as well as at Claim resume. Future children stay queued with `queued_at` null until `DispatchQueuedRunChild` mints the first token and starts the abandonment clock. Success dispatches exactly one next child; the final child terminalizes once and charges once. Failure aborts later children and releases once. Retry of a failed Run creates a new Run, new key, `parent_run_id`, and a new reservation.
 
 ### Question Bank
 
@@ -403,6 +471,22 @@ Phase 5.1 (setelah `ai_generation_attempts`):
 2. questions
 3. question_options
 
+Phase 5.7C+D (additive; do not edit committed migrations):
+
+1. question_blueprint_series
+2. question_blueprints
+3. question_blueprint_rows
+4. question_blueprint_row_contexts
+5. question_blueprint_attempts
+6. question_blueprint_fill_events
+7. ai_generation_runs
+8. ai_generation_run_items
+9. ai_generation_run_item_spans
+10. alter `ai_generations` (nullable run/item/child_index)
+11. alter `ai_usage_logs` (`credits` default 1, nullable `generation_id`, unique nullable `generation_run_id`, MySQL XOR CHECK)
+
+Forward deploy in that order after Phase 5.1. Rollback of step 11 is **not** safe after Run usage or `credits>1` exists.
+
 `prompt_versions` remains planned and is not a PHP migration.
 
 Urutan target schema lengkap:
@@ -428,9 +512,18 @@ Urutan target schema lengkap:
 19. question_sets
 20. questions
 21. question_options
-22. whatsapp_contacts
-23. broadcast_campaigns
-24. broadcast_logs
+22. question_blueprint_series
+23. question_blueprints
+24. question_blueprint_rows
+25. question_blueprint_row_contexts
+26. question_blueprint_attempts
+27. question_blueprint_fill_events
+28. ai_generation_runs
+29. ai_generation_run_items
+30. ai_generation_run_item_spans
+31. whatsapp_contacts
+32. broadcast_campaigns
+33. broadcast_logs
 
 Self-reference `ai_generations.parent_generation_id` dapat ditambahkan setelah tabel dibuat jika database membutuhkan langkah terpisah.
 

@@ -161,6 +161,7 @@ class RunMaterialProfileReduceStep
                 $attemptId,
                 $attemptNumber,
                 $exception,
+                $result->metadata,
             );
         } catch (MaterialProfileRejectedException $exception) {
             $this->recordInvalidContext(
@@ -170,6 +171,7 @@ class RunMaterialProfileReduceStep
                 $stepExecutionToken,
                 $attemptId,
                 $exception,
+                $result->metadata,
             );
         }
     }

@@ -62,7 +62,7 @@ final class MaterialProfileOwnerMessages
             MaterialProfileErrorCode::ThrottleExceeded => 'Batas tiga analisis profil per jam sudah tercapai. Silakan coba lagi dalam satu jam.',
             MaterialProfileErrorCode::MaterialIneligible => 'Materi ini belum memenuhi syarat untuk dianalisis. Pastikan materi sudah siap dan tidak diarsipkan.',
             MaterialProfileErrorCode::MaterialEmpty => 'Materi ini belum memiliki konten teks untuk dianalisis.',
-            MaterialProfileErrorCode::MaterialTooLarge => 'Materi ini terlalu panjang untuk dianalisis.',
+            MaterialProfileErrorCode::MaterialTooLarge => self::materialTooLarge(),
             MaterialProfileErrorCode::HashMismatch => 'Konten materi berubah sehingga analisis dihentikan. Jalankan analisis baru untuk konten terbaru.',
             MaterialProfileErrorCode::StaleRecovery => 'Analisis profil tidak selesai tepat waktu dan dihentikan. Silakan jalankan analisis baru.',
             MaterialProfileErrorCode::QueuedAbandoned => 'Analisis profil tidak pernah mulai diproses dan dihentikan. Silakan jalankan analisis baru.',
@@ -73,5 +73,23 @@ final class MaterialProfileOwnerMessages
             MaterialProfileErrorCode::DuplicateWorker,
             MaterialProfileErrorCode::ValidationFailed => self::GENERIC,
         };
+    }
+
+    public static function extractionIncomplete(): string
+    {
+        return 'Pastikan ekstraksi materi sudah selesai lebih dahulu.';
+    }
+
+    /**
+     * Limit is always read from configuration. The number is formatted for
+     * display only; it is not a second domain cap.
+     */
+    public static function materialTooLarge(): string
+    {
+        $maxChars = max(1, (int) config('material_profile.max_canonical_chars'));
+
+        return 'Materi terlalu panjang untuk dianalisis. Batas maksimal '
+            .number_format($maxChars, 0, ',', '.')
+            .' karakter.';
     }
 }

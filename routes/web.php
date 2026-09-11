@@ -7,10 +7,12 @@ use App\Http\Controllers\Admin\SubscriptionUpgradeController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GenerationController;
+use App\Http\Controllers\GenerationRunController;
 use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\MaterialProfileController;
 use App\Http\Controllers\MaterialTopicController;
 use App\Http\Controllers\ProfileSetupController;
+use App\Http\Controllers\QuestionBlueprintController;
 use App\Http\Controllers\QuestionSetController;
 use Illuminate\Support\Facades\Route;
 
@@ -111,8 +113,18 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('question-sets.import');
             });
 
+        Route::whereNumber('generationRun')
+            ->group(function (): void {
+                Route::get('/generation-runs/{generationRun}', [GenerationRunController::class, 'show'])
+                    ->name('generation-runs.show');
+                Route::get('/generation-runs/{generationRun}/status', [GenerationRunController::class, 'status'])
+                    ->name('generation-runs.status');
+                Route::post('/generation-runs/{generationRun}/retry', [GenerationRunController::class, 'retry'])
+                    ->name('generation-runs.retry');
+            });
+
         Route::scopeBindings()
-            ->whereNumber(['material', 'topic'])
+            ->whereNumber(['material', 'topic', 'blueprint'])
             ->group(function (): void {
                 Route::get('/materials/{material}', [MaterialController::class, 'show'])
                     ->name('materials.show');
@@ -138,6 +150,33 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('materials.profile.store');
                 Route::post('/materials/{material}/profile/regenerate', [MaterialProfileController::class, 'regenerate'])
                     ->name('materials.profile.regenerate');
+
+                Route::get('/materials/{material}/blueprints', [QuestionBlueprintController::class, 'index'])
+                    ->name('materials.blueprints.index');
+                Route::get('/materials/{material}/blueprints/create', [QuestionBlueprintController::class, 'create'])
+                    ->name('materials.blueprints.create');
+                Route::post('/materials/{material}/blueprints', [QuestionBlueprintController::class, 'store'])
+                    ->name('materials.blueprints.store');
+                Route::post('/materials/{material}/blueprints/ai-fill', [QuestionBlueprintController::class, 'requestAi'])
+                    ->name('materials.blueprints.ai');
+                Route::get('/materials/{material}/blueprints/{blueprint}', [QuestionBlueprintController::class, 'show'])
+                    ->name('materials.blueprints.show');
+                Route::patch('/materials/{material}/blueprints/{blueprint}', [QuestionBlueprintController::class, 'update'])
+                    ->name('materials.blueprints.update');
+                Route::post('/materials/{material}/blueprints/{blueprint}/confirm', [QuestionBlueprintController::class, 'confirm'])
+                    ->name('materials.blueprints.confirm');
+                Route::post('/materials/{material}/blueprints/{blueprint}/clone', [QuestionBlueprintController::class, 'clone'])
+                    ->name('materials.blueprints.clone');
+                Route::get('/materials/{material}/blueprints/{blueprint}/download', [QuestionBlueprintController::class, 'download'])
+                    ->name('materials.blueprints.download');
+                Route::get('/materials/{material}/blueprints/{blueprint}/status', [QuestionBlueprintController::class, 'status'])
+                    ->name('materials.blueprints.status');
+                Route::post('/materials/{material}/blueprints/{blueprint}/ai-fill', [QuestionBlueprintController::class, 'retryAi'])
+                    ->name('materials.blueprints.retry-ai');
+                Route::get('/materials/{material}/blueprints/{blueprint}/generation-runs/create', [GenerationRunController::class, 'create'])
+                    ->name('generation-runs.create');
+                Route::post('/materials/{material}/blueprints/{blueprint}/generation-runs', [GenerationRunController::class, 'store'])
+                    ->name('generation-runs.store');
 
                 Route::post('/materials/{material}/topics', [MaterialTopicController::class, 'store'])
                     ->name('materials.topics.store');

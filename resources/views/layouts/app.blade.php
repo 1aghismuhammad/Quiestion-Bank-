@@ -24,6 +24,7 @@
         .card { background: #ffffff; border: 1px solid #dce3ee; border-radius: 14px; padding: 24px; }
         .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
         .button { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 18px; border: 0; border-radius: 9px; background: #2356d8; color: #ffffff; font-weight: 700; text-decoration: none; cursor: pointer; }
+        [hidden] { display: none !important; }
         .button-secondary { background: #e9eef8; color: #172033; }
         .muted { color: #667085; }
         .label { display: block; margin-bottom: 8px; font-size: 14px; font-weight: 700; }

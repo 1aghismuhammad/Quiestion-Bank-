@@ -80,6 +80,10 @@
                 <a class="button button-secondary" href="{{ route('materials.profile.show', $material) }}">Profil materi</a>
             @endcan
 
+            @can('viewBlueprints', $material)
+                <a class="button button-secondary" href="{{ route('materials.blueprints.index', $material) }}">Kisi-kisi</a>
+            @endcan
+
             @if ($canGenerate)
                 <a class="button" href="{{ route('generations.create', $material) }}">Generate Questions</a>
             @endif
