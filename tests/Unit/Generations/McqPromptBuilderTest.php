@@ -99,6 +99,27 @@ PROMPT),
         $this->assertStringContainsString('<<<MATERIAL>>>', $user);
     }
 
+    public function test_v3_forbids_option_letter_and_position_references_and_keeps_v2_grounding(): void
+    {
+        config(['generation.prompt_version' => McqPromptBuilder::V3]);
+        $builder = new McqPromptBuilder;
+        $system = $builder->systemInstruction(OutputLanguage::ID, McqPromptBuilder::V3);
+        $user = $builder->userPrompt($this->request(blueprint: $this->blueprint()), McqPromptBuilder::V3);
+
+        $this->assertSame(McqPromptBuilder::V3, $builder->version());
+        $this->assertStringContainsString('Identify the correct answer by its substantive content', $system);
+        $this->assertStringContainsString('pilihan A', $system);
+        $this->assertStringContainsString('pilihan B', $system);
+        $this->assertStringContainsString('opsi pertama', $system);
+        $this->assertStringContainsString('the first option', $system);
+        $this->assertStringContainsString('answer choice A', $system);
+        $this->assertStringContainsString('plausible statements from the same subject domain', $system);
+        $this->assertStringContainsString('which heading appears', $system);
+        $this->assertStringContainsString('Do not produce duplicate or near-duplicate stems', $system);
+        $this->assertStringContainsString('<<<BLUEPRINT_ROW>>>', $user);
+        $this->assertStringContainsString('Objective: Peserta mampu menjelaskan fotosintesis.', $user);
+    }
+
     public function test_unsupported_identity_is_rejected(): void
     {
         config(['generation.prompt_version' => 'mcq-runtime']);

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\QuestionBlueprints;
 
 use App\Actions\MaterialProfiles\AssertMaterialEligibleForProfileAnalysis;
+use App\Actions\Subscriptions\ResolveActivePro;
 use App\Data\QuestionBlueprints\BlueprintFillDispatch;
 use App\Enums\AssessmentType;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\BlueprintSource;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
@@ -29,6 +31,7 @@ class QueueBlueprintAiFill
     public function __construct(
         private AssertMaterialEligibleForProfileAnalysis $assertEligible,
         private AssertReadyMatchingProfile $assertProfile,
+        private ResolveActivePro $resolveActivePro,
     ) {}
 
     public function handle(
@@ -37,6 +40,8 @@ class QueueBlueprintAiFill
         ?QuestionBlueprint $existingDraft = null,
         ?string $title = null,
         ?AssessmentType $assessmentType = null,
+        ?BlueprintMode $requestedMode = null,
+        ?int $requestedTotal = null,
     ): QuestionBlueprint {
         $dispatch = null;
 
@@ -46,6 +51,8 @@ class QueueBlueprintAiFill
             $existingDraft,
             $title,
             $assessmentType,
+            $requestedMode,
+            $requestedTotal,
             &$dispatch,
         ): QuestionBlueprint {
             $lockedMaterial = $this->lockUserAndMaterial((int) $actor->id, (int) $material->material_id);
@@ -61,8 +68,17 @@ class QueueBlueprintAiFill
             $this->assertThrottleAvailable((int) $lockedMaterial->user_id);
 
             $draft = $existingDraft === null
-                ? $this->createEmptyAiDraft($lockedMaterial, $profile->profile_version_id, $title, $assessmentType)
-                : $this->prepareExistingDraft($existingDraft, $lockedMaterial, $profile->profile_version_id);
+                ? $this->createEmptyAiDraft(
+                    $lockedMaterial,
+                    $profile->profile_version_id,
+                    $title,
+                    $assessmentType,
+                    $this->resolveNewFillMode($actor, $requestedMode),
+                )
+                : $this->prepareExistingDraft($existingDraft, $lockedMaterial, $profile->profile_version_id, $actor);
+
+            $mode = $draft->mode instanceof BlueprintMode ? $draft->mode : BlueprintMode::Simple;
+            $target = $this->resolveFillTarget($mode, $existingDraft === null, $requestedTotal, $draft);
 
             $workflowToken = (string) Str::uuid();
             $stepToken = (string) Str::uuid();
@@ -78,6 +94,7 @@ class QueueBlueprintAiFill
             $draft->extractor_implementation = $fingerprint['extractor_implementation'];
             $draft->workflow_token = $workflowToken;
             $draft->step_execution_token = $stepToken;
+            $draft->ai_fill_requested_total = $target;
             $draft->queued_at = $now;
             $draft->claimed_at = null;
             $draft->heartbeat_at = null;
@@ -120,6 +137,7 @@ class QueueBlueprintAiFill
         int $profileVersionId,
         ?string $title,
         ?AssessmentType $assessmentType,
+        BlueprintMode $mode,
     ): QuestionBlueprint {
         $resolvedTitle = trim((string) ($title ?: 'Kisi-kisi AI'));
         $maxTitle = (int) config('question_blueprint.title_max_chars', 120);
@@ -144,6 +162,7 @@ class QueueBlueprintAiFill
             'lifecycle_status' => BlueprintLifecycleStatus::Draft,
             'source' => BlueprintSource::Ai,
             'ai_fill_status' => BlueprintAiFillStatus::None,
+            'mode' => $mode,
             'assessment_type' => $assessmentType ?? AssessmentType::FORMATIVE,
             'title' => $resolvedTitle,
             'material_content_hash' => $fingerprint['material_content_hash'],
@@ -156,6 +175,7 @@ class QueueBlueprintAiFill
         QuestionBlueprint $existing,
         Material $material,
         int $profileVersionId,
+        User $actor,
     ): QuestionBlueprint {
         $this->lockSeries((int) $existing->blueprint_series_id);
         $blueprints = $this->lockBlueprintsAscending((int) $existing->blueprint_series_id);
@@ -183,6 +203,12 @@ class QueueBlueprintAiFill
 
         if ($draft->ai_fill_status === BlueprintAiFillStatus::Succeeded) {
             throw new BlueprintRejectedException(BlueprintErrorCode::RowsNotEmpty);
+        }
+
+        $mode = $draft->mode instanceof BlueprintMode ? $draft->mode : BlueprintMode::Simple;
+
+        if ($mode === BlueprintMode::Advanced && ! $this->resolveActivePro->handle($actor)) {
+            throw new BlueprintRejectedException(BlueprintErrorCode::AdvancedRequiresPro);
         }
 
         $draft->profile_version_id = $profileVersionId;
@@ -220,5 +246,38 @@ class QueueBlueprintAiFill
         if ($queued >= $limit) {
             throw new BlueprintRejectedException(BlueprintErrorCode::ThrottleExceeded);
         }
+    }
+
+    private function resolveNewFillMode(User $actor, ?BlueprintMode $requestedMode): BlueprintMode
+    {
+        $mode = $requestedMode ?? BlueprintMode::Simple;
+
+        if ($mode === BlueprintMode::Advanced && ! $this->resolveActivePro->handle($actor)) {
+            throw new BlueprintRejectedException(BlueprintErrorCode::AdvancedRequiresPro);
+        }
+
+        return $mode;
+    }
+
+    private function resolveFillTarget(
+        BlueprintMode $mode,
+        bool $isNewFill,
+        ?int $requestedTotal,
+        QuestionBlueprint $draft,
+    ): ?int {
+        if ($mode === BlueprintMode::Simple) {
+            return null;
+        }
+
+        $max = (int) config('question_blueprint.max_advanced_total_requested', 30);
+        $target = $isNewFill
+            ? $requestedTotal
+            : ($requestedTotal ?? $draft->ai_fill_requested_total);
+
+        if ($target === null || $target < 1 || $target > $max) {
+            throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
+        }
+
+        return $target;
     }
 }

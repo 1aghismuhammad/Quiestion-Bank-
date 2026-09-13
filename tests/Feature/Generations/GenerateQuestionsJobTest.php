@@ -269,6 +269,34 @@ class GenerateQuestionsJobTest extends TestCase
         $this->assertFalse(Schema::hasColumn('ai_generations', 'prompt_version'));
     }
 
+    public function test_new_attempts_record_mcq_v3_when_configured(): void
+    {
+        config(['generation.prompt_version' => 'mcq-v3']);
+        $generation = $this->startGeneration(User::factory()->create(), questionCount: 1);
+        $captured = [];
+        Http::fake(function ($request) use (&$captured) {
+            $captured[] = $request->body();
+
+            return Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::questions(1)),
+                200,
+            );
+        });
+
+        $this->runJob($generation);
+
+        $this->assertSame('mcq-v3', AiGenerationAttempt::query()->first()->prompt_version);
+        $decoded = json_decode($captured[0], true);
+        $this->assertStringContainsString(
+            'Identify the correct answer by its substantive content',
+            (string) data_get($decoded, 'systemInstruction.parts.0.text', ''),
+        );
+        $this->assertStringContainsString(
+            'pilihan A',
+            (string) data_get($decoded, 'systemInstruction.parts.0.text', ''),
+        );
+    }
+
     public function test_generation_queue_retry_after_does_not_change_extraction_connection(): void
     {
         $job = new GenerateQuestionsJob(99);

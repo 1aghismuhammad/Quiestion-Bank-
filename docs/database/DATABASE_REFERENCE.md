@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.9
+- Version: 0.15.12
 - Domain entities: 32 domain entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, `option_id`, `blueprint_series_id`, `blueprint_id`, `blueprint_row_id`, `generation_run_id`, dan PK custom Profile mengikuti custom PK
@@ -214,11 +214,11 @@ Lineage per owner Material. Beberapa Series per Material diizinkan. Paling banya
 
 #### `question_blueprints`
 
-Versi kisi-kisi. Unique `(blueprint_series_id, version)`. `lifecycle_status` `draft|confirmed`. `source` `manual|ai`. `ai_fill_status` `none|queued|processing|succeeded|failed`. `profile_version_id` nullable di schema; setiap jalur HTTP/Action C+D mensyaratkan Profil ready yang fingerprint-nya cocok. Confirm menyimpan `material_content_hash`, null-safe `material_file_hash`, dan `extractor_implementation`. Confirm idempotent. Header/rows/contexts confirmed immutable. Clone confirmed memakai draf existing jika ada.
+Versi kisi-kisi. Unique `(blueprint_series_id, version)`. `lifecycle_status` `draft|confirmed`. `source` `manual|ai`. `mode` `simple|advanced` (non-null, default `simple`; historical rows resolve to Simple). `ai_fill_status` `none|queued|processing|succeeded|failed`. `ai_fill_requested_total` nullable workflow input for Advanced AI fill only: set or replaced in the same transaction as a new `workflow_token` / `step_execution_token`; the worker reads it only after those tokens match; in-flight drafts reject target/row mutation; a stale job with old tokens cannot consume a newer target. It is not the canonical total (canonical = `SUM(rows.requested_count)` after fill, later edits, confirm, and Run start). Never mass-assigned from request data. `profile_version_id` nullable di schema; setiap jalur HTTP/Action mensyaratkan Profil ready yang fingerprint-nya cocok. Confirm menyimpan `material_content_hash`, null-safe `material_file_hash`, dan `extractor_implementation`. Confirm, clone, AI retry, dan Run start memakai mode persisted, bukan posted mode. Confirm idempotent. Header/rows/contexts/mode confirmed immutable. Clone confirmed memakai draf existing jika ada dan menyalin mode persisted.
 
 #### `question_blueprint_rows`
 
-Baris kisi-kisi. Unique `(blueprint_id, sort_order)`. Simple: 1–5 baris, MCQ, satu difficulty, `requested_count` total 1–10.
+Baris kisi-kisi. Unique `(blueprint_id, sort_order)`. Simple: 1–5 baris, MCQ, satu difficulty, `requested_count` total 1–10. Advanced: 1–5 baris, MCQ, mixed difficulty diizinkan, 1–10 per baris, total 1–30.
 
 #### `question_blueprint_row_contexts`
 
@@ -298,13 +298,15 @@ Lifecycle:
 
 Consume/Release finalize the **stored** reservation only. They must not re-resolve current entitlement/quota or move the row to the user's current Plan/Subscription/window. Stale queued/processing reserved **legacy** orphans are recovered by `RecoverStaleGenerations` (`generation_run_id` null) to `failed` + `released` with `error_code=stale_recovery`. Run orphans use `RecoverStaleGenerationRuns`. Runtime TTL is `max(1800, configured generation.stale_after_seconds)`: 1800 seconds is the minimum safe floor; operators may configure a higher threshold. Candidate scan is unlocked; each ID uses canonical locks and re-checks timestamps (`queued_at` for queued, `updated_at` for processing). There is no `reservation_expires_at`. `FinalizeGenerationSuccess` / `FinalizeGenerationFailure` wrap Consume/Release for **legacy** rows only and refuse run children (check `generation_run_id` before locking the child). Gemini HTTP is never inside that transaction. Recovery does not call the provider or redispatch Jobs. Blueprint AI fill writes zero usage rows.
 
-### Generation Runs (Phase 5.7D)
+### Generation Runs (Phase 5.7D+E)
 
 #### `ai_generation_runs`
 
-Orchestration aggregate. Unique `(user_id, idempotency_key)`. Snapshots Blueprint id/series/version, assessment, language, mode (`simple`), shuffle flags (always false in C+D), fingerprint, `total_requested_questions`, `credits_required`, nullable `parent_run_id`. Status `queued|processing|completed|failed`. Simple eligibility: confirmed current Blueprint, current matching ready Profile, MCQ, one difficulty, total 1–10.
+Orchestration aggregate. Unique `(user_id, idempotency_key)`. Snapshots Blueprint id/series/version, assessment, language, mode (`simple|advanced` from the confirmed Blueprint), shuffle flags (Simple payloads with shuffle=true are rejected before writes; Advanced may set them), fingerprint (includes actual mode/shuffle/total/credits), `total_requested_questions`, `credits_required`, nullable `parent_run_id`. Status `queued|processing|completed|failed`. Simple eligibility: confirmed current Blueprint, current matching ready Profile, MCQ, one difficulty, total 1–10, no shuffle. Advanced eligibility: active Pro; MCQ; 1–5 rows; 1–10 per child; total 1–30; mixed difficulty allowed. Advanced totals 1–10 also require mixed difficulty or `shuffle_questions` or `shuffle_options`. Credits remain `GenerationCredits::required()` = `ceil(n/10)` (1–10=1, 11–20=2, 21–30=3).
 
-Start idempotency: User lock first; same key + same fingerprint returns the original Run without Material lock; same key + different fingerprint rejects with no writes.
+Start idempotency: User lock first; same key + same fingerprint returns the original Run without Material lock; same key + different fingerprint rejects with no writes. Failed-run retry creates a new Run identity, copies persisted mode/shuffle, writes `parent_run_id`, and requires active Pro for Advanced.
+
+Completed preview flattens child questions in canonical `child_index`/`original_index` order, then applies SHA-256 deterministic ranking when shuffle is enabled. Canonical `result_json` is never mutated. Option shuffle remaps `correct_answer` by canonical option key, not option text.
 
 Lock order for a new key: User → Material → Profile → Series → Blueprint → Run/Items/children → Usage. Never child before Run, never Usage before Run, never Material after Run.
 
@@ -312,7 +314,7 @@ Worker, finalize, and recovery: User → Material → Run → items (`sort_order
 
 #### `ai_generation_run_items`
 
-Immutable row snapshots. Unique `(generation_run_id, sort_order)`. Simple: one child per item, `requested_count <= 10`.
+Immutable row snapshots. Unique `(generation_run_id, sort_order)`. One child per item, `requested_count <= 10`.
 
 #### `ai_generation_run_item_spans`
 

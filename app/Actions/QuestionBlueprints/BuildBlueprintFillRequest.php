@@ -10,6 +10,7 @@ use App\Data\QuestionBlueprints\BlueprintFillRequest;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
 use App\Models\Material;
@@ -65,6 +66,16 @@ class BuildBlueprintFillRequest
             }
 
             $profile = $this->assertProfile->requireReferencedReady($material, (int) $locked->profile_version_id);
+            $mode = $locked->mode instanceof BlueprintMode ? $locked->mode : BlueprintMode::Simple;
+
+            if ($mode === BlueprintMode::Advanced) {
+                $target = $locked->ai_fill_requested_total;
+                $max = (int) config('question_blueprint.max_advanced_total_requested', 30);
+
+                if ($target === null || (int) $target < 1 || (int) $target > $max) {
+                    throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
+                }
+            }
 
             return $this->build($locked, $material, $profile, $model, $promptVersion);
         });
@@ -171,6 +182,8 @@ class BuildBlueprintFillRequest
             (string) $blueprint->title,
             $blueprint->assessment_type,
             $contexts,
+            $blueprint->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple,
+            $blueprint->ai_fill_requested_total === null ? null : (int) $blueprint->ai_fill_requested_total,
         );
 
         $serialized = json_encode([

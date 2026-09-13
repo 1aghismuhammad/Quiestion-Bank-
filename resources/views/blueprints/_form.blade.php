@@ -1,5 +1,7 @@
 @php
     $mappingOptions = $mappingOptions ?? ['elements' => [], 'chunks' => []];
+    $isPro = $isPro ?? false;
+    $selectedMode = old('mode', $blueprint?->mode->value ?? 'simple');
     $rows = old('rows', $blueprint?->rows?->map(function ($row) {
         $sources = $row->contexts->map(function ($context) {
             if ($context->profile_element_id !== null) {
@@ -34,6 +36,24 @@
 @endphp
 
 <div>
+    <p class="label">Mode kisi-kisi</p>
+    <label style="display: block; margin-top: 8px;">
+        <input type="radio" name="mode" value="simple" @checked($selectedMode === 'simple')>
+        Sederhana
+    </label>
+    <label style="display: block; margin-top: 8px;">
+        <input type="radio" name="mode" value="advanced" @checked($selectedMode === 'advanced') @disabled(! $isPro)>
+        Lanjutan (Pro)
+    </label>
+    @if (! $isPro)
+        <p class="muted">Mode lanjutan terkunci. Paket Pro aktif diperlukan untuk 11–30 soal, kesulitan campuran, dan pengacakan.</p>
+    @endif
+    @error('mode')
+        <div class="error-text">{{ $message }}</div>
+    @enderror
+</div>
+
+<div>
     <label class="label" for="title">Judul</label>
     <input class="input" id="title" name="title" value="{{ old('title', $blueprint->title ?? '') }}" required>
     @error('title')
@@ -52,7 +72,9 @@
     </select>
 </div>
 
-<p class="muted" style="margin-top: 16px;">Semua baris harus pilihan ganda dan satu tingkat kesulitan. Total soal 1–10. Setiap baris wajib memilih sumber konteks dari profil materi.</p>
+<p class="muted" id="blueprint-simple-help" style="margin-top: 16px;">Mode sederhana: semua baris pilihan ganda dan satu tingkat kesulitan. Total soal 1–10. Maksimal 5 baris, 1–10 soal per baris.</p>
+<p class="muted" id="blueprint-advanced-help" style="margin-top: 16px;">Mode lanjutan: semua baris pilihan ganda. Total soal 1–30. Maksimal 5 baris, 1–10 soal per baris. Tingkat kesulitan boleh berbeda.</p>
+<p id="blueprint-live-summary" style="margin-top: 8px;"><strong>Total soal:</strong> <span data-live-total>0</span> · <strong>Perkiraan kredit:</strong> <span data-live-credits>0</span></p>
 
 <div id="blueprint-rows">
     @foreach ($rows as $index => $row)
@@ -96,6 +118,36 @@
         const list = document.getElementById('blueprint-rows');
         const addButton = document.getElementById('blueprint-add-row');
         const template = document.getElementById('blueprint-row-template');
+        const simpleHelp = document.getElementById('blueprint-simple-help');
+        const advancedHelp = document.getElementById('blueprint-advanced-help');
+        const totalNode = document.querySelector('[data-live-total]');
+        const creditsNode = document.querySelector('[data-live-credits]');
+
+        function selectedMode() {
+            const checked = document.querySelector('input[name="mode"]:checked');
+            return checked ? checked.value : 'simple';
+        }
+
+        function syncModeHelp() {
+            const advanced = selectedMode() === 'advanced';
+            simpleHelp.hidden = advanced;
+            advancedHelp.hidden = ! advanced;
+            updateLiveSummary();
+        }
+
+        function liveTotal() {
+            let total = 0;
+            list.querySelectorAll('input[name$="[requested_count]"]').forEach(function (input) {
+                total += parseInt(input.value, 10) || 0;
+            });
+            return total;
+        }
+
+        function updateLiveSummary() {
+            const total = liveTotal();
+            totalNode.textContent = String(total);
+            creditsNode.textContent = String(total < 1 ? 0 : Math.ceil(total / 10));
+        }
 
         function reindex() {
             const cards = list.querySelectorAll('[data-blueprint-row]');
@@ -110,6 +162,7 @@
             });
             addButton.disabled = cards.length >= maxRows;
             syncRemoveButtons();
+            updateLiveSummary();
         }
 
         function syncRemoveButtons() {
@@ -158,5 +211,18 @@
             button.closest('[data-blueprint-row]').remove();
             reindex();
         });
+
+        list.addEventListener('input', function (event) {
+            if (event.target && event.target.name && event.target.name.indexOf('[requested_count]') !== -1) {
+                updateLiveSummary();
+            }
+        });
+
+        document.querySelectorAll('input[name="mode"]').forEach(function (input) {
+            input.addEventListener('change', syncModeHelp);
+        });
+
+        syncModeHelp();
+        reindex();
     })();
 </script>

@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\AssessmentType;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\BlueprintSource;
 use Database\Factories\QuestionBlueprintFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'lifecycle_status',
     'source',
     'ai_fill_status',
+    'mode',
     'assessment_type',
     'title',
     'material_content_hash',
@@ -93,7 +95,9 @@ class QuestionBlueprint extends Model
             'lifecycle_status' => BlueprintLifecycleStatus::class,
             'source' => BlueprintSource::class,
             'ai_fill_status' => BlueprintAiFillStatus::class,
+            'mode' => BlueprintMode::class,
             'assessment_type' => AssessmentType::class,
+            'ai_fill_requested_total' => 'integer',
             'confirmed_at' => 'datetime',
             'queued_at' => 'datetime',
             'claimed_at' => 'datetime',

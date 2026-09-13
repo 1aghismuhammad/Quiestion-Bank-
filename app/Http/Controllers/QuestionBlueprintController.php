@@ -11,14 +11,17 @@ use App\Actions\QuestionBlueprints\CreateManualBlueprintDraft;
 use App\Actions\QuestionBlueprints\DownloadConfirmedBlueprintDocx;
 use App\Actions\QuestionBlueprints\QueueBlueprintAiFill;
 use App\Actions\QuestionBlueprints\UpdateBlueprintDraft;
+use App\Actions\Subscriptions\ResolveActivePro;
 use App\Enums\AssessmentType;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
+use App\Http\Requests\QuestionBlueprints\StoreBlueprintAiFillRequest;
 use App\Http\Requests\QuestionBlueprints\StoreQuestionBlueprintRequest;
 use App\Http\Requests\QuestionBlueprints\UpdateQuestionBlueprintRequest;
 use App\Models\Material;
@@ -38,7 +41,10 @@ class QuestionBlueprintController extends Controller
 {
     use AuthorizesRequests;
 
-    public function __construct(private AssertReadyMatchingProfile $assertProfile) {}
+    public function __construct(
+        private AssertReadyMatchingProfile $assertProfile,
+        private ResolveActivePro $resolveActivePro,
+    ) {}
 
     public function index(Request $request, Material $material): View
     {
@@ -53,10 +59,13 @@ class QuestionBlueprintController extends Controller
             'material' => $material,
             'blueprints' => $blueprints,
             'readyProfile' => $this->assertProfile->matchingReady($material),
+            'isPro' => $this->resolveActivePro->handle($request->user()),
+            'modes' => BlueprintMode::cases(),
+            'maxAdvancedTotal' => (int) config('question_blueprint.max_advanced_total_requested', 30),
         ]);
     }
 
-    public function create(Material $material): View
+    public function create(Request $request, Material $material): View
     {
         $this->authorize('manageBlueprints', $material);
 
@@ -67,6 +76,8 @@ class QuestionBlueprintController extends Controller
             'difficulties' => DifficultyLevel::cases(),
             'maxRows' => (int) config('question_blueprint.max_rows', 5),
             'mappingOptions' => $this->mappingOptions($material),
+            'isPro' => $this->resolveActivePro->handle($request->user()),
+            'modes' => BlueprintMode::cases(),
         ]);
     }
 
@@ -82,6 +93,7 @@ class QuestionBlueprintController extends Controller
                 (string) $request->validated('title'),
                 AssessmentType::from($request->validated('assessment_type')),
                 $request->validated('rows'),
+                BlueprintMode::from((string) $request->validated('mode')),
             );
         } catch (BlueprintRejectedException $exception) {
             return back()->withInput()->with('error', BlueprintOwnerMessages::forException($exception));
@@ -111,6 +123,9 @@ class QuestionBlueprintController extends Controller
             'readyProfile' => $this->assertProfile->matchingReady($material),
             'pollIntervalMs' => max(2_000, (int) config('question_blueprint.status_poll_interval_ms', 5_000)),
             'mappingOptions' => $this->mappingOptions($material),
+            'isPro' => $this->resolveActivePro->handle($request->user()),
+            'modes' => BlueprintMode::cases(),
+            'maxRows' => (int) config('question_blueprint.max_rows', 5),
         ]);
     }
 
@@ -129,6 +144,9 @@ class QuestionBlueprintController extends Controller
                 (string) $request->validated('title'),
                 AssessmentType::from($request->validated('assessment_type')),
                 $request->validated('rows'),
+                $request->validated('mode') === null
+                    ? null
+                    : BlueprintMode::from((string) $request->validated('mode')),
             );
         } catch (BlueprintRejectedException $exception) {
             return back()->withInput()->with('error', BlueprintOwnerMessages::forException($exception));
@@ -206,14 +224,29 @@ class QuestionBlueprintController extends Controller
     }
 
     public function requestAi(
-        Request $request,
+        StoreBlueprintAiFillRequest $request,
         Material $material,
         QueueBlueprintAiFill $queue,
     ): RedirectResponse {
         $this->authorize('manageBlueprints', $material);
 
         try {
-            $blueprint = $queue->handle($request->user(), $material);
+            $mode = BlueprintMode::from((string) $request->validated('mode'));
+            $target = $mode === BlueprintMode::Advanced
+                ? (int) $request->validated('target_total')
+                : null;
+            $title = $request->validated('title');
+            $assessment = $request->validated('assessment_type');
+
+            $blueprint = $queue->handle(
+                $request->user(),
+                $material,
+                null,
+                is_string($title) ? $title : null,
+                is_string($assessment) ? AssessmentType::from($assessment) : null,
+                $mode,
+                $target,
+            );
         } catch (BlueprintRejectedException $exception) {
             if (in_array($exception->errorCode, [
                 BlueprintErrorCode::ProfileRequired,
@@ -266,6 +299,11 @@ class QuestionBlueprintController extends Controller
         $this->authorize('view', $blueprint);
 
         $blueprint->refresh();
+        $mode = $blueprint->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple;
+        $canConfirm = $blueprint->lifecycle_status === BlueprintLifecycleStatus::Draft
+            && $blueprint->ai_fill_status !== BlueprintAiFillStatus::Queued
+            && $blueprint->ai_fill_status !== BlueprintAiFillStatus::Processing
+            && ($mode !== BlueprintMode::Advanced || $this->resolveActivePro->handle($request->user()));
 
         return response()
             ->json([
@@ -277,9 +315,7 @@ class QuestionBlueprintController extends Controller
                     ? null
                     : BlueprintErrorCode::tryFrom((string) $blueprint->error_code)?->publicCode(),
                 'error_message' => $blueprint->error_message,
-                'can_confirm' => $blueprint->lifecycle_status === BlueprintLifecycleStatus::Draft
-                    && $blueprint->ai_fill_status !== BlueprintAiFillStatus::Queued
-                    && $blueprint->ai_fill_status !== BlueprintAiFillStatus::Processing,
+                'can_confirm' => $canConfirm,
             ])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
             ->header('Pragma', 'no-cache');

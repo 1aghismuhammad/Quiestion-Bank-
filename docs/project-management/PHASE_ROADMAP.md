@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) completed v0.15.9 third corrective QA; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI) and remains pending final manual QA. Phase 5.7E has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) completed v0.15.9 third corrective QA; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI) and remains pending final manual QA. Phase 5.7E is `COMPLETE`. Phase 5.7F (True/False and Essay) and Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) have not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D completed v0.15.9 third corrective QA; v0.15.11 records the post-manual-QA content/UX corrective and remains pending final manual QA. Phase 5.7E has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D completed v0.15.9 third corrective QA; v0.15.11 records the post-manual-QA content/UX corrective and remains pending final manual QA. Phase 5.7E is `COMPLETE`. Phase 5.7F (True/False and Essay) and Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) have not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D v0.15.9 third corrective QA passed; v0.15.11 content/UX corrective passed automated QA, pending final manual QA; Phase 5.7E `NOT STARTED`)
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D v0.15.9 third corrective QA passed; v0.15.11 content/UX corrective passed automated QA, pending final manual QA; Phase 5.7E `COMPLETE`; Phase 5.7F `NOT STARTED`; Phase 5.7G `NOT STARTED`)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -316,6 +316,31 @@ Phase 5.7D — Multi-credit SUM Ledger and Simple Generation Runs (`COMPLETE`):
 - `migrate:rollback` is not safe after Run usage or `credits>1` exists. Forward-fix only.
 
 Out of scope for 5.7C and 5.7D: Advanced Mode, shuffle UI, Run Question Bank import, question teacher/student DOCX, Blueprint AI credits, and Phase 5.7E/F/G.
+
+Phase 5.7E — Advanced MCQ (`COMPLETE`):
+
+- Blueprint `mode` is persisted (`simple|advanced`, default/backfill Simple). Confirm, clone, AI retry, and Run start use persisted Blueprint mode. Failed-Run retry copies persisted mode and shuffle flags. Posted mode/shuffle on an existing resource is not trusted.
+- Active Pro (`ResolveUserEntitlement::handle($user)->isPro()` via `ResolveActivePro`) is required for every new Advanced mutation or provider workflow. Expired-Pro owners may view existing Advanced Blueprints/Runs/results, download confirmed Blueprint DOCX, and use Simple Mode. They may not edit Advanced drafts, request/retry AI fill, confirm, clone, start a new Advanced Run, or manually retry a failed Advanced Run. An already-started reserved Advanced Run may finish after Pro expires.
+- Advanced shape: MCQ only, 1–5 rows, 1–10 per row, total 1–30, mixed difficulty allowed. Simple remains Free+Pro, MCQ, total 1–10, one difficulty, no shuffle, compatible with historical C+D.
+- Advanced AI fill uses `blueprint-fill-v2` and `ai_fill_requested_total` as workflow input bound to the current workflow/step tokens. Canonical totals always come from `SUM(rows.requested_count)`. Output stays draft. Simple keeps `blueprint-fill-v1`.
+- Advanced Run qualification: 11–30 qualify by scale; 1–10 require mixed difficulty or question shuffle or option shuffle. Rejection happens before Run, item, child, Usage, reservation, Attempt, job, or provider HTTP. Advanced is never converted to Simple.
+- Credits remain `GenerationCredits::required()` = `ceil(n/10)` (1–10=1, 11–20=2, 21–30=3). One row = one item = one sequential child. One Usage per Run; charge once; release once on terminal failure. A 10-easy + 5-HOTS Run is two children, 15 questions, 2 credits, one Usage.
+- Deterministic SHA-256 shuffle across children from immutable Run identity/fingerprint. Option order remaps canonical A–D keys to display keys and remaps `correct_answer` through that map, including duplicate option text. Canonical `result_json` is unchanged. No `shuffle()`, `mt_rand()`, or request entropy.
+- New Attempts use `mcq-v3` so explanations identify the answer by content, not letters or positions. Historical `mcq-v1`/`mcq-v2` identities remain. Raw prompts and provider bodies are not persisted.
+
+Out of scope for 5.7E: True/False, Essay, mixed question types, Question Bank import, Question Set changes, generated-question editing, question DOCX, add/delete/reorder generated questions, Run cancellation, and parallel child execution.
+
+Phase 5.7F — True/False and Essay (`NOT STARTED`):
+
+- True/false and essay generation runtime, prompts, validation, and owner preview.
+- Mixed question types inside a Blueprint or Run.
+
+Phase 5.7G — Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening (`NOT STARTED`):
+
+- Import completed Run questions into Question Bank.
+- Review/edit generated questions after a Run.
+- Question teacher/student DOCX.
+- Final hardening, including isolated MySQL concurrency evidence.
 
 ## Phase 6 - Admin Dashboard
 

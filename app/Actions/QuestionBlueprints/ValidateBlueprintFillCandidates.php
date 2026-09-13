@@ -6,6 +6,7 @@ namespace App\Actions\QuestionBlueprints;
 
 use App\Data\QuestionBlueprints\BlueprintFillCandidate;
 use App\Data\QuestionBlueprints\BlueprintFillContextCatalogEntry;
+use App\Enums\BlueprintMode;
 use App\Enums\BlueprintRowOrigin;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
@@ -17,7 +18,7 @@ use App\Models\MaterialProfileVersion;
 
 class ValidateBlueprintFillCandidates
 {
-    public function __construct(private AssertSimpleBlueprintShape $assertShape) {}
+    public function __construct(private AssertBlueprintShape $assertShape) {}
 
     /**
      * @param  list<BlueprintFillCandidate>  $candidates
@@ -29,6 +30,8 @@ class ValidateBlueprintFillCandidates
         Material $material,
         MaterialProfileVersion $profile,
         array $catalog,
+        BlueprintMode $mode = BlueprintMode::Simple,
+        ?int $expectedTotal = null,
     ): array {
         $content = (string) $material->content;
         $rows = [];
@@ -186,9 +189,18 @@ class ValidateBlueprintFillCandidates
         }
 
         try {
-            $this->assertShape->handle($rows);
+            $this->assertShape->handle($rows, $mode);
         } catch (BlueprintRejectedException) {
-            throw new BlueprintCandidateValidationException('The candidate set is not a valid simple blueprint.');
+            throw new BlueprintCandidateValidationException('The candidate set is not a valid blueprint.');
+        }
+
+        if ($mode === BlueprintMode::Advanced) {
+            $maxAdvanced = (int) config('question_blueprint.max_advanced_total_requested', 30);
+            $actual = (int) array_sum(array_map(fn (array $row): int => (int) $row['requested_count'], $rows));
+
+            if ($expectedTotal === null || $expectedTotal < 1 || $expectedTotal > $maxAdvanced || $actual !== $expectedTotal) {
+                throw new BlueprintCandidateValidationException('The candidate total does not match the requested target.');
+            }
         }
 
         return $rows;

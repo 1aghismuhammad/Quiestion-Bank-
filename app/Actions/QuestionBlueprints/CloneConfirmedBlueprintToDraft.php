@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\QuestionBlueprints;
 
+use App\Actions\Subscriptions\ResolveActivePro;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\BlueprintSource;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
 use App\Models\QuestionBlueprint;
@@ -19,7 +21,10 @@ class CloneConfirmedBlueprintToDraft
 {
     use LocksQuestionBlueprintWorkflow;
 
-    public function __construct(private AssertReadyMatchingProfile $assertProfile) {}
+    public function __construct(
+        private AssertReadyMatchingProfile $assertProfile,
+        private ResolveActivePro $resolveActivePro,
+    ) {}
 
     public function handle(User $actor, QuestionBlueprint $blueprint): QuestionBlueprint
     {
@@ -34,6 +39,12 @@ class CloneConfirmedBlueprintToDraft
 
             if ($source->lifecycle_status !== BlueprintLifecycleStatus::Confirmed) {
                 throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
+            }
+
+            $mode = $source->mode instanceof BlueprintMode ? $source->mode : BlueprintMode::Simple;
+
+            if ($mode === BlueprintMode::Advanced && ! $this->resolveActivePro->handle($actor)) {
+                throw new BlueprintRejectedException(BlueprintErrorCode::AdvancedRequiresPro);
             }
 
             $existingDraft = $graph['blueprints']->first(
@@ -57,6 +68,7 @@ class CloneConfirmedBlueprintToDraft
                 'lifecycle_status' => BlueprintLifecycleStatus::Draft,
                 'source' => $source->source ?? BlueprintSource::Manual,
                 'ai_fill_status' => BlueprintAiFillStatus::None,
+                'mode' => $mode,
                 'assessment_type' => $source->assessment_type,
                 'title' => $source->title,
                 'material_content_hash' => $fingerprint['material_content_hash'],

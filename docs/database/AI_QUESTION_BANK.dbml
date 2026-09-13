@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.15.9
+// Version: 0.15.12
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -180,6 +180,11 @@ Enum blueprint_source {
   ai
 }
 
+Enum blueprint_mode {
+  simple
+  advanced
+}
+
 Enum blueprint_ai_fill_status {
   none
   queued
@@ -217,6 +222,7 @@ Enum generation_run_status {
 
 Enum generation_run_mode {
   simple
+  advanced
 }
 
 //////////////////////////////////////////////////////
@@ -552,6 +558,8 @@ Table question_blueprints {
   lifecycle_status blueprint_lifecycle_status [not null, default: 'draft']
   source blueprint_source [not null, default: 'manual']
   ai_fill_status blueprint_ai_fill_status [not null, default: 'none']
+  mode blueprint_mode [not null, default: 'simple']
+  ai_fill_requested_total tinyint [note: 'Workflow input only. Canonical total is always SUM(rows.requested_count). Set atomically with a new AI-fill workflow token. Null for Simple fills.']
   assessment_type assessment_type [not null]
   title varchar(120) [not null]
   material_content_hash varchar(64) [not null]
@@ -575,7 +583,7 @@ Table question_blueprints {
     (material_id, ai_fill_status) [name: 'qbp_mat_ai_fill_idx']
   }
 
-  Note: 'Confirm is idempotent and stores the live Material fingerprint. Confirmed header/rows/contexts are immutable. AI fill never auto-confirms and writes zero ai_usage_logs.'
+  Note: 'Confirm is idempotent and stores the live Material fingerprint. Confirmed header/rows/contexts/mode are immutable. Historical rows resolve to simple. AI fill never auto-confirms and writes zero ai_usage_logs. ai_fill_requested_total is not mass-assigned from request data.'
 }
 
 Table question_blueprint_rows {
@@ -597,7 +605,7 @@ Table question_blueprint_rows {
     (blueprint_id, sort_order) [unique, name: 'qbp_row_blueprint_sort_uq']
   }
 
-  Note: 'Simple shape: 1-5 MCQ rows, one difficulty, total requested 1-10.'
+  Note: 'Simple shape: 1-5 MCQ rows, one difficulty, total requested 1-10. Advanced shape: 1-5 MCQ rows, mixed difficulty allowed, total requested 1-30, each row 1-10.'
 }
 
 Table question_blueprint_row_contexts {
@@ -704,7 +712,7 @@ Table ai_generation_runs {
     blueprint_id [name: 'ai_run_blueprint_idx']
   }
 
-  Note: 'Simple Mode only in 5.7C+D. Same key plus same fingerprint returns the original Run. Children have no usage row. One reservation uses SUM-ready credits = ceil(n/10).'
+  Note: 'Mode is snapshotted from the confirmed Blueprint. Shuffle flags are accepted only for Advanced. Same key plus same fingerprint returns the original Run. Children have no usage row. One reservation uses GenerationCredits::required() = ceil(n/10). Historical Simple runs remain unchanged.'
 }
 
 Table ai_generation_run_items {
@@ -726,7 +734,7 @@ Table ai_generation_run_items {
     (generation_run_id, sort_order) [unique, name: 'ai_run_item_run_sort_uq']
   }
 
-  Note: 'Immutable Blueprint row snapshot. Simple: one child per item, requested_count <= 10.'
+  Note: 'Immutable Blueprint row snapshot. One child per item, requested_count <= 10.'
 }
 
 Table ai_generation_run_item_spans {

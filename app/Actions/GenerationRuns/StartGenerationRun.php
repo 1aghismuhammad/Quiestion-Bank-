@@ -6,14 +6,15 @@ namespace App\Actions\GenerationRuns;
 
 use App\Actions\Generations\AssertMaterialEligibleForGeneration;
 use App\Actions\Generations\ResolveGenerationUsage;
+use App\Actions\QuestionBlueprints\AssertBlueprintShape;
 use App\Actions\QuestionBlueprints\AssertReadyMatchingProfile;
-use App\Actions\QuestionBlueprints\AssertSimpleBlueprintShape;
+use App\Actions\Subscriptions\ResolveActivePro;
 use App\Actions\Subscriptions\ResolveGenerationQuota;
 use App\Actions\Subscriptions\ResolveUserEntitlement;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\GenerationRunErrorCode;
-use App\Enums\GenerationRunMode;
 use App\Enums\GenerationRunStatus;
 use App\Enums\GenerationStatus;
 use App\Enums\OutputLanguage;
@@ -39,11 +40,13 @@ class StartGenerationRun
 
     public function __construct(
         private ResolveUserEntitlement $resolveEntitlement,
+        private ResolveActivePro $resolveActivePro,
         private ResolveGenerationQuota $resolveQuota,
         private ResolveGenerationUsage $resolveUsage,
         private AssertMaterialEligibleForGeneration $assertEligible,
         private AssertReadyMatchingProfile $assertProfile,
-        private AssertSimpleBlueprintShape $assertShape,
+        private AssertBlueprintShape $assertShape,
+        private AssertAdvancedRunQualification $assertQualification,
         private ComputeGenerationRunFingerprint $fingerprint,
         private SelectRunItemSpans $selectSpans,
         private DispatchQueuedRunChild $dispatchQueued,
@@ -55,6 +58,8 @@ class StartGenerationRun
         OutputLanguage $outputLanguage,
         string $idempotencyKey,
         ?int $parentRunId = null,
+        bool $shuffleQuestions = false,
+        bool $shuffleOptions = false,
     ): AiGenerationRun {
         if (! preg_match('/^[0-9a-fA-F-]{36}$/', $idempotencyKey)) {
             throw new GenerationRunRejectedException(GenerationRunErrorCode::ValidationFailed);
@@ -68,6 +73,8 @@ class StartGenerationRun
             $outputLanguage,
             $idempotencyKey,
             $parentRunId,
+            $shuffleQuestions,
+            $shuffleOptions,
             &$dispatch,
         ): AiGenerationRun {
             $owner = $this->lockUser((int) $actor->id);
@@ -87,8 +94,22 @@ class StartGenerationRun
                 throw new GenerationRunRejectedException(GenerationRunErrorCode::BlueprintNotConfirmed);
             }
 
+            $mode = $lockedBlueprint->mode instanceof BlueprintMode
+                ? $lockedBlueprint->mode
+                : BlueprintMode::Simple;
+            $runMode = $mode->toRunMode();
+
+            if ($mode === BlueprintMode::Simple && ($shuffleQuestions || $shuffleOptions)) {
+                throw new GenerationRunRejectedException(GenerationRunErrorCode::ValidationFailed);
+            }
+
+            if ($mode !== BlueprintMode::Advanced) {
+                $shuffleQuestions = false;
+                $shuffleOptions = false;
+            }
+
             try {
-                $this->assertShape->handle($lockedBlueprint->rows);
+                $this->assertShape->handle($lockedBlueprint->rows, $mode);
             } catch (BlueprintRejectedException) {
                 throw new GenerationRunRejectedException(GenerationRunErrorCode::ValidationFailed);
             }
@@ -108,6 +129,9 @@ class StartGenerationRun
                 $fingerprintPreview['extractor_implementation'],
                 $parentRunId,
                 $lockedBlueprint->rows,
+                $runMode,
+                $shuffleQuestions,
+                $shuffleOptions,
             );
 
             if ($existing !== null) {
@@ -132,6 +156,14 @@ class StartGenerationRun
                 }
 
                 return $existing;
+            }
+
+            if ($mode === BlueprintMode::Advanced && ! $this->resolveActivePro->handle($owner)) {
+                throw new GenerationRunRejectedException(GenerationRunErrorCode::AdvancedRequiresPro);
+            }
+
+            if ($mode === BlueprintMode::Advanced) {
+                $this->assertQualification->handle($lockedBlueprint->rows, $shuffleQuestions, $shuffleOptions);
             }
 
             $material = $this->lockMaterial((int) $lockedBlueprint->material_id);
@@ -199,9 +231,9 @@ class StartGenerationRun
                 'profile_version_id' => $profile->profile_version_id,
                 'assessment_type' => $lockedBlueprint->assessment_type,
                 'output_language' => $outputLanguage,
-                'mode' => GenerationRunMode::Simple,
-                'shuffle_questions' => false,
-                'shuffle_options' => false,
+                'mode' => $runMode,
+                'shuffle_questions' => $shuffleQuestions,
+                'shuffle_options' => $shuffleOptions,
                 'material_content_hash' => $liveFingerprint['material_content_hash'],
                 'material_file_hash' => $liveFingerprint['material_file_hash'],
                 'extractor_implementation' => $liveFingerprint['extractor_implementation'],

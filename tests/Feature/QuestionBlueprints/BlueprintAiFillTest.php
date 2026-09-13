@@ -15,6 +15,7 @@ use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintAttemptStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
 use App\Jobs\FillQuestionBlueprintJob;
 use App\Models\AiUsageLog;
@@ -70,6 +71,8 @@ class BlueprintAiFillTest extends TestCase
         $this->assertSame(1, $blueprint->rows()->count());
         $this->assertSame(0, AiUsageLog::query()->count());
         $this->assertSame(1, QuestionBlueprintAttempt::query()->where('status', BlueprintAttemptStatus::Succeeded)->count());
+        $this->assertSame('blueprint-fill-v1', QuestionBlueprintAttempt::query()->first()?->prompt_version);
+        $this->assertSame(BlueprintMode::Simple, $blueprint->mode);
     }
 
     public function test_same_token_does_not_create_a_second_attempt(): void

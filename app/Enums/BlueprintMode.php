@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
-enum GenerationRunMode: string
+enum BlueprintMode: string
 {
     case Simple = 'simple';
     case Advanced = 'advanced';
@@ -14,6 +14,14 @@ enum GenerationRunMode: string
         return match ($this) {
             self::Simple => 'Sederhana',
             self::Advanced => 'Lanjutan',
+        };
+    }
+
+    public function toRunMode(): GenerationRunMode
+    {
+        return match ($this) {
+            self::Simple => GenerationRunMode::Simple,
+            self::Advanced => GenerationRunMode::Advanced,
         };
     }
 }

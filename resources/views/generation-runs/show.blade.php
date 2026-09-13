@@ -13,8 +13,10 @@
         <span class="status {{ $run->status->value === 'failed' ? 'status-error' : ($run->status->value === 'completed' ? '' : 'status-warn') }}">
             {{ $run->status->value }}
         </span>
+        <span class="muted">mode {{ $run->mode->label() }}</span>
     </p>
     <p>Total soal: {{ $run->total_requested_questions }} · Kredit: {{ $run->credits_required }}</p>
+    <p class="muted">{{ $presentation->questionOrderLabel }} · {{ $presentation->optionOrderLabel }}</p>
 
     @if ($run->error_message)
         <div class="alert alert-error">{{ $run->error_message }}</div>
@@ -45,40 +47,34 @@
     @if ($run->status->value === 'completed')
         <div class="card" style="margin-bottom: 20px;">
             <h2>Soal yang dihasilkan</h2>
-            @php $questionNumber = 0; @endphp
-            @foreach ($run->children->sortBy('child_index') as $child)
-                @if ($child->generation_status->value === 'completed' && is_array($child->result_json))
-                    @foreach ($child->result_json as $question)
-                        @php $questionNumber++; @endphp
-                        <article style="margin-bottom: 16px;">
-                            <p><strong>{{ $questionNumber }}. {{ $question['question'] ?? '' }}</strong></p>
-                            @if (isset($question['options']) && is_array($question['options']))
-                                <ul>
-                                    @foreach ($question['options'] as $label => $option)
-                                        <li>{{ $label }}. {{ $option }}</li>
-                                    @endforeach
-                                </ul>
-                            @endif
-                            @if (! empty($question['correct_answer']))
-                                <p class="muted">Kunci: {{ $question['correct_answer'] }}</p>
-                            @endif
-                            @if (! empty($question['explanation']))
-                                <p><strong>Pembahasan</strong></p>
-                                <p>{{ $question['explanation'] }}</p>
-                            @endif
-                        </article>
-                    @endforeach
-                @endif
+            @foreach ($presentation->questions as $question)
+                <article style="margin-bottom: 16px;">
+                    <p><strong>{{ $question->number }}. {{ $question->question }}</strong></p>
+                    <ul>
+                        @foreach ($question->options as $label => $option)
+                            <li>{{ $label }}. {{ $option }}</li>
+                        @endforeach
+                    </ul>
+                    @if ($question->correctAnswer !== '')
+                        <p class="muted">Kunci: {{ $question->correctAnswer }}</p>
+                    @endif
+                    @if ($question->explanation !== '')
+                        <p><strong>Pembahasan</strong></p>
+                        <p>{{ $question->explanation }}</p>
+                    @endif
+                </article>
             @endforeach
         </div>
     @endif
 
-    @if ($run->status->value === 'failed')
+    @if ($run->status->value === 'failed' && $canRetry)
         <form method="POST" action="{{ route('generation-runs.retry', $run) }}">
             @csrf
             <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) Illuminate\Support\Str::uuid()) }}">
             <button class="button" type="submit">Coba lagi</button>
         </form>
+    @elseif ($run->status->value === 'failed' && ! $canRetry)
+        <div class="alert alert-error">Paket Pro aktif diperlukan untuk mencoba ulang generasi lanjutan.</div>
     @endif
 
     @if (! $run->status->isTerminal())

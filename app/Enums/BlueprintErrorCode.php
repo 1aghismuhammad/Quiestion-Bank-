@@ -24,11 +24,13 @@ enum BlueprintErrorCode: string
     case RowsNotEmpty = 'rows_not_empty';
     case ContextRequired = 'context_required';
     case RequestTooLarge = 'request_too_large';
+    case AdvancedRequiresPro = 'advanced_requires_pro';
 
     public function userMessage(): string
     {
         return match ($this) {
             self::MaterialIneligible => 'Materi belum memenuhi syarat untuk kisi-kisi.',
+            self::AdvancedRequiresPro => 'Mode lanjutan hanya tersedia untuk paket Pro yang aktif.',
             self::ProfileRequired, self::ProfileNotReady => 'Profil materi yang siap diperlukan sebelum kisi-kisi dapat dibuat.',
             self::ProfileStale => 'Profil materi tidak sesuai dengan konten terbaru.',
             self::DraftExists => 'Seri ini sudah memiliki draf kisi-kisi.',

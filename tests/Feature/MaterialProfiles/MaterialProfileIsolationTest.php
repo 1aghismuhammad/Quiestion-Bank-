@@ -152,7 +152,7 @@ class MaterialProfileIsolationTest extends TestCase
         );
     }
 
-    public function test_no_phase_five_seven_e_artifacts_exist(): void
+    public function test_no_profile_editing_or_run_question_bank_import_exists(): void
     {
         foreach ([
             app_path('Models/MaterialProfileBlueprint.php'),
@@ -162,10 +162,6 @@ class MaterialProfileIsolationTest extends TestCase
         ] as $path) {
             $this->assertFileDoesNotExist($path);
         }
-
-        $generationCreate = strtolower((string) file_get_contents(resource_path('views/generation-runs/create.blade.php')));
-        $this->assertStringNotContainsString('shuffle', $generationCreate);
-        $this->assertStringNotContainsString('advanced', $generationCreate);
 
         $questionSetSource = strtolower((string) file_get_contents(app_path('Http/Controllers/QuestionSetController.php')));
         $this->assertStringNotContainsString('generation_run_id', $questionSetSource);

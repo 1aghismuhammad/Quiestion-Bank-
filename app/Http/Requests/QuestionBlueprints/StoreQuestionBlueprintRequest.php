@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\QuestionBlueprints;
 
 use App\Enums\AssessmentType;
+use App\Enums\BlueprintMode;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
 use App\Models\Material;
@@ -34,6 +35,7 @@ class StoreQuestionBlueprintRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:'.$maxTitle],
             'assessment_type' => ['required', Rule::enum(AssessmentType::class)],
+            'mode' => ['required', Rule::enum(BlueprintMode::class)],
             'rows' => ['required', 'array', 'min:1', 'max:'.$maxRows],
             'rows.*.objective' => ['required', 'string', 'max:'.$maxText],
             'rows.*.topic' => ['required', 'string', 'max:'.$maxText],
@@ -44,5 +46,12 @@ class StoreQuestionBlueprintRequest extends FormRequest
             'rows.*.sources' => ['required', 'array', 'min:1', 'max:'.(int) config('question_blueprint.max_contexts_per_row', 4)],
             'rows.*.sources.*' => ['required', 'string', 'regex:/^(element|chunk):\d+$/'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('mode')) {
+            $this->merge(['mode' => BlueprintMode::Simple->value]);
+        }
     }
 }

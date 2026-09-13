@@ -7,6 +7,7 @@ namespace Database\Factories;
 use App\Enums\AssessmentType;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\BlueprintSource;
 use App\Models\Material;
 use App\Models\QuestionBlueprint;
@@ -39,6 +40,7 @@ class QuestionBlueprintFactory extends Factory
             'lifecycle_status' => BlueprintLifecycleStatus::Draft,
             'source' => BlueprintSource::Manual,
             'ai_fill_status' => BlueprintAiFillStatus::None,
+            'mode' => BlueprintMode::Simple,
             'assessment_type' => AssessmentType::FORMATIVE,
             'title' => 'Kisi-kisi formatif',
             'material_content_hash' => hash('sha256', $content),

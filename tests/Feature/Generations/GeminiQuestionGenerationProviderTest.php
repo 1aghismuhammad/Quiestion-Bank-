@@ -169,6 +169,9 @@ class GeminiQuestionGenerationProviderTest extends TestCase
 
         config(['generation.prompt_version' => 'mcq-v2']);
         $this->assertSame('mcq-v2', $builder->version());
+
+        config(['generation.prompt_version' => 'mcq-v3']);
+        $this->assertSame('mcq-v3', $builder->version());
     }
 
     public function test_v2_http_payload_includes_blueprint_row_and_forbids_heading_recall(): void

@@ -34,8 +34,8 @@ class GeminiQuestionBlueprintProvider implements QuestionBlueprintAnalysisProvid
     {
         $decoded = $this->call(
             $request->model,
-            $this->promptBuilder->systemInstruction(),
-            $this->promptBuilder->userPrompt($request),
+            $this->promptBuilder->systemInstruction($request->promptVersion),
+            $this->promptBuilder->userPrompt($request, $request->promptVersion),
             $this->promptBuilder->responseSchema(),
             $request->promptVersion,
         );

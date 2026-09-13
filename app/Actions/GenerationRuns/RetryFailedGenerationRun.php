@@ -48,6 +48,8 @@ class RetryFailedGenerationRun
                 : OutputLanguage::from((string) $run->getAttributes()['output_language']),
             $idempotencyKey,
             (int) $run->generation_run_id,
+            (bool) $run->shuffle_questions,
+            (bool) $run->shuffle_options,
         );
     }
 }

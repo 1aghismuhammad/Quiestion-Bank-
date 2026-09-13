@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\QuestionBlueprints;
 
 use App\Actions\MaterialProfiles\AssertMaterialEligibleForProfileAnalysis;
+use App\Actions\Subscriptions\ResolveActivePro;
 use App\Enums\AssessmentType;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\BlueprintRowOrigin;
 use App\Enums\BlueprintSource;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
@@ -26,9 +28,10 @@ class CreateManualBlueprintDraft
     public function __construct(
         private AssertMaterialEligibleForProfileAnalysis $assertEligible,
         private AssertReadyMatchingProfile $assertProfile,
-        private AssertSimpleBlueprintShape $assertShape,
+        private AssertBlueprintShape $assertShape,
         private PersistBlueprintRows $persistRows,
         private ResolveBlueprintRowContexts $resolveContexts,
+        private ResolveActivePro $resolveActivePro,
     ) {}
 
     /**
@@ -40,6 +43,7 @@ class CreateManualBlueprintDraft
         string $title,
         AssessmentType $assessmentType,
         array $rows,
+        BlueprintMode $mode = BlueprintMode::Simple,
     ): QuestionBlueprint {
         $title = trim($title);
         $maxTitle = (int) config('question_blueprint.title_max_chars', 120);
@@ -48,7 +52,7 @@ class CreateManualBlueprintDraft
             throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
         }
 
-        return DB::transaction(function () use ($actor, $material, $title, $assessmentType, $rows): QuestionBlueprint {
+        return DB::transaction(function () use ($actor, $material, $title, $assessmentType, $rows, $mode): QuestionBlueprint {
             $locked = $this->lockUserAndMaterial((int) $actor->id, (int) $material->material_id);
             try {
                 $this->assertEligible->handle($locked);
@@ -57,7 +61,12 @@ class CreateManualBlueprintDraft
             }
             $profile = $this->assertProfile->requireMatchingReady($locked);
             $this->lockProfileVersion((int) $profile->profile_version_id);
-            $this->assertShape->handle($rows);
+
+            if ($mode === BlueprintMode::Advanced && ! $this->resolveActivePro->handle($actor)) {
+                throw new BlueprintRejectedException(BlueprintErrorCode::AdvancedRequiresPro);
+            }
+
+            $this->assertShape->handle($rows, $mode);
 
             $fingerprint = $this->assertProfile->fingerprint($locked);
 
@@ -75,6 +84,7 @@ class CreateManualBlueprintDraft
                 'lifecycle_status' => BlueprintLifecycleStatus::Draft,
                 'source' => BlueprintSource::Manual,
                 'ai_fill_status' => BlueprintAiFillStatus::None,
+                'mode' => $mode,
                 'assessment_type' => $assessmentType,
                 'title' => $title,
                 'material_content_hash' => $fingerprint['material_content_hash'],

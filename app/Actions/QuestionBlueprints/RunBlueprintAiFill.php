@@ -7,6 +7,7 @@ namespace App\Actions\QuestionBlueprints;
 use App\Contracts\AI\QuestionBlueprintAnalysisProvider;
 use App\Enums\BlueprintAttemptErrorCode;
 use App\Enums\BlueprintErrorCode;
+use App\Enums\BlueprintMode;
 use App\Exceptions\QuestionBlueprints\BlueprintAttemptBudgetExhaustedException;
 use App\Exceptions\QuestionBlueprints\BlueprintCandidateValidationException;
 use App\Exceptions\QuestionBlueprints\BlueprintProviderException;
@@ -39,8 +40,24 @@ class RunBlueprintAiFill
             return;
         }
 
+        $blueprint = QuestionBlueprint::query()->find($blueprintId);
+        $mode = $blueprint?->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple;
+
+        try {
+            $promptVersion = $this->promptBuilder->versionFor($mode);
+        } catch (BlueprintRejectedException $exception) {
+            $this->fail->handle(
+                $blueprintId,
+                $workflowToken,
+                $stepExecutionToken,
+                null,
+                $exception->errorCode,
+            );
+
+            return;
+        }
+
         $model = (string) config('question_blueprint.primary_model');
-        $promptVersion = $this->promptBuilder->version();
 
         try {
             $built = $this->buildRequest->handle(
@@ -103,6 +120,8 @@ class RunBlueprintAiFill
                 $material,
                 $profile,
                 $built['catalog'],
+                $built['request']->mode,
+                $built['request']->requestedTotal,
             );
             $this->persistSuccess->handle(
                 $blueprintId,

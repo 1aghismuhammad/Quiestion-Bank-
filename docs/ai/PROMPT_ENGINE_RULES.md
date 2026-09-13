@@ -58,7 +58,7 @@ Prompt dibangun oleh `McqPromptBuilder` dengan urutan:
 3. User parameters: assessment, difficulty, requested count, repair vs initial, already-accepted texts.
 4. Delimited bounded source (`<<<MATERIAL>>>` … `<<<END_MATERIAL>>>`).
 
-Identitas `mcq-v1` tetap mengirim kontrak asli tanpa blok Blueprint. `mcq-v2` mewajibkan setiap soal mengukur objective/indicator, menolak shortcut heading/nomor/cuplikan kecuali objective memang menuntut recall tekstual, menuntut distractor yang masuk akal, dan penjelasan pedagogis yang berlandaskan konteks. Legacy generation tanpa Blueprint tetap kompatibel: blok Blueprint dihilangkan, aturan substansi tetap ada pada `mcq-v2`.
+Identitas `mcq-v1` tetap mengirim kontrak asli tanpa blok Blueprint. `mcq-v2` mewajibkan setiap soal mengukur objective/indicator, menolak shortcut heading/nomor/cuplikan kecuali objective memang menuntut recall tekstual, menuntut distractor yang masuk akal, dan penjelasan pedagogis yang berlandaskan konteks. `mcq-v3` menambah larangan eksplisit merujuk jawaban lewat huruf opsi atau posisi (misalnya “pilihan B” atau “opsi pertama”); penjelasan harus mengidentifikasi jawaban lewat isi substansi. Legacy generation tanpa Blueprint tetap kompatibel: blok Blueprint dihilangkan, aturan substansi tetap ada pada `mcq-v2` dan `mcq-v3`. Do not rewrite stored explanations or historical Attempt metadata.
 
 Prompt final tidak disimpan. Version string yang **benar-benar dipakai** pada HTTP call disimpan di `ai_generation_attempts.prompt_version` saat baris attempt dibuat, bukan pada Start.
 
@@ -176,11 +176,12 @@ Output invalid/partial bukan success. Phase 4 tidak menyimpan generated question
 
 ## Versioning
 
-- Config `generation.prompt_version` (contoh `mcq-v1` atau `mcq-v2`) adalah identitas prompt deploy saat ini. Identitas yang tidak didukung ditolak dan tidak dikirim sebagai kontrak lain.
-- `mcq-v1` mempertahankan teks produksi asli. `mcq-v2` menambahkan semantik baris Blueprint dan larangan soal mekanika dokumen.
+- Config `generation.prompt_version` (contoh `mcq-v1`, `mcq-v2`, atau `mcq-v3`) adalah identitas prompt deploy saat ini. Identitas yang tidak didukung ditolak dan tidak dikirim sebagai kontrak lain.
+- `mcq-v1` mempertahankan teks produksi asli. `mcq-v2` menambahkan semantik baris Blueprint dan larangan soal mekanika dokumen. `mcq-v3` mempertahankan semantik `mcq-v2` dan mewajibkan penjelasan mengidentifikasi jawaban benar lewat isi substansi, bukan huruf A/B/C/D atau referensi posisi opsi. Default deploy adalah `mcq-v3`.
 - Perubahan prompt menaikkan version string dan harus diikuti tes.
 - Attempt yang dijalankan setelah deploy baru mencatat version baru, meskipun Generation di-queue di deploy lama.
 - Tidak ada tabel `prompt_versions` dan tidak ada `ai_generations.prompt_version`.
+- Historical Attempt `prompt_version` rows are not rewritten.
 
 ## Material Profile Prompt Contracts (Phase 5.7B2)
 
@@ -229,12 +230,14 @@ Material Profile analysis has its own provider boundary and prompt contract. It 
 - `material_profile_attempts` stores only provider, model, prompt version, purpose, status, input/output/total tokens, latency, a bounded error code, and timestamps.
 - The owner surface shows only validated Element text, validated evidence excerpts with canonical boundaries, Step counts, and mapped Indonesian messages. Workflow tokens, Step execution tokens, Attempt rows, model names, and provider payloads are never exposed.
 
-## Blueprint Fill Prompt Contracts (Phase 5.7C)
+## Blueprint Fill Prompt Contracts (Phase 5.7C+E)
 
 Blueprint AI fill has its own provider boundary and prompt contract. It never reuses the question-generation provider, the Material Profile provider, or `ai_usage_logs`.
 
 - Provider contract: `QuestionBlueprintAnalysisProvider`. The Gemini adapter is `GeminiQuestionBlueprintProvider`. Domain Actions and `FillQuestionBlueprintJob` never import the Gemini class.
-- Prompt source of truth: `BlueprintFillPromptBuilder`. Version string from `config('question_blueprint.prompt_version')` (for example `blueprint-fill-v1`).
+- Prompt source of truth: `BlueprintFillPromptBuilder`. `versionFor(mode)` reads `question_blueprint.prompt_version` for Simple (only `blueprint-fill-v1`) and `question_blueprint.advanced_prompt_version` for Advanced (only `blueprint-fill-v2`). `version()` delegates to Simple. `RunBlueprintAiFill` resolves that identity only after `ClaimBlueprintAiFill` returns Claimed or Resumed. Unsupported, blank, or cross-mode identities are then rejected before provider HTTP and never sent labelled as another contract. Duplicate same-token and stale jobs return before prompt resolution and cannot terminalize another workflow.
+- `blueprint-fill-v1` stays the exact Simple contract (one difficulty, total 1–10). `blueprint-fill-v2` allows mixed difficulty and requires the sum of `requested_count` to equal the requested target total (1–30).
+- Advanced `ai_fill_requested_total` is workflow input stored with new workflow/step tokens. The worker reads it only after those tokens match. Canonical totals are always `SUM(rows.requested_count)`.
 - Audit: `question_blueprint_attempts` only. Zero `ai_usage_logs`. Zero generation credits.
 - Structured JSON, 60-second HTTP timeout, 10-second connect timeout. API key from `GEMINI_API_KEY` only, never in a URL, never logged.
 - Request context is a bounded list of opaque server-issued `context_ref` values plus excerpts. The provider returns `context_ref`, `excerpt_start`, and `excerpt_end` as UTF-8 code-point offsets into that exact excerpt. The server converts relative offsets to canonical offsets and hashes. Canonical offsets, ownership, IDs, fingerprint, and sort order supplied by the provider reject the whole response.

@@ -27,6 +27,8 @@ class StoreGenerationRunRequest extends FormRequest
         return [
             'output_language' => ['required', Rule::enum(OutputLanguage::class)],
             'idempotency_key' => ['required', 'uuid'],
+            'shuffle_questions' => ['sometimes', 'boolean'],
+            'shuffle_options' => ['sometimes', 'boolean'],
         ];
     }
 }

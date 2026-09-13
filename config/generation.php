@@ -12,7 +12,7 @@ return [
 
     'fallback_model' => env('GEMINI_FALLBACK_MODEL', 'gemini-3.7-flash'),
 
-    'prompt_version' => env('GENERATION_PROMPT_VERSION', 'mcq-v2'),
+    'prompt_version' => env('GENERATION_PROMPT_VERSION', 'mcq-v3'),
 
     'max_questions' => (int) env('GENERATION_MAX_QUESTIONS', 10),
 

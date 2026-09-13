@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Data\QuestionBlueprints;
 
 use App\Enums\AssessmentType;
+use App\Enums\BlueprintMode;
 
 final readonly class BlueprintFillRequest
 {
@@ -17,5 +18,7 @@ final readonly class BlueprintFillRequest
         public string $title,
         public AssessmentType $assessmentType,
         public array $contexts,
+        public BlueprintMode $mode = BlueprintMode::Simple,
+        public ?int $requestedTotal = null,
     ) {}
 }

@@ -26,6 +26,46 @@ Notes:
 -
 ```
 
+## v0.15.12 Phase 5.7E Advanced MCQ
+
+- Date: 12 September 2026
+- Version: 0.15.12
+- Phase: Phase 5.7E - Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle
+- Type: Feature
+
+Added:
+
+- Forward-only Blueprint columns `mode` (`simple|advanced`, default `simple`) and nullable `ai_fill_requested_total`. Historical Blueprints resolve to Simple. Confirmed mode is immutable. `ai_fill_requested_total` is Advanced AI-fill workflow input written with a new workflow/step token pair; it is not Fillable and is not the canonical total.
+- Advanced Blueprint shape: MCQ only, 1–5 rows, 1–10 questions per row, total 1–30, mixed difficulty allowed. Simple remains 1–10, one difficulty, no shuffle, Free and Pro.
+- Active-Pro gating through `ResolveActivePro` wrapping `ResolveUserEntitlement::handle($user)->isPro()` for Advanced create/update/confirm/clone/AI fill/retry, new Advanced Runs, and manual failed-Advanced retry. Expired-Pro owners retain read-only access to existing Advanced Blueprints/Runs/results and confirmed Blueprint DOCX, and may continue Simple Mode.
+- Advanced AI proposal `blueprint-fill-v2` with exact target allocation. Simple keeps `blueprint-fill-v1`. Fill remains draft and never auto-confirms.
+- Advanced Run qualification: totals 11–30 qualify by scale; totals 1–10 require mixed difficulty or `shuffle_questions` or `shuffle_options`. Unqualified Advanced is rejected before Run/item/child/Usage/job/Attempt/HTTP. Advanced is never silently converted to Simple.
+- Deterministic SHA-256 question and option shuffle from immutable Run identity (`generation-run-shuffle-v1` + run id + fingerprint), with canonical-key-to-display-key remapping of `correct_answer`. Canonical `result_json` is unchanged.
+- `mcq-v3` for new generation Attempts: explanations must identify the correct answer by substantive content, not option letters or positions. Historical `mcq-v1`/`mcq-v2` text and Attempt metadata are not rewritten.
+
+Changed:
+
+- Docs record version 0.15.12. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D remains implemented and pending final manual QA. Phase 5.7E is `COMPLETE`. Phase 5.7F (True/False and Essay) is `NOT STARTED`. Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) is `NOT STARTED`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`.
+- Default `generation.prompt_version` is `mcq-v3`. Confirm, clone, AI retry, Run start, and failed-Run retry derive mode/shuffle from persisted Blueprint/Run state, not posted replacements.
+- Credits remain `GenerationCredits::required()` = `ceil(n/10)` (1–10=1, 11–20=2, 21–30=3). One Blueprint row = one Run Item = one sequential child. One Usage/reservation per Run.
+
+Fixed:
+
+- Expired-Pro owners cannot mutate an existing Advanced draft by posting Simple as the destination mode.
+- `BlueprintFillPromptBuilder::versionFor()` reads the mode-specific config identities and rejects unsupported, blank, or cross-mode values before provider HTTP. Invalid configuration terminalizes only a successfully claimed AI-fill workflow without Attempts, rows, Usage, or provider calls.
+- `RunBlueprintAiFill` claims workflow authority before resolving prompt identity. Duplicate same-token Processing jobs with a Started Attempt, and stale jobs whose tokens no longer match, return without resolving configuration and cannot terminalize the legitimate in-flight fill.
+- Advanced Blueprint status `can_confirm` is false for expired-Pro owners; Simple drafts remain confirmable for Free users.
+
+Database Impact:
+
+- New forward migration `2026_09_11_100001_add_mode_and_ai_fill_target_to_question_blueprints_table.php`. No C+D migration was edited. Rollback drops `mode` and `ai_fill_requested_total`.
+
+Notes:
+
+- Automated QA uses fakes/spies and does not call Gemini. Raw prompts and provider bodies remain unpersisted. Shuffle seed material is not exposed in owner HTML.
+- Source review and owner manual QA are accepted as PASS. Reviewed automated QA: 1073 tests, 6239 assertions. Reviewed QA archive: `phase-5.7e-v0.15.12-qa.zip`.
+- True/False, Essay, mixed question types, Question Bank import, generated-question editing, question DOCX, Run cancellation, and parallel children remain out of scope.
+
 ## v0.15.11 Phase 5.7C+D manual-QA content and presentation corrective
 
 - Date: 10 September 2026

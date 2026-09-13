@@ -7,7 +7,10 @@ namespace App\Http\Controllers;
 use App\Actions\GenerationRuns\RetryFailedGenerationRun;
 use App\Actions\GenerationRuns\StartGenerationRun;
 use App\Actions\Generations\ResolveCurrentGenerationUsage;
+use App\Actions\Subscriptions\ResolveActivePro;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
+use App\Enums\GenerationRunMode;
 use App\Enums\GenerationStatus;
 use App\Enums\OutputLanguage;
 use App\Exceptions\GenerationRuns\GenerationRunRejectedException;
@@ -16,6 +19,7 @@ use App\Models\AiGenerationRun;
 use App\Models\Material;
 use App\Models\QuestionBlueprint;
 use App\Support\Generations\GenerationCredits;
+use App\Support\Generations\PresentsGenerationRunMcqs;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +43,9 @@ class GenerationRunController extends Controller
 
         $blueprint->load('rows');
         $totalQuestions = (int) $blueprint->rows->sum('requested_count');
+        $mode = $blueprint->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple;
+        $isPro = app(ResolveActivePro::class)->handle($request->user());
+        $isAdvanced = $mode === BlueprintMode::Advanced;
 
         return view('generation-runs.create', [
             'material' => $material,
@@ -47,6 +54,10 @@ class GenerationRunController extends Controller
             'languages' => OutputLanguage::cases(),
             'totalQuestions' => $totalQuestions,
             'creditsRequired' => GenerationCredits::required($totalQuestions),
+            'isPro' => $isPro,
+            'isAdvanced' => $isAdvanced,
+            'rowCount' => $blueprint->rows->count(),
+            'canStart' => ! $isAdvanced || $isPro,
         ]);
     }
 
@@ -64,6 +75,9 @@ class GenerationRunController extends Controller
                 $blueprint,
                 OutputLanguage::from($request->validated('output_language')),
                 (string) $request->validated('idempotency_key'),
+                null,
+                $request->boolean('shuffle_questions'),
+                $request->boolean('shuffle_options'),
             );
         } catch (GenerationRunRejectedException $exception) {
             return back()->withInput()->with('error', $exception->errorCode->userMessage());
@@ -83,10 +97,15 @@ class GenerationRunController extends Controller
         $this->authorize('view', $generationRun);
 
         $generationRun->load(['items', 'children' => fn ($query) => $query->orderBy('child_index'), 'blueprint', 'material']);
+        $isPro = app(ResolveActivePro::class)->handle($request->user());
+        $isAdvanced = $generationRun->mode === GenerationRunMode::Advanced;
 
         return view('generation-runs.show', [
             'run' => $generationRun,
             'pollIntervalMs' => max(2_000, (int) config('generation.status_poll_interval_ms', 5_000)),
+            'presentation' => app(PresentsGenerationRunMcqs::class)->present($generationRun),
+            'isPro' => $isPro,
+            'canRetry' => ! $isAdvanced || $isPro,
         ]);
     }
 

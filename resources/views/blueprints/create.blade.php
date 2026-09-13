@@ -20,6 +20,7 @@
                 'difficulties' => $difficulties,
                 'maxRows' => $maxRows,
                 'mappingOptions' => $mappingOptions,
+                'isPro' => $isPro,
             ])
             <button class="button" type="submit">Simpan draf</button>
         </form>

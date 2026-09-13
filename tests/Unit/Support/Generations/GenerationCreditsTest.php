@@ -16,5 +16,6 @@ class GenerationCreditsTest extends TestCase
         $this->assertSame(2, GenerationCredits::required(11));
         $this->assertSame(2, GenerationCredits::required(20));
         $this->assertSame(3, GenerationCredits::required(21));
+        $this->assertSame(3, GenerationCredits::required(30));
     }
 }

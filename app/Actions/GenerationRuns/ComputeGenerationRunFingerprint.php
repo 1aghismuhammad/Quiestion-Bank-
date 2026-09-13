@@ -39,6 +39,9 @@ class ComputeGenerationRunFingerprint
         string $extractor,
         ?int $parentRunId,
         iterable $rows,
+        GenerationRunMode $mode = GenerationRunMode::Simple,
+        bool $shuffleQuestions = false,
+        bool $shuffleOptions = false,
     ): string {
         $rowSnapshots = [];
 
@@ -65,9 +68,9 @@ class ComputeGenerationRunFingerprint
             'profile_version_id' => $blueprint->profile_version_id,
             'assessment_type' => $blueprint->assessment_type->value,
             'output_language' => $outputLanguage,
-            'mode' => GenerationRunMode::Simple->value,
-            'shuffle_questions' => false,
-            'shuffle_options' => false,
+            'mode' => $mode->value,
+            'shuffle_questions' => $shuffleQuestions,
+            'shuffle_options' => $shuffleOptions,
             'total_requested_questions' => $totalRequested,
             'credits_required' => $creditsRequired,
             'material_content_hash' => $contentHash,

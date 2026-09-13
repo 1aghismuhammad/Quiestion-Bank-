@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\QuestionBlueprints;
 
 use App\Actions\MaterialProfiles\AssertMaterialEligibleForProfileAnalysis;
+use App\Actions\Subscriptions\ResolveActivePro;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
 use App\Models\QuestionBlueprint;
@@ -20,8 +22,9 @@ class ConfirmQuestionBlueprint
     public function __construct(
         private AssertMaterialEligibleForProfileAnalysis $assertEligible,
         private AssertReadyMatchingProfile $assertProfile,
-        private AssertSimpleBlueprintShape $assertShape,
+        private AssertBlueprintShape $assertShape,
         private AssertBlueprintRowContexts $assertContexts,
+        private ResolveActivePro $resolveActivePro,
     ) {}
 
     public function handle(User $actor, QuestionBlueprint $blueprint): QuestionBlueprint
@@ -46,7 +49,13 @@ class ConfirmQuestionBlueprint
             }
 
             $profile = $this->assertProfile->requireReferencedReady($material, (int) $locked->profile_version_id);
-            $this->assertShape->handle($graph['rows']);
+            $mode = $locked->mode instanceof BlueprintMode ? $locked->mode : BlueprintMode::Simple;
+
+            if ($mode === BlueprintMode::Advanced && ! $this->resolveActivePro->handle($actor)) {
+                throw new BlueprintRejectedException(BlueprintErrorCode::AdvancedRequiresPro);
+            }
+
+            $this->assertShape->handle($graph['rows'], $mode);
             $this->assertContexts->handle($material, $profile, $graph['rows'], $graph['contexts']);
 
             $fingerprint = $this->assertProfile->fingerprint($material);

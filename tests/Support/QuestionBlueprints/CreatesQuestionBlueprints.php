@@ -9,17 +9,22 @@ use App\Actions\QuestionBlueprints\CreateManualBlueprintDraft;
 use App\Actions\QuestionBlueprints\RunBlueprintAiFill;
 use App\Contracts\AI\QuestionBlueprintAnalysisProvider;
 use App\Enums\AssessmentType;
+use App\Enums\BlueprintMode;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
 use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Enums\MaterialProfileStatus;
+use App\Enums\PlanCode;
+use App\Enums\SubscriptionStatus;
 use App\Jobs\FillQuestionBlueprintJob;
 use App\Models\Material;
 use App\Models\MaterialProfileChunk;
 use App\Models\MaterialProfileElement;
 use App\Models\MaterialProfileVersion;
+use App\Models\Plan;
 use App\Models\QuestionBlueprint;
+use App\Models\Subscription;
 use App\Models\User;
 use App\Support\Materials\MaterialContentHasher;
 use Illuminate\Support\Facades\Queue;
@@ -76,15 +81,43 @@ trait CreatesQuestionBlueprints
     /**
      * @param  list<array<string, mixed>>|null  $rows
      */
-    protected function createDraft(User $user, Material $material, ?array $rows = null): QuestionBlueprint
-    {
+    protected function createDraft(
+        User $user,
+        Material $material,
+        ?array $rows = null,
+        BlueprintMode $mode = BlueprintMode::Simple,
+    ): QuestionBlueprint {
         return $this->app->make(CreateManualBlueprintDraft::class)->handle(
             $user,
             $material,
             'Kisi-kisi formatif',
             AssessmentType::FORMATIVE,
             $this->ensureMappedSources($material, $rows ?? [$this->sampleRow()]),
+            $mode,
         );
+    }
+
+    protected function grantActivePro(User $user): void
+    {
+        Subscription::factory()->for($user)->for($this->proPlan())->create([
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addMonth(),
+            'status' => SubscriptionStatus::ACTIVE,
+        ]);
+    }
+
+    protected function grantExpiredPro(User $user): void
+    {
+        Subscription::factory()->for($user)->for($this->proPlan())->create([
+            'starts_at' => now()->subMonths(2),
+            'ends_at' => now()->subMonth(),
+            'status' => SubscriptionStatus::ACTIVE,
+        ]);
+    }
+
+    protected function proPlan(): Plan
+    {
+        return Plan::query()->where('code', PlanCode::PRO)->firstOrFail();
     }
 
     protected function confirmDraft(User $user, QuestionBlueprint $blueprint): QuestionBlueprint

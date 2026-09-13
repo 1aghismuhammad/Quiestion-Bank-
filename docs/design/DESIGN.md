@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.15.9
+- Version: 0.15.12
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -133,6 +133,7 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Phase 5.7B3 membuka start, polling status, review, dan regenerasi kepada owner materi. Hasil stale tidak ditampilkan sebagai profil terkini. Regenerasi yang gagal tetap terlihat sebagai `failed` meskipun ada versi ready lama yang dilabeli terpisah. Tidak ada editing element.
 - Phase 5.7C menambahkan Question Blueprint: Series/versi, draf/konfirmasi/klon, mapping konteks eksplisit, AI fill terpisah dari generation, anggaran input agregat, offset excerpt-relative, throttle event durable, dan DOCX kisi-kisi confirmed (PhpWord 1.4.0, try/finally). Confirm dan fill mensyaratkan Profil ready yang fingerprint-nya cocok. AI fill tidak auto-confirm dan tidak memotong credit. v0.15.7 menolak first-N/full-book fallback. v0.15.8: opsi mapping owner hanya extracted/source-backed.
 - Phase 5.7D menambahkan ledger `SUM(credits)` dengan XOR subjek Generation vs Run, plus Simple Generation Run sekuensial menurut `child_index`. Child tidak punya baris usage. Attempt started ditutup pada kegagalan/recovery. Owner melihat soal completed read-only. Advanced/shuffle/Run QB import/question DOCX belum. v0.15.8: anggaran child memakai span terikat, recheck pasca-HTTP atomik, cutoff otoritas stale, referensi span ketat, dispatcher next-child kanonis, dan retry mempertahankan `idempotency_key`. v0.15.9: Begin menolak Attempt `started` ganda; jam queued hanya pada child eligible.
+- Phase 5.7E menambahkan Advanced MCQ: `question_blueprints.mode` plus `ai_fill_requested_total`, Pro aktif via `ResolveActivePro`, mixed difficulty, total 1–30, kualifikasi Run 1–10, `blueprint-fill-v2`, default `mcq-v3` (penjelasan tanpa huruf/posisi opsi), dan presenter shuffle deterministik SHA-256 yang meremap kunci lewat peta kanonis tanpa mengubah `result_json`. Expired-Pro bersifat read-only untuk sumber Advanced existing. True/False dan Essay tetap Phase 5.7F. Run-to-Question-Bank import, alur review/edit, question DOCX, dan hardening akhir tetap Phase 5.7G.
 
 ### Subscription and Quota
 

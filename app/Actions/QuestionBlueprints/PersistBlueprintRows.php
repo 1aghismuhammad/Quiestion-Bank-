@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\QuestionBlueprints;
 
 use App\Enums\BlueprintErrorCode;
+use App\Enums\BlueprintMode;
 use App\Enums\BlueprintRowOrigin;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
@@ -16,14 +17,15 @@ use App\Models\QuestionBlueprintRowContext;
 
 class PersistBlueprintRows
 {
-    public function __construct(private AssertSimpleBlueprintShape $assertShape) {}
+    public function __construct(private AssertBlueprintShape $assertShape) {}
 
     /**
      * @param  list<array<string, mixed>>  $rows
      */
     public function replace(QuestionBlueprint $blueprint, array $rows, BlueprintRowOrigin $origin): void
     {
-        $this->assertShape->handle($rows);
+        $mode = $blueprint->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple;
+        $this->assertShape->handle($rows, $mode);
 
         $existing = QuestionBlueprintRow::query()
             ->where('blueprint_id', $blueprint->blueprint_id)

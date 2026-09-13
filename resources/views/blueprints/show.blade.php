@@ -1,3 +1,11 @@
+@php
+    $isAdvanced = $blueprint->mode->value === 'advanced';
+    $canMutateAdvanced = ! $isAdvanced || $isPro;
+    $canEditDraft = $blueprint->lifecycle_status->value === 'draft'
+        && ! $blueprint->ai_fill_status->isInFlight()
+        && $canMutateAdvanced;
+@endphp
+
 @extends('layouts.app')
 
 @section('title', $blueprint->title)
@@ -12,6 +20,7 @@
     <p>
         <span class="status">{{ $blueprint->lifecycle_status->value }}</span>
         <span class="muted">sumber {{ $blueprint->source->value }}</span>
+        <span class="muted">mode {{ $blueprint->mode->label() }}{{ $isAdvanced ? ' (Pro)' : '' }}</span>
         @if ($blueprint->ai_fill_status->isInFlight())
             <span class="status status-warn">AI {{ $blueprint->ai_fill_status->value }}</span>
         @endif
@@ -21,8 +30,12 @@
         <div class="alert alert-error">{{ $blueprint->error_message }}</div>
     @endif
 
+    @if ($isAdvanced && ! $isPro)
+        <div class="alert alert-error">Paket Pro tidak aktif. Kisi-kisi lanjutan tetap dapat dilihat, tetapi tidak dapat diubah, dikonfirmasi, disalin, atau dipakai untuk generasi baru.</div>
+    @endif
+
     <div class="actions" style="margin-bottom: 20px;">
-        @if ($blueprint->lifecycle_status->value === 'draft' && ! $blueprint->ai_fill_status->isInFlight())
+        @if ($canEditDraft)
             <form method="POST" action="{{ route('materials.blueprints.confirm', [$material, $blueprint]) }}">
                 @csrf
                 <button class="button" type="submit">Konfirmasi kisi-kisi</button>
@@ -31,14 +44,16 @@
 
         @if ($blueprint->lifecycle_status->value === 'confirmed')
             <a class="button" href="{{ route('materials.blueprints.download', [$material, $blueprint]) }}">Unduh DOCX</a>
-            <a class="button" href="{{ route('generation-runs.create', [$material, $blueprint]) }}">Generate soal</a>
-            <form method="POST" action="{{ route('materials.blueprints.clone', [$material, $blueprint]) }}">
-                @csrf
-                <button class="button button-secondary" type="submit">Salin ke draf baru</button>
-            </form>
+            @if ($canMutateAdvanced)
+                <a class="button" href="{{ route('generation-runs.create', [$material, $blueprint]) }}">Generate soal</a>
+                <form method="POST" action="{{ route('materials.blueprints.clone', [$material, $blueprint]) }}">
+                    @csrf
+                    <button class="button button-secondary" type="submit">Salin ke draf baru</button>
+                </form>
+            @endif
         @endif
 
-        @if ($blueprint->ai_fill_status->value === 'failed')
+        @if ($blueprint->ai_fill_status->value === 'failed' && $canMutateAdvanced)
             <form method="POST" action="{{ route('materials.blueprints.retry-ai', [$material, $blueprint]) }}">
                 @csrf
                 <button class="button button-secondary" type="submit">Coba isi AI lagi</button>
@@ -46,7 +61,7 @@
         @endif
     </div>
 
-    @if ($blueprint->lifecycle_status->value === 'draft' && ! $blueprint->ai_fill_status->isInFlight())
+    @if ($canEditDraft)
         <div class="card" style="margin-bottom: 20px;">
             <form method="POST" action="{{ route('materials.blueprints.update', [$material, $blueprint]) }}">
                 @csrf
@@ -56,8 +71,9 @@
                     'assessments' => $assessments,
                     'cognitiveLevels' => $cognitiveLevels,
                     'difficulties' => $difficulties,
-                    'maxRows' => 5,
+                    'maxRows' => $maxRows ?? 5,
                     'mappingOptions' => $mappingOptions,
+                    'isPro' => $isPro,
                 ])
                 <button class="button" type="submit">Simpan draf</button>
             </form>

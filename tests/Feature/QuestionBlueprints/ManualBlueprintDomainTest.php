@@ -9,6 +9,7 @@ use App\Actions\QuestionBlueprints\UpdateBlueprintDraft;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
+use App\Enums\BlueprintMode;
 use App\Enums\DifficultyLevel;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
 use App\Models\Material;
@@ -41,6 +42,7 @@ class ManualBlueprintDomainTest extends TestCase
 
         $draft = $this->createDraft($user, $material);
         $this->assertSame(BlueprintLifecycleStatus::Draft, $draft->lifecycle_status);
+        $this->assertSame(BlueprintMode::Simple, $draft->mode);
         $this->assertSame(1, $draft->rows()->count());
 
         $confirmed = $this->confirmDraft($user, $draft);
