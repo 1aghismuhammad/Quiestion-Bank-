@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.12
+- Version: 0.15.13
 - Domain entities: 32 domain entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, `option_id`, `blueprint_series_id`, `blueprint_id`, `blueprint_row_id`, `generation_run_id`, dan PK custom Profile mengikuti custom PK
@@ -214,11 +214,11 @@ Lineage per owner Material. Beberapa Series per Material diizinkan. Paling banya
 
 #### `question_blueprints`
 
-Versi kisi-kisi. Unique `(blueprint_series_id, version)`. `lifecycle_status` `draft|confirmed`. `source` `manual|ai`. `mode` `simple|advanced` (non-null, default `simple`; historical rows resolve to Simple). `ai_fill_status` `none|queued|processing|succeeded|failed`. `ai_fill_requested_total` nullable workflow input for Advanced AI fill only: set or replaced in the same transaction as a new `workflow_token` / `step_execution_token`; the worker reads it only after those tokens match; in-flight drafts reject target/row mutation; a stale job with old tokens cannot consume a newer target. It is not the canonical total (canonical = `SUM(rows.requested_count)` after fill, later edits, confirm, and Run start). Never mass-assigned from request data. `profile_version_id` nullable di schema; setiap jalur HTTP/Action mensyaratkan Profil ready yang fingerprint-nya cocok. Confirm menyimpan `material_content_hash`, null-safe `material_file_hash`, dan `extractor_implementation`. Confirm, clone, AI retry, dan Run start memakai mode persisted, bukan posted mode. Confirm idempotent. Header/rows/contexts/mode confirmed immutable. Clone confirmed memakai draf existing jika ada dan menyalin mode persisted.
+Versi kisi-kisi. Unique `(blueprint_series_id, version)`. `lifecycle_status` `draft|confirmed`. `source` `manual|ai`. `mode` `simple|advanced` (non-null, default `simple`; historical rows resolve to Simple). `ai_fill_status` `none|queued|processing|succeeded|failed`. `ai_fill_requested_total` nullable workflow input for Advanced AI fill: set or replaced in the same transaction as a new `workflow_token` / `step_execution_token`; the worker reads it only after those tokens match; in-flight drafts reject target/row mutation; a stale job with old tokens cannot consume a newer target. It is not the canonical total (canonical = `SUM(rows.requested_count)` after fill, later edits, confirm, and Run start). `ai_fill_requested_type_counts` nullable JSON workflow input for typed fills (`multiple_choice`, `true_false`, `essay`); historical fills remain `null` and keep v1/v2; typed fills bind the counts to the same new tokens; v3 requires exact per-type sums. Neither workflow column is mass-assigned from request data. `profile_version_id` nullable di schema; setiap jalur HTTP/Action mensyaratkan Profil ready yang fingerprint-nya cocok. Confirm menyimpan `material_content_hash`, null-safe `material_file_hash`, dan `extractor_implementation`. Confirm, clone, AI retry, dan Run start memakai mode persisted, bukan posted mode. Confirm idempotent. Header/rows/contexts/mode confirmed immutable. Clone confirmed memakai draf existing jika ada dan menyalin mode persisted.
 
 #### `question_blueprint_rows`
 
-Baris kisi-kisi. Unique `(blueprint_id, sort_order)`. Simple: 1–5 baris, MCQ, satu difficulty, `requested_count` total 1–10. Advanced: 1–5 baris, MCQ, mixed difficulty diizinkan, 1–10 per baris, total 1–30.
+Baris kisi-kisi. Unique `(blueprint_id, sort_order)`. Simple: 1–5 baris, satu `question_type` bersama, satu difficulty, `requested_count` total 1–10. Advanced: 1–5 baris, tipe dan difficulty boleh berbeda, 1–10 per baris, total 1–30.
 
 #### `question_blueprint_row_contexts`
 

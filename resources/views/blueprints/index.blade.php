@@ -29,9 +29,26 @@
             @if (! $isPro)
                 <p class="muted">Mode lanjutan terkunci untuk paket Free atau Pro yang sudah berakhir.</p>
             @endif
-            <div id="ai-target-wrap" style="margin-top: 12px;" hidden>
-                <label class="label" for="target_total">Jumlah soal yang diusulkan (1–{{ $maxAdvancedTotal }})</label>
-                <input class="input" id="target_total" name="target_total" type="number" min="1" max="{{ $maxAdvancedTotal }}" value="15">
+            <div id="ai-simple-wrap" style="margin-top: 12px;">
+                <label class="label" for="question_type">Tipe soal</label>
+                <select class="input" id="question_type" name="question_type">
+                    @foreach ($questionTypes as $type)
+                        <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                    @endforeach
+                </select>
+                <label class="label" for="simple_target_total" style="margin-top: 12px;">Jumlah soal (1–{{ $maxSimpleTotal }})</label>
+                <input class="input" id="simple_target_total" name="target_total" type="number" min="1" max="{{ $maxSimpleTotal }}" value="10">
+            </div>
+            <div id="ai-advanced-wrap" style="margin-top: 12px;" hidden>
+                <p class="muted">Isi jumlah per tipe. Total 1–{{ $maxAdvancedTotal }}.</p>
+                <label class="label" for="count_mcq">Pilihan Ganda</label>
+                <input class="input" id="count_mcq" name="type_counts[multiple_choice]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
+                <label class="label" for="count_tf">Benar/Salah</label>
+                <input class="input" id="count_tf" name="type_counts[true_false]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
+                <label class="label" for="count_essay">Esai</label>
+                <input class="input" id="count_essay" name="type_counts[essay]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
+                <p style="margin-top: 8px;"><strong>Total:</strong> <span data-ai-live-total>0</span></p>
+                <input type="hidden" id="advanced_target_total" name="target_total" value="0" disabled>
             </div>
             <div style="margin-top: 12px;">
                 <button class="button button-secondary" type="submit">Isi dengan AI</button>
@@ -80,15 +97,50 @@
     <script>
         (function () {
             const advanced = document.getElementById('ai-mode-advanced');
-            const wrap = document.getElementById('ai-target-wrap');
-            const target = document.getElementById('target_total');
+            const simpleWrap = document.getElementById('ai-simple-wrap');
+            const advancedWrap = document.getElementById('ai-advanced-wrap');
+            const simpleTarget = document.getElementById('simple_target_total');
+            const simpleType = document.getElementById('question_type');
+            const advancedTarget = document.getElementById('advanced_target_total');
+            const countInputs = [
+                document.getElementById('count_mcq'),
+                document.getElementById('count_tf'),
+                document.getElementById('count_essay'),
+            ];
+            const liveTotal = document.querySelector('[data-ai-live-total]');
 
-            function sync() {
-                const on = advanced && advanced.checked;
-                wrap.hidden = ! on;
-                target.disabled = ! on;
+            function selectedAdvanced() {
+                return advanced && advanced.checked;
             }
 
+            function liveSum() {
+                return countInputs.reduce(function (sum, input) {
+                    return sum + (parseInt(input.value, 10) || 0);
+                }, 0);
+            }
+
+            function syncCounts() {
+                const total = liveSum();
+                liveTotal.textContent = String(total);
+                advancedTarget.value = String(total);
+            }
+
+            function sync() {
+                const on = selectedAdvanced();
+                simpleWrap.hidden = on;
+                advancedWrap.hidden = ! on;
+                simpleTarget.disabled = on;
+                simpleType.disabled = on;
+                advancedTarget.disabled = ! on;
+                countInputs.forEach(function (input) {
+                    input.disabled = ! on;
+                });
+                syncCounts();
+            }
+
+            countInputs.forEach(function (input) {
+                input.addEventListener('input', syncCounts);
+            });
             document.querySelectorAll('input[name="mode"]').forEach(function (input) {
                 input.addEventListener('change', sync);
             });

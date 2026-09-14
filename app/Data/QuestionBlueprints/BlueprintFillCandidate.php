@@ -17,5 +17,6 @@ final readonly class BlueprintFillCandidate
         public mixed $difficulty,
         public mixed $requestedCount,
         public array $contexts = [],
+        public mixed $questionType = null,
     ) {}
 }

@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Services\AI;
 
 use App\Contracts\AI\QuestionGenerationProvider;
+use App\Data\Generations\EssayQuestionCandidate;
 use App\Data\Generations\GenerationProviderRequest;
 use App\Data\Generations\GenerationProviderResult;
 use App\Data\Generations\McqQuestionCandidate;
 use App\Data\Generations\ProviderAttemptMetadata;
+use App\Data\Generations\TrueFalseQuestionCandidate;
 use App\Enums\GenerationErrorCode;
+use App\Enums\QuestionType;
 use App\Exceptions\Generations\GenerationConfigurationException;
 use App\Exceptions\Generations\GenerationMalformedResponseException;
 use App\Exceptions\Generations\GenerationProviderAuthException;
@@ -22,7 +25,12 @@ class GeminiQuestionGenerationProvider implements QuestionGenerationProvider
 {
     public const PROVIDER_NAME = 'google_gemini';
 
-    public function __construct(private McqPromptBuilder $promptBuilder) {}
+    public function __construct(
+        private McqPromptBuilder $promptBuilder,
+        private TrueFalsePromptBuilder $trueFalsePromptBuilder,
+        private EssayPromptBuilder $essayPromptBuilder,
+        private GenerationPromptIdentity $promptIdentity,
+    ) {}
 
     public function generate(GenerationProviderRequest $request): GenerationProviderResult
     {
@@ -47,26 +55,28 @@ class GeminiQuestionGenerationProvider implements QuestionGenerationProvider
 
         $model = $request->model;
         $url = rtrim((string) config('generation.api_base'), '/').'/models/'.$model.':generateContent';
-        $promptVersion = $this->promptBuilder->version();
+        $promptVersion = $this->resolvedPromptVersion($request);
+        $this->promptIdentity->assertSupported($request->questionType, $promptVersion);
+        $builder = $this->builderFor($request->questionType);
 
         $payload = [
             'systemInstruction' => [
                 'parts' => [
-                    ['text' => $this->promptBuilder->systemInstruction($request->outputLanguage, $promptVersion)],
+                    ['text' => $builder->systemInstruction($request->outputLanguage, $promptVersion)],
                 ],
             ],
             'contents' => [
                 [
                     'role' => 'user',
                     'parts' => [
-                        ['text' => $this->promptBuilder->userPrompt($request, $promptVersion)],
+                        ['text' => $builder->userPrompt($request, $promptVersion)],
                     ],
                 ],
             ],
             'generationConfig' => [
                 'maxOutputTokens' => (int) config('generation.max_output_tokens', 8192),
                 'responseMimeType' => 'application/json',
-                'responseSchema' => $this->responseSchema(),
+                'responseSchema' => $this->responseSchema($request->questionType),
             ],
         ];
 
@@ -135,12 +145,7 @@ class GeminiQuestionGenerationProvider implements QuestionGenerationProvider
                 continue;
             }
 
-            $candidates[] = new McqQuestionCandidate(
-                $question['question'] ?? null,
-                $question['options'] ?? null,
-                $question['correct_answer'] ?? null,
-                $question['explanation'] ?? null,
-            );
+            $candidates[] = $this->candidateFor($request->questionType, $question);
         }
 
         $usage = is_array($body['usageMetadata'] ?? null) ? $body['usageMetadata'] : [];
@@ -273,7 +278,19 @@ class GeminiQuestionGenerationProvider implements QuestionGenerationProvider
     /**
      * @return array<string, mixed>
      */
-    private function responseSchema(): array
+    private function responseSchema(QuestionType $type): array
+    {
+        return match ($type) {
+            QuestionType::MULTIPLE_CHOICE => $this->mcqResponseSchema(),
+            QuestionType::TRUE_FALSE => $this->trueFalsePromptBuilder->responseSchema(),
+            QuestionType::ESSAY => $this->essayPromptBuilder->responseSchema(),
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mcqResponseSchema(): array
     {
         return [
             'type' => 'object',
@@ -306,5 +323,49 @@ class GeminiQuestionGenerationProvider implements QuestionGenerationProvider
             ],
             'required' => ['questions'],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $question
+     */
+    private function candidateFor(QuestionType $type, array $question): McqQuestionCandidate|TrueFalseQuestionCandidate|EssayQuestionCandidate
+    {
+        return match ($type) {
+            QuestionType::MULTIPLE_CHOICE => new McqQuestionCandidate(
+                $question['question'] ?? null,
+                $question['options'] ?? null,
+                $question['correct_answer'] ?? null,
+                $question['explanation'] ?? null,
+            ),
+            QuestionType::TRUE_FALSE => new TrueFalseQuestionCandidate(
+                $question['question'] ?? null,
+                $question['correct_answer'] ?? null,
+                $question['explanation'] ?? null,
+            ),
+            QuestionType::ESSAY => new EssayQuestionCandidate(
+                $question['question'] ?? null,
+                $question['model_answer'] ?? null,
+                $question['rubric'] ?? null,
+                $question['explanation'] ?? null,
+            ),
+        };
+    }
+
+    private function resolvedPromptVersion(GenerationProviderRequest $request): string
+    {
+        if (is_string($request->promptVersion) && $request->promptVersion !== '') {
+            return $request->promptVersion;
+        }
+
+        return $this->builderFor($request->questionType)->version();
+    }
+
+    private function builderFor(QuestionType $type): McqPromptBuilder|TrueFalsePromptBuilder|EssayPromptBuilder
+    {
+        return match ($type) {
+            QuestionType::MULTIPLE_CHOICE => $this->promptBuilder,
+            QuestionType::TRUE_FALSE => $this->trueFalsePromptBuilder,
+            QuestionType::ESSAY => $this->essayPromptBuilder,
+        };
     }
 }

@@ -16,6 +16,7 @@ use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Enums\MaterialProfileStatus;
 use App\Enums\PlanCode;
+use App\Enums\QuestionType;
 use App\Enums\SubscriptionStatus;
 use App\Jobs\FillQuestionBlueprintJob;
 use App\Models\Material;
@@ -177,14 +178,18 @@ trait CreatesQuestionBlueprints
     /**
      * @return array<string, mixed>
      */
-    protected function sampleRow(int $count = 5, DifficultyLevel $difficulty = DifficultyLevel::MEDIUM): array
-    {
+    protected function sampleRow(
+        int $count = 5,
+        DifficultyLevel $difficulty = DifficultyLevel::MEDIUM,
+        QuestionType $questionType = QuestionType::MULTIPLE_CHOICE,
+    ): array {
         return [
             'objective' => 'Peserta mampu menjelaskan konsep utama materi.',
             'topic' => 'Konsep utama',
             'indicator' => 'Peserta menyebutkan dua contoh penerapan.',
             'cognitive_level' => CognitiveLevel::Understand,
             'difficulty' => $difficulty,
+            'question_type' => $questionType,
             'requested_count' => $count,
         ];
     }

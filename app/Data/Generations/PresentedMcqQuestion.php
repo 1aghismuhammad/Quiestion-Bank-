@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Data\Generations;
 
+use App\Enums\QuestionType;
+
 final readonly class PresentedMcqQuestion
 {
     /**
@@ -19,5 +21,8 @@ final readonly class PresentedMcqQuestion
         public string $correctAnswer,
         public string $explanation,
         public array $canonicalToDisplayed,
+        public QuestionType $questionType = QuestionType::MULTIPLE_CHOICE,
+        public ?string $modelAnswer = null,
+        public ?string $rubric = null,
     ) {}
 }

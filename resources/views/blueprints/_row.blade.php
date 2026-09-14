@@ -29,6 +29,14 @@
             </select>
         </div>
         <div>
+            <label class="label">Tipe soal</label>
+            <select class="input" name="rows[{{ $index }}][question_type]" required>
+                @foreach ($questionTypes as $type)
+                    <option value="{{ $type->value }}" @selected(($row['question_type'] ?? 'multiple_choice') === $type->value)>{{ $type->label() }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
             <label class="label">Jumlah soal</label>
             <input class="input" type="number" min="1" max="10" name="rows[{{ $index }}][requested_count]" value="{{ $row['requested_count'] ?? 1 }}" required>
         </div>

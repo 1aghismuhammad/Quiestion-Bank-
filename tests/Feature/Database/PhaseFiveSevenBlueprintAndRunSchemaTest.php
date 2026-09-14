@@ -110,4 +110,50 @@ class PhaseFiveSevenBlueprintAndRunSchemaTest extends TestCase
         $this->assertTrue(Schema::hasColumn('question_blueprints', 'mode'));
         $this->assertSame('simple', DB::table('question_blueprints')->where('blueprint_id', $id)->value('mode'));
     }
+
+    public function test_ai_fill_requested_type_counts_is_nullable_and_rolls_back_independently(): void
+    {
+        $this->seed(PlanSeeder::class);
+        $this->assertTrue(Schema::hasColumn('question_blueprints', 'ai_fill_requested_type_counts'));
+        $this->assertTrue(Schema::hasColumn('question_blueprints', 'mode'));
+
+        $user = User::factory()->create();
+        $material = Material::factory()->text()->for($user)->create();
+        $series = QuestionBlueprintSeries::factory()->forOwner($user, $material)->create();
+        $now = now();
+
+        $id = DB::table('question_blueprints')->insertGetId([
+            'blueprint_series_id' => $series->blueprint_series_id,
+            'user_id' => $user->id,
+            'material_id' => $material->material_id,
+            'version' => 1,
+            'lifecycle_status' => BlueprintLifecycleStatus::Draft->value,
+            'source' => BlueprintSource::Manual->value,
+            'ai_fill_status' => BlueprintAiFillStatus::None->value,
+            'assessment_type' => AssessmentType::FORMATIVE->value,
+            'title' => 'Historis tanpa komposisi',
+            'material_content_hash' => hash('sha256', 'fixture'),
+            'extractor_implementation' => 'test-extractor',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], 'blueprint_id');
+
+        $row = DB::table('question_blueprints')->where('blueprint_id', $id)->first();
+        $this->assertNull($row->ai_fill_requested_type_counts);
+
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_09_13_100001_add_ai_fill_requested_type_counts_to_question_blueprints_table.php',
+        ])->assertSuccessful();
+
+        $this->assertFalse(Schema::hasColumn('question_blueprints', 'ai_fill_requested_type_counts'));
+        $this->assertTrue(Schema::hasColumn('question_blueprints', 'mode'));
+        $this->assertTrue(Schema::hasColumn('question_blueprints', 'ai_fill_requested_total'));
+
+        $this->artisan('migrate', [
+            '--path' => 'database/migrations/2026_09_13_100001_add_ai_fill_requested_type_counts_to_question_blueprints_table.php',
+        ])->assertSuccessful();
+
+        $this->assertTrue(Schema::hasColumn('question_blueprints', 'ai_fill_requested_type_counts'));
+        $this->assertNull(DB::table('question_blueprints')->where('blueprint_id', $id)->value('ai_fill_requested_type_counts'));
+    }
 }

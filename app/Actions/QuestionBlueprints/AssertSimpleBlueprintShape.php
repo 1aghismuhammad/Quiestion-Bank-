@@ -42,6 +42,7 @@ class AssertSimpleBlueprintShape
         }
 
         $difficulties = [];
+        $types = [];
         $total = 0;
         $maxText = (int) config('question_blueprint.row_text_max_chars', 500);
         $minCount = (int) config('question_blueprint.min_requested_count', 1);
@@ -57,7 +58,7 @@ class AssertSimpleBlueprintShape
                 ? $row['difficulty']
                 : DifficultyLevel::tryFrom((string) $row['difficulty']);
 
-            if ($type !== QuestionType::MULTIPLE_CHOICE || $difficulty === null) {
+            if ($type === null || $difficulty === null) {
                 throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
             }
 
@@ -80,10 +81,16 @@ class AssertSimpleBlueprintShape
             }
 
             $difficulties[] = $difficulty->value;
+            $types[] = $type->value;
             $total += $requested;
         }
 
-        if (count(array_unique($difficulties)) !== 1 || $total < 1 || $total > $maxTotal) {
+        if (
+            count(array_unique($difficulties)) !== 1
+            || count(array_unique($types)) !== 1
+            || $total < 1
+            || $total > $maxTotal
+        ) {
             throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
         }
     }

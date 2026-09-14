@@ -6,6 +6,7 @@ namespace App\Actions\GenerationRuns;
 
 use App\Enums\DifficultyLevel;
 use App\Enums\GenerationRunErrorCode;
+use App\Enums\QuestionType;
 use App\Exceptions\GenerationRuns\GenerationRunRejectedException;
 use App\Models\QuestionBlueprintRow;
 
@@ -18,6 +19,8 @@ class AssertAdvancedRunQualification
     {
         $total = 0;
         $difficulties = [];
+        $types = [];
+        $hasMcq = false;
 
         foreach ($rows as $row) {
             $requested = $row instanceof QuestionBlueprintRow
@@ -29,16 +32,34 @@ class AssertAdvancedRunQualification
             $value = $difficulty instanceof DifficultyLevel
                 ? $difficulty->value
                 : (string) $difficulty;
+            $rawType = $row instanceof QuestionBlueprintRow
+                ? $row->question_type
+                : ($row['question_type'] ?? QuestionType::MULTIPLE_CHOICE);
+            $type = $rawType instanceof QuestionType
+                ? $rawType
+                : QuestionType::tryFrom((string) $rawType);
 
             $total += $requested;
             $difficulties[$value] = true;
+
+            if ($type instanceof QuestionType) {
+                $types[$type->value] = true;
+
+                if ($type === QuestionType::MULTIPLE_CHOICE) {
+                    $hasMcq = true;
+                }
+            }
+        }
+
+        if ($shuffleOptions && ! $hasMcq) {
+            throw new GenerationRunRejectedException(GenerationRunErrorCode::ValidationFailed);
         }
 
         if ($total > 10) {
             return;
         }
 
-        if (count($difficulties) > 1 || $shuffleQuestions || $shuffleOptions) {
+        if (count($difficulties) > 1 || count($types) > 1 || $shuffleQuestions || $shuffleOptions) {
             return;
         }
 

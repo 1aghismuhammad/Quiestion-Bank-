@@ -358,6 +358,11 @@ class AdvancedBlueprintAccessTest extends TestCase
             ->post(route('materials.blueprints.ai', $material), [
                 'mode' => BlueprintMode::Advanced->value,
                 'target_total' => 15,
+                'type_counts' => [
+                    'multiple_choice' => 15,
+                    'true_false' => 0,
+                    'essay' => 0,
+                ],
             ])
             ->assertRedirect(route('materials.blueprints.index', $material))
             ->assertSessionHas('error', BlueprintErrorCode::AdvancedRequiresPro->userMessage());

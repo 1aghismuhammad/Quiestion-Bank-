@@ -25,7 +25,7 @@ enum GenerationRunErrorCode: string
         return match ($this) {
             self::MaterialIneligible => 'Materi belum memenuhi syarat untuk generate soal.',
             self::AdvancedRequiresPro => 'Mode lanjutan hanya tersedia untuk paket Pro yang aktif.',
-            self::AdvancedFeatureRequired => 'Mode lanjutan dengan 1–10 soal membutuhkan tingkat kesulitan berbeda, atau pengacakan soal, atau pengacakan opsi.',
+            self::AdvancedFeatureRequired => 'Mode lanjutan dengan 1–10 soal membutuhkan tingkat kesulitan berbeda, tipe soal berbeda, atau pengacakan soal, atau pengacakan opsi.',
             self::ProfileRequired => 'Profil materi yang siap diperlukan sebelum generasi dapat dimulai.',
             self::ProfileStale, self::BlueprintStale, self::HashMismatch => 'Konteks materi tidak lagi cocok. Mulai generasi baru.',
             self::BlueprintNotConfirmed => 'Hanya kisi-kisi yang sudah dikonfirmasi yang dapat dipakai untuk generasi.',

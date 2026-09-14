@@ -65,7 +65,7 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 - Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine (`COMPLETE`; 4.1–4.6 including owner generation UI and stale recovery).
 - Phase 5: question bank (`COMPLETE`; MCQ-only MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). True/false and essay Question Bank remain later.
-- Phase 5.7: pre-Phase-6 enhancements (`IN PROGRESS`). Phase 5.7A–5.7B3 are `COMPLETE`. Phase 5.7C+D third corrective QA passed and is pending review (v0.15.9/v0.15.11). Phase 5.7E (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle) is `COMPLETE`. Phase 5.7F (True/False and Essay) and Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, final hardening) are `NOT STARTED`.
+- Phase 5.7: pre-Phase-6 enhancements (`IN PROGRESS`). Phase 5.7A–5.7B3 are `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle) is `COMPLETE`. Phase 5.7F (True/False and Essay) is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, final hardening) is `NOT STARTED`.
 - Phase 6: admin dashboard dan MVP release (`PLANNED`).
 - Phase 7: WhatsApp CRM.
 - Phase 8: optimization dan scaling.

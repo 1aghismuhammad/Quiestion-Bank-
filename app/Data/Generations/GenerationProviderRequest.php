@@ -8,6 +8,7 @@ use App\Enums\AssessmentType;
 use App\Enums\DifficultyLevel;
 use App\Enums\GenerationAttemptPurpose;
 use App\Enums\OutputLanguage;
+use App\Enums\QuestionType;
 
 final readonly class GenerationProviderRequest
 {
@@ -25,5 +26,9 @@ final readonly class GenerationProviderRequest
         public string $model,
         public ?int $generationId = null,
         public ?BlueprintGenerationContext $blueprintContext = null,
+        public QuestionType $questionType = QuestionType::MULTIPLE_CHOICE,
+        public ?string $promptVersion = null,
+        public ?int $trueFalseRemainingTrue = null,
+        public ?int $trueFalseRemainingFalse = null,
     ) {}
 }

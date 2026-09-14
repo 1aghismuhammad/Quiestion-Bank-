@@ -11,9 +11,9 @@
     <h1>Generate soal dari kisi-kisi</h1>
     <p><strong>Kisi-kisi:</strong> {{ $blueprint->title }}</p>
     @if ($isAdvanced)
-        <p class="muted">Mode lanjutan · {{ $rowCount }} kelompok · {{ $totalQuestions }} soal · Pilihan ganda</p>
+        <p class="muted">Mode lanjutan · {{ $rowCount }} kelompok · {{ $totalQuestions }} soal · {{ $typeSummary }}</p>
     @else
-        <p class="muted">Jumlah soal: {{ $totalQuestions }} · Mode sederhana · Pilihan ganda</p>
+        <p class="muted">Jumlah soal: {{ $totalQuestions }} · Mode sederhana · {{ $typeSummary }}</p>
     @endif
 
     @include('generations._quota', ['usage' => $usage])
@@ -43,10 +43,10 @@
                     </label>
                     <label style="display: block; margin-top: 8px;">
                         <input type="checkbox" name="shuffle_options" value="1" @checked((bool) old('shuffle_options'))>
-                        Acak urutan opsi
+                        Acak urutan opsi (pilihan ganda saja)
                     </label>
                     @if ($totalQuestions <= 10)
-                        <p class="muted" style="margin-top: 12px;">Mode lanjutan dengan 1–10 soal membutuhkan tingkat kesulitan berbeda, atau salah satu pengacakan di atas.</p>
+                        <p class="muted" style="margin-top: 12px;">Mode lanjutan dengan 1–10 soal membutuhkan tingkat kesulitan berbeda, tipe soal berbeda, atau salah satu pengacakan di atas.</p>
                     @endif
                 @endif
 

@@ -50,11 +50,26 @@
             @foreach ($presentation->questions as $question)
                 <article style="margin-bottom: 16px;">
                     <p><strong>{{ $question->number }}. {{ $question->question }}</strong></p>
-                    <ul>
-                        @foreach ($question->options as $label => $option)
-                            <li>{{ $label }}. {{ $option }}</li>
-                        @endforeach
-                    </ul>
+                    @if ($question->questionType->value === 'essay')
+                        @if ($question->modelAnswer)
+                            <p><strong>Contoh jawaban</strong></p>
+                            <p>{{ $question->modelAnswer }}</p>
+                        @endif
+                        @if ($question->rubric)
+                            <p><strong>Rubrik</strong></p>
+                            <p>{{ $question->rubric }}</p>
+                        @endif
+                    @elseif ($question->options !== [])
+                        <ul>
+                            @foreach ($question->options as $label => $option)
+                                @if ($question->questionType->value === 'true_false')
+                                    <li>{{ $label }}</li>
+                                @else
+                                    <li>{{ $label }}. {{ $option }}</li>
+                                @endif
+                            @endforeach
+                        </ul>
+                    @endif
                     @if ($question->correctAnswer !== '')
                         <p class="muted">Kunci: {{ $question->correctAnswer }}</p>
                     @endif

@@ -7,6 +7,7 @@ namespace App\Actions\QuestionBlueprints;
 use App\Actions\MaterialProfiles\AssertMaterialEligibleForProfileAnalysis;
 use App\Actions\Subscriptions\ResolveActivePro;
 use App\Data\QuestionBlueprints\BlueprintFillDispatch;
+use App\Data\QuestionBlueprints\BlueprintFillTypeCounts;
 use App\Enums\AssessmentType;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
@@ -42,6 +43,7 @@ class QueueBlueprintAiFill
         ?AssessmentType $assessmentType = null,
         ?BlueprintMode $requestedMode = null,
         ?int $requestedTotal = null,
+        ?array $requestedTypeCounts = null,
     ): QuestionBlueprint {
         $dispatch = null;
 
@@ -53,6 +55,7 @@ class QueueBlueprintAiFill
             $assessmentType,
             $requestedMode,
             $requestedTotal,
+            $requestedTypeCounts,
             &$dispatch,
         ): QuestionBlueprint {
             $lockedMaterial = $this->lockUserAndMaterial((int) $actor->id, (int) $material->material_id);
@@ -79,6 +82,13 @@ class QueueBlueprintAiFill
 
             $mode = $draft->mode instanceof BlueprintMode ? $draft->mode : BlueprintMode::Simple;
             $target = $this->resolveFillTarget($mode, $existingDraft === null, $requestedTotal, $draft);
+            $typeCounts = $this->resolveFillTypeCounts(
+                $mode,
+                $existingDraft === null,
+                $requestedTypeCounts,
+                $draft,
+                $target,
+            );
 
             $workflowToken = (string) Str::uuid();
             $stepToken = (string) Str::uuid();
@@ -95,6 +105,7 @@ class QueueBlueprintAiFill
             $draft->workflow_token = $workflowToken;
             $draft->step_execution_token = $stepToken;
             $draft->ai_fill_requested_total = $target;
+            $draft->ai_fill_requested_type_counts = $typeCounts?->toArray();
             $draft->queued_at = $now;
             $draft->claimed_at = null;
             $draft->heartbeat_at = null;
@@ -279,5 +290,33 @@ class QueueBlueprintAiFill
         }
 
         return $target;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $requestedTypeCounts
+     */
+    private function resolveFillTypeCounts(
+        BlueprintMode $mode,
+        bool $isNewFill,
+        ?array $requestedTypeCounts,
+        QuestionBlueprint $draft,
+        ?int $target,
+    ): ?BlueprintFillTypeCounts {
+        $raw = $isNewFill
+            ? $requestedTypeCounts
+            : ($requestedTypeCounts ?? $draft->ai_fill_requested_type_counts);
+
+        if ($raw === null) {
+            return null;
+        }
+
+        $counts = BlueprintFillTypeCounts::parse($raw);
+        $counts->assertCompatibleWith($mode);
+
+        if ($mode === BlueprintMode::Advanced && $target !== null && $counts->total() !== $target) {
+            throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
+        }
+
+        return $counts;
     }
 }

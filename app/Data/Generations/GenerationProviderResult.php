@@ -7,7 +7,7 @@ namespace App\Data\Generations;
 final readonly class GenerationProviderResult
 {
     /**
-     * @param  list<McqQuestionCandidate>  $candidates
+     * @param  list<McqQuestionCandidate|TrueFalseQuestionCandidate|EssayQuestionCandidate>  $candidates
      */
     public function __construct(
         public array $candidates,

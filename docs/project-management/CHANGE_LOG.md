@@ -26,6 +26,46 @@ Notes:
 -
 ```
 
+## v0.15.13 Phase 5.7F True/False and Essay generation
+
+- Date: 13 September 2026
+- Version: 0.15.13
+- Phase: Phase 5.7F - True/False and Essay generation, mixed types, typed AI-fill composition
+- Type: Feature
+
+Added:
+
+- Forward-only nullable JSON `question_blueprints.ai_fill_requested_type_counts` with canonical keys `multiple_choice`, `true_false`, and `essay`. The column is not Fillable. Historical fills remain `null` and keep `blueprint-fill-v1` / `blueprint-fill-v2`.
+- Simple Blueprint shape accepts all three `QuestionType` values, still one shared type, one shared difficulty, total 1–10, and no shuffle. Advanced shape allows mixed types and mixed difficulty, 1–5 rows, 1–10 per row, total 1–30.
+- Typed AI-fill composition: Simple is exactly one non-zero type totaling 1–10; Advanced is one or more types totaling 1–30 and must equal `ai_fill_requested_total` when both are present. Unknown keys, negatives, non-integers, all-zero, and totals over 30 fail closed. `blueprint-fill-v3` requires exact per-type row sums.
+- `blueprint-fill-v3` via `question_blueprint.multitype_prompt_version` for fills that persist type counts. Blank or unsupported v3 identities fail closed after Claim. Exact v1 and v2 prompt text is unchanged.
+- Generation prompt identities `true-false-v1` and `essay-v1`. New MCQ Attempts remain `mcq-v3`. Historical `mcq-v1` / `mcq-v2` Attempt metadata is not rewritten.
+- Typed result contracts reconstructed from the persisted child `question_type`, never guessed from JSON. True/False stores `{question, correct_answer: bool, explanation}` with a JSON boolean only. Essay stores `{question, model_answer, rubric, explanation}` with no MCQ options.
+- True/False distribution `|true − false| ≤ 1` when N > 1, compound-statement and double-negation heuristics, and owner presentation that always lists Benar then Salah. Essay rubric is bounded teacher text, not a table and not auto-grading.
+- Advanced Run qualification: mixed types qualify totals 1–10. `shuffle_options` is rejected before Run/Usage when the Blueprint has zero MCQ rows. Question shuffle still applies to all types; option shuffle remains MCQ-only.
+
+Changed:
+
+- Docs record version 0.15.13. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA` (source review passed; pending final integrated manual QA after Phase 5.7G). Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) is `NOT STARTED`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`.
+- Credits remain `GenerationCredits::required()` = `ceil(n/10)`. One Blueprint row = one Run Item = one sequential child. One Usage per Run; charge once; release once on terminal failure.
+- Legacy Start remains MCQ-only. Confirm, clone, AI retry, Run start, and failed-Run retry still derive mode/shuffle from persisted Blueprint/Run state.
+
+Fixed:
+
+- New HTTP AI-fill requests cannot create legacy null-composition `blueprint-fill-v1` / `blueprint-fill-v2` workflows. Simple requires `question_type` and `target_total`; Advanced requires the three canonical `type_counts` keys with no unknown keys. Malformed or ambiguous shapes fail closed. Historical persisted `ai_fill_requested_type_counts = null` still uses v1/v2 on retry/recovery.
+- Typed stored True/False and Essay reconstruction is strict: exact canonical fields, JSON-boolean True/False answers, non-empty strings, no skipped non-array entries, and True/False distribution checks on resume and Run completion.
+
+Database Impact:
+
+- New forward migration `2026_09_13_100001_add_ai_fill_requested_type_counts_to_question_blueprints_table.php`. No Phase 5.7E or earlier migration was edited. Rollback drops only `ai_fill_requested_type_counts`.
+
+Notes:
+
+- Automated QA uses fakes/spies and does not call Gemini. Raw prompts and provider bodies remain unpersisted. Shuffle seed material is not exposed in owner HTML.
+- Automated QA: 1155 tests, 6659 assertions. QA archive: `phase-5.7f-v0.15.13-qa.zip`.
+- Question Bank remains MCQ-only. Run-to-Question-Bank import, generated-question editing, question DOCX, Run cancellation, and parallel children remain Phase 5.7G.
+- Isolation still forbids `generation_run_id` on the Question Set controller.
+
 ## v0.15.12 Phase 5.7E Advanced MCQ
 
 - Date: 12 September 2026

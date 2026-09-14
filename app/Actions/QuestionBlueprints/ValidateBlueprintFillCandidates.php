@@ -6,6 +6,7 @@ namespace App\Actions\QuestionBlueprints;
 
 use App\Data\QuestionBlueprints\BlueprintFillCandidate;
 use App\Data\QuestionBlueprints\BlueprintFillContextCatalogEntry;
+use App\Data\QuestionBlueprints\BlueprintFillTypeCounts;
 use App\Enums\BlueprintMode;
 use App\Enums\BlueprintRowOrigin;
 use App\Enums\CognitiveLevel;
@@ -32,6 +33,7 @@ class ValidateBlueprintFillCandidates
         array $catalog,
         BlueprintMode $mode = BlueprintMode::Simple,
         ?int $expectedTotal = null,
+        ?array $expectedTypeCounts = null,
     ): array {
         $content = (string) $material->content;
         $rows = [];
@@ -48,6 +50,7 @@ class ValidateBlueprintFillCandidates
                 ? DifficultyLevel::tryFrom($candidate->difficulty)
                 : null;
             $requested = is_numeric($candidate->requestedCount) ? (int) $candidate->requestedCount : 0;
+            $type = $this->resolveQuestionType($candidate->questionType, $expectedTypeCounts);
 
             if ($cognitive === null || $difficulty === null) {
                 throw new BlueprintCandidateValidationException('A candidate uses an unsupported enumeration.');
@@ -181,7 +184,7 @@ class ValidateBlueprintFillCandidates
                 'indicator' => $indicator,
                 'cognitive_level' => $cognitive,
                 'difficulty' => $difficulty,
-                'question_type' => QuestionType::MULTIPLE_CHOICE,
+                'question_type' => $type,
                 'requested_count' => $requested,
                 'origin' => BlueprintRowOrigin::Suggested,
                 'contexts' => $contexts,
@@ -200,6 +203,18 @@ class ValidateBlueprintFillCandidates
 
             if ($expectedTotal === null || $expectedTotal < 1 || $expectedTotal > $maxAdvanced || $actual !== $expectedTotal) {
                 throw new BlueprintCandidateValidationException('The candidate total does not match the requested target.');
+            }
+        }
+
+        if ($expectedTypeCounts !== null) {
+            try {
+                $counts = BlueprintFillTypeCounts::parse($expectedTypeCounts);
+            } catch (BlueprintRejectedException) {
+                throw new BlueprintCandidateValidationException('The candidate type composition is not valid.');
+            }
+
+            if (! $counts->matchesRows($rows)) {
+                throw new BlueprintCandidateValidationException('The candidate type composition does not match the requested counts.');
             }
         }
 
@@ -251,5 +266,32 @@ class ValidateBlueprintFillCandidates
         }
 
         return $text;
+    }
+
+    private function resolveQuestionType(mixed $raw, ?array $expectedTypeCounts): QuestionType
+    {
+        if ($expectedTypeCounts === null) {
+            if ($raw === null || $raw === '') {
+                return QuestionType::MULTIPLE_CHOICE;
+            }
+
+            $type = $raw instanceof QuestionType ? $raw : QuestionType::tryFrom((string) $raw);
+
+            if ($type !== QuestionType::MULTIPLE_CHOICE) {
+                throw new BlueprintCandidateValidationException('A candidate uses an unsupported question type.');
+            }
+
+            return $type;
+        }
+
+        $type = $raw instanceof QuestionType
+            ? $raw
+            : (is_string($raw) ? QuestionType::tryFrom($raw) : null);
+
+        if ($type === null) {
+            throw new BlueprintCandidateValidationException('A candidate is missing a question type.');
+        }
+
+        return $type;
     }
 }

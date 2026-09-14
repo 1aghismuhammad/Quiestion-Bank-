@@ -168,6 +168,8 @@ class RunQuestionGeneration
                 purpose: $purpose,
                 model: $model,
                 generationId: $generationId,
+                questionType: QuestionType::MULTIPLE_CHOICE,
+                promptVersion: $promptVersion,
             );
 
             try {

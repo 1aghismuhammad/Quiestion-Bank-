@@ -6,14 +6,14 @@ namespace App\Actions\GenerationRuns;
 
 use App\Actions\Generations\BeginGenerationAttempt;
 use App\Actions\Generations\FinishGenerationAttempt;
-use App\Actions\Generations\ValidateMcqCandidateSet;
+use App\Actions\Generations\ValidateTypedGenerationCandidates;
 use App\Actions\QuestionBlueprints\AssertReadyMatchingProfile;
 use App\Contracts\AI\QuestionGenerationProvider;
 use App\Data\Generations\BlueprintGenerationContext;
 use App\Data\Generations\GenerationProviderRequest;
 use App\Data\Generations\ProviderAttemptMetadata;
-use App\Data\Generations\ValidatedMcqQuestion;
-use App\Data\Generations\ValidatedMcqSet;
+use App\Data\Generations\ValidatedQuestionSet;
+use App\Data\Generations\ValidatedTrueFalseSet;
 use App\Enums\GenerationAttemptPurpose;
 use App\Enums\GenerationAttemptStatus;
 use App\Enums\GenerationErrorCode;
@@ -29,15 +29,18 @@ use App\Exceptions\Generations\GenerationProviderAuthException;
 use App\Exceptions\Generations\GenerationProviderPermanentException;
 use App\Exceptions\Generations\GenerationProviderTransientException;
 use App\Exceptions\Generations\StaleGenerationExecutionException;
+use App\Exceptions\Generations\StoredQuestionSetReconstructionException;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
 use App\Models\AiGeneration;
 use App\Models\AiGenerationAttempt;
 use App\Models\AiGenerationRun;
 use App\Models\Material;
 use App\Services\AI\GeminiModelSelector;
-use App\Services\AI\McqPromptBuilder;
+use App\Services\AI\GenerationPromptIdentity;
 use App\Support\Generations\GenerationUnexpectedProviderFailure;
 use App\Support\Generations\ProviderAttemptBudget;
+use App\Support\Generations\ReconstructValidatedQuestionSet;
+use App\Support\Generations\TrueFalseDistribution;
 use Illuminate\Support\Sleep;
 use Throwable;
 
@@ -47,10 +50,10 @@ class RunGenerationRunChild
         private ClaimRunChildExecution $claim,
         private BeginGenerationAttempt $beginAttempt,
         private FinishGenerationAttempt $finishAttempt,
-        private ValidateMcqCandidateSet $validate,
+        private ValidateTypedGenerationCandidates $validate,
         private QuestionGenerationProvider $provider,
         private GeminiModelSelector $modelSelector,
-        private McqPromptBuilder $promptBuilder,
+        private GenerationPromptIdentity $promptIdentity,
         private FinalizeRunChildSuccess $finalizeSuccess,
         private FinalizeRunChildFailure $finalizeFailure,
         private ReconstructRunItemSpans $reconstructSpans,
@@ -91,11 +94,13 @@ class RunGenerationRunChild
             return;
         }
 
-        if ($generation->question_type !== QuestionType::MULTIPLE_CHOICE) {
+        if (! $generation->question_type instanceof QuestionType) {
             $this->finalizeFailure->handle($generationId, $executionToken, GenerationErrorCode::UnsupportedQuestionType);
 
             return;
         }
+
+        $questionType = $generation->question_type;
 
         $questionCount = (int) $generation->question_count;
 
@@ -115,16 +120,26 @@ class RunGenerationRunChild
         }
 
         try {
-            $this->assertConfigured();
+            $this->assertConfigured($questionType);
+            $promptIdentity = $this->promptIdentity->versionFor($questionType);
         } catch (GenerationConfigurationException $exception) {
             $this->finalizeFailure->handle($generationId, $executionToken, $exception->errorCode());
 
             return;
         }
 
-        $accepted = $this->loadAccepted($generation);
+        try {
+            $accepted = $this->loadAccepted($generation, $questionType);
+            $avoid = array_merge($this->completedStems($run, $generationId), $accepted->questionTexts());
+        } catch (\InvalidArgumentException $exception) {
+            $code = $exception instanceof StoredQuestionSetReconstructionException
+                ? $exception->errorCode()
+                : GenerationErrorCode::MalformedOutput;
+            $this->finalizeFailure->handle($generationId, $executionToken, $code);
+
+            return;
+        }
         $previousError = $this->restoredPreviousError($generationId);
-        $avoid = array_merge($this->completedStems($run, $generationId), $accepted->questionTexts());
 
         if ($accepted->count() === $questionCount) {
             $this->completeChild($generationId, $executionToken, $accepted);
@@ -155,7 +170,7 @@ class RunGenerationRunChild
                 : GenerationAttemptPurpose::REPAIR;
             $attemptNumber = $startedCount + 1;
             $model = $this->modelSelector->modelForAttempt($attemptNumber, $previousError);
-            $promptVersion = $this->promptBuilder->version();
+            $promptVersion = $promptIdentity;
 
             try {
                 $attempt = $this->beginAttempt->handle(
@@ -170,6 +185,10 @@ class RunGenerationRunChild
                 break;
             }
 
+            $remaining = $questionType === QuestionType::TRUE_FALSE && $accepted instanceof ValidatedTrueFalseSet
+                ? TrueFalseDistribution::remaining($questionCount, $accepted->trueCount(), $accepted->falseCount())
+                : ['true' => null, 'false' => null];
+
             $request = new GenerationProviderRequest(
                 outputLanguage: $language,
                 difficultyLevel: $generation->difficulty_level,
@@ -181,6 +200,10 @@ class RunGenerationRunChild
                 model: $model,
                 generationId: $generationId,
                 blueprintContext: $this->blueprintContext($generation),
+                questionType: $questionType,
+                promptVersion: $promptVersion,
+                trueFalseRemainingTrue: $remaining['true'],
+                trueFalseRemainingFalse: $remaining['false'],
             );
 
             try {
@@ -240,8 +263,14 @@ class RunGenerationRunChild
 
             event(new GenerationRunChildPostHttpVerified($generationId, $executionToken));
 
-            $validation = $this->validate->handle($result->candidates, $avoid);
-            $merged = $this->merge($accepted, $validation->valid, $questionCount);
+            $validation = $this->validate->handle(
+                $questionType,
+                $result->candidates,
+                $avoid,
+                $accepted,
+                $questionCount,
+            );
+            $merged = ReconstructValidatedQuestionSet::merge($accepted, $validation, $questionCount);
             $newAcceptedFromThisAttempt = $merged->count() - $accepted->count();
             $complete = $merged->count() === $questionCount;
 
@@ -285,7 +314,7 @@ class RunGenerationRunChild
         int $acceptedCount,
         ?ProviderAttemptMetadata $metadata,
         ?GenerationErrorCode $errorCode,
-        ValidatedMcqSet $merged,
+        ValidatedQuestionSet $merged,
     ): bool {
         try {
             $this->finishAttempt->handle(
@@ -340,7 +369,7 @@ class RunGenerationRunChild
         }
     }
 
-    private function completeChild(int $generationId, string $executionToken, ValidatedMcqSet $accepted): void
+    private function completeChild(int $generationId, string $executionToken, ValidatedQuestionSet $accepted): void
     {
         try {
             $this->finalizeSuccess->handle($generationId, $executionToken, $accepted);
@@ -385,11 +414,18 @@ class RunGenerationRunChild
             ->get();
 
         foreach ($completed as $child) {
-            if (! is_array($child->result_json)) {
+            if (! is_array($child->result_json) || ! $child->question_type instanceof QuestionType) {
                 continue;
             }
 
-            $stems = array_merge($stems, ValidatedMcqSet::fromStoredJson($child->result_json)->questionTexts());
+            $stems = array_merge(
+                $stems,
+                ReconstructValidatedQuestionSet::fromStored(
+                    $child->question_type,
+                    $child->result_json,
+                    (int) $child->question_count,
+                )->questionTexts(),
+            );
         }
 
         return $stems;
@@ -415,33 +451,13 @@ class RunGenerationRunChild
         return GenerationErrorCode::tryFrom($raw);
     }
 
-    private function loadAccepted(AiGeneration $generation): ValidatedMcqSet
+    private function loadAccepted(AiGeneration $generation, QuestionType $type): ValidatedQuestionSet
     {
-        $stored = $generation->result_json;
-
-        if (! is_array($stored) || $stored === []) {
-            return new ValidatedMcqSet([]);
-        }
-
-        return ValidatedMcqSet::fromStoredJson($stored);
-    }
-
-    /**
-     * @param  list<ValidatedMcqQuestion>  $incoming
-     */
-    private function merge(ValidatedMcqSet $accepted, array $incoming, int $needed): ValidatedMcqSet
-    {
-        $questions = $accepted->questions;
-
-        foreach ($incoming as $question) {
-            if (count($questions) >= $needed) {
-                break;
-            }
-
-            $questions[] = $question;
-        }
-
-        return new ValidatedMcqSet($questions);
+        return ReconstructValidatedQuestionSet::fromStored(
+            $type,
+            $generation->result_json,
+            (int) $generation->question_count,
+        );
     }
 
     private function unlockedFingerprintsMatch(AiGenerationRun $run, Material $material): bool
@@ -465,7 +481,7 @@ class RunGenerationRunChild
         return true;
     }
 
-    private function assertConfigured(): void
+    private function assertConfigured(QuestionType $type): void
     {
         $apiKey = config('generation.api_key');
 
@@ -479,7 +495,7 @@ class RunGenerationRunChild
             throw new GenerationConfigurationException('The generation model is not configured.');
         }
 
-        $this->promptBuilder->version();
+        $this->promptIdentity->versionFor($type);
     }
 
     private function backoff(int $startedAttempts, ?int $retryAfterSeconds): void

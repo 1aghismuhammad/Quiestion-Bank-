@@ -250,7 +250,7 @@ class StartGenerationRun
             $firstChild = null;
 
             foreach ($lockedBlueprint->rows as $row) {
-                if ($row->question_type !== QuestionType::MULTIPLE_CHOICE || (int) $row->requested_count > 10) {
+                if (! in_array($row->question_type, QuestionType::cases(), true) || (int) $row->requested_count > 10) {
                     throw new GenerationRunRejectedException(GenerationRunErrorCode::ValidationFailed);
                 }
 

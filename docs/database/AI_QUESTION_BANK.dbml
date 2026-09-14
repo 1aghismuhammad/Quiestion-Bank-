@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.15.12
+// Version: 0.15.13
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -559,7 +559,8 @@ Table question_blueprints {
   source blueprint_source [not null, default: 'manual']
   ai_fill_status blueprint_ai_fill_status [not null, default: 'none']
   mode blueprint_mode [not null, default: 'simple']
-  ai_fill_requested_total tinyint [note: 'Workflow input only. Canonical total is always SUM(rows.requested_count). Set atomically with a new AI-fill workflow token. Null for Simple fills.']
+  ai_fill_requested_total tinyint [note: 'Workflow input only. Canonical total is always SUM(rows.requested_count). Set atomically with a new AI-fill workflow token. Null for historical Simple fills.']
+  ai_fill_requested_type_counts json [note: 'Nullable typed-fill workflow input: multiple_choice, true_false, essay. Null keeps blueprint-fill-v1/v2. Typed fills bind counts to a new workflow token. Not mass-assigned.']
   assessment_type assessment_type [not null]
   title varchar(120) [not null]
   material_content_hash varchar(64) [not null]
@@ -583,7 +584,7 @@ Table question_blueprints {
     (material_id, ai_fill_status) [name: 'qbp_mat_ai_fill_idx']
   }
 
-  Note: 'Confirm is idempotent and stores the live Material fingerprint. Confirmed header/rows/contexts/mode are immutable. Historical rows resolve to simple. AI fill never auto-confirms and writes zero ai_usage_logs. ai_fill_requested_total is not mass-assigned from request data.'
+  Note: 'Confirm is idempotent and stores the live Material fingerprint. Confirmed header/rows/contexts/mode are immutable. Historical rows resolve to simple. AI fill never auto-confirms and writes zero ai_usage_logs. ai_fill_requested_total and ai_fill_requested_type_counts are not mass-assigned from request data.'
 }
 
 Table question_blueprint_rows {
@@ -605,7 +606,7 @@ Table question_blueprint_rows {
     (blueprint_id, sort_order) [unique, name: 'qbp_row_blueprint_sort_uq']
   }
 
-  Note: 'Simple shape: 1-5 MCQ rows, one difficulty, total requested 1-10. Advanced shape: 1-5 MCQ rows, mixed difficulty allowed, total requested 1-30, each row 1-10.'
+  Note: 'Simple shape: 1-5 rows, one shared question_type, one difficulty, total requested 1-10. Advanced shape: 1-5 rows, mixed types and mixed difficulty allowed, total requested 1-30, each row 1-10.'
 }
 
 Table question_blueprint_row_contexts {

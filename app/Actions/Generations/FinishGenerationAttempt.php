@@ -7,7 +7,7 @@ namespace App\Actions\Generations;
 use App\Actions\GenerationRuns\AssertRunChildLiveAuthority;
 use App\Actions\GenerationRuns\LocksGenerationRun;
 use App\Data\Generations\ProviderAttemptMetadata;
-use App\Data\Generations\ValidatedMcqSet;
+use App\Data\Generations\ValidatedQuestionSet;
 use App\Enums\GenerationAttemptStatus;
 use App\Enums\GenerationErrorCode;
 use App\Exceptions\Generations\InvalidGenerationUsageException;
@@ -31,7 +31,7 @@ class FinishGenerationAttempt
         int $acceptedCount,
         ?ProviderAttemptMetadata $metadata = null,
         ?GenerationErrorCode $errorCode = null,
-        ?ValidatedMcqSet $accepted = null,
+        ?ValidatedQuestionSet $accepted = null,
     ): AiGenerationAttempt {
         return DB::transaction(function () use (
             $generationId,

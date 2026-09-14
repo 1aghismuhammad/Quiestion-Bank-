@@ -56,7 +56,7 @@ class AssertAdvancedBlueprintShape
                 ? $row['difficulty']
                 : DifficultyLevel::tryFrom((string) $row['difficulty']);
 
-            if ($type !== QuestionType::MULTIPLE_CHOICE || $difficulty === null) {
+            if ($type === null || $difficulty === null) {
                 throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
             }
 

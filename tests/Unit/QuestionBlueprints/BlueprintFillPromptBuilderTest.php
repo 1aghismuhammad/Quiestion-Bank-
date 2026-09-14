@@ -148,6 +148,76 @@ PROMPT),
         $this->assertStringContainsString('ctx_1 [element] Topik utama', $user);
     }
 
+    public function test_type_counts_select_v3_for_both_modes(): void
+    {
+        $builder = new BlueprintFillPromptBuilder;
+        $counts = [
+            'multiple_choice' => 4,
+            'true_false' => 4,
+            'essay' => 4,
+        ];
+
+        $this->assertSame(
+            BlueprintFillPromptBuilder::V3,
+            $builder->versionFor(BlueprintMode::Simple, ['multiple_choice' => 10, 'true_false' => 0, 'essay' => 0]),
+        );
+        $this->assertSame(BlueprintFillPromptBuilder::V3, $builder->versionFor(BlueprintMode::Advanced, $counts));
+    }
+
+    public function test_blank_or_unsupported_v3_identity_fails_closed(): void
+    {
+        $builder = new BlueprintFillPromptBuilder;
+        $counts = ['multiple_choice' => 10, 'true_false' => 0, 'essay' => 0];
+
+        config(['question_blueprint.multitype_prompt_version' => '']);
+
+        try {
+            $builder->versionFor(BlueprintMode::Simple, $counts);
+            $this->fail('Blank v3 identity must be rejected.');
+        } catch (BlueprintRejectedException $exception) {
+            $this->assertSame(BlueprintErrorCode::ValidationFailed, $exception->errorCode);
+        }
+
+        config(['question_blueprint.multitype_prompt_version' => BlueprintFillPromptBuilder::V1]);
+
+        try {
+            $builder->versionFor(BlueprintMode::Advanced, $counts);
+            $this->fail('v1 must not be used for typed composition fills.');
+        } catch (BlueprintRejectedException $exception) {
+            $this->assertSame(BlueprintErrorCode::ValidationFailed, $exception->errorCode);
+        }
+
+        config(['question_blueprint.multitype_prompt_version' => BlueprintFillPromptBuilder::V3]);
+        $this->assertSame(BlueprintFillPromptBuilder::V1, $builder->versionFor(BlueprintMode::Simple));
+        $this->assertSame(BlueprintFillPromptBuilder::V2, $builder->versionFor(BlueprintMode::Advanced));
+    }
+
+    public function test_v3_requires_exact_composition_and_question_type(): void
+    {
+        $builder = new BlueprintFillPromptBuilder;
+        $request = new BlueprintFillRequest(
+            'fake-model',
+            BlueprintFillPromptBuilder::V3,
+            'Kisi uji',
+            AssessmentType::FORMATIVE,
+            [new BlueprintFillContextRef('ctx_1', 'element', 'Topik utama', 'Cuplikan materi')],
+            BlueprintMode::Advanced,
+            12,
+            ['multiple_choice' => 4, 'true_false' => 4, 'essay' => 4],
+        );
+        $system = $builder->systemInstruction(BlueprintFillPromptBuilder::V3);
+        $user = $builder->userPrompt($request, BlueprintFillPromptBuilder::V3);
+        $schema = $builder->responseSchema(BlueprintFillPromptBuilder::V3);
+
+        $this->assertStringContainsString('exactly one question_type', $system);
+        $this->assertStringContainsString('Do not auto-confirm', $system);
+        $this->assertStringContainsString('Requested type composition:', $user);
+        $this->assertStringContainsString('multiple_choice: 4', $user);
+        $this->assertStringContainsString('true_false: 4', $user);
+        $this->assertStringContainsString('essay: 4', $user);
+        $this->assertContains('question_type', $schema['properties']['rows']['items']['required']);
+    }
+
     private function request(BlueprintMode $mode, ?int $total, string $version): BlueprintFillRequest
     {
         return new BlueprintFillRequest(

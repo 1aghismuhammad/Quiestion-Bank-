@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) completed v0.15.9 third corrective QA; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI) and remains pending final manual QA. Phase 5.7E is `COMPLETE`. Phase 5.7F (True/False and Essay) and Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) have not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D completed v0.15.9 third corrective QA; v0.15.11 records the post-manual-QA content/UX corrective and remains pending final manual QA. Phase 5.7E is `COMPLETE`. Phase 5.7F (True/False and Essay) and Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) have not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening) has not started. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D v0.15.9 third corrective QA passed; v0.15.11 content/UX corrective passed automated QA, pending final manual QA; Phase 5.7E `COMPLETE`; Phase 5.7F `NOT STARTED`; Phase 5.7G `NOT STARTED`)
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D `COMPLETE` (completed and committed before the Phase 5.7E baseline); Phase 5.7E `COMPLETE`; Phase 5.7F `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`; Phase 5.7G `NOT STARTED`)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -330,10 +330,14 @@ Phase 5.7E — Advanced MCQ (`COMPLETE`):
 
 Out of scope for 5.7E: True/False, Essay, mixed question types, Question Bank import, Question Set changes, generated-question editing, question DOCX, add/delete/reorder generated questions, Run cancellation, and parallel child execution.
 
-Phase 5.7F — True/False and Essay (`NOT STARTED`):
+Phase 5.7F — True/False and Essay (`IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`):
 
-- True/false and essay generation runtime, prompts, validation, and owner preview.
-- Mixed question types inside a Blueprint or Run.
+- Simple Blueprint/Run: one shared type among MCQ, True/False, or Essay; one difficulty; total 1–10; no shuffle; Free and Pro.
+- Advanced Blueprint/Run: mixed types and mixed difficulty; 1–5 rows; 1–10 per row; total 1–30; Pro gating unchanged from 5.7E. Totals 1–10 qualify by mixed difficulty, mixed type, or shuffle. `shuffle_options` is rejected when there is no MCQ row.
+- Historical AI fills with null `ai_fill_requested_type_counts` stay `blueprint-fill-v1` / `blueprint-fill-v2`. New typed fills persist canonical counts and use `blueprint-fill-v3`; per-type totals must match exactly; fill never auto-confirms.
+- True/False runtime `true-false-v1`: JSON boolean `correct_answer`, no generated options, `|true − false| ≤ 1` when N > 1, owner preview always Benar then Salah.
+- Essay runtime `essay-v1`: `question`, `model_answer`, `rubric`, `explanation`; rubric is bounded teacher text, not a table and not auto-grading.
+- Typed `ValidatedQuestionSet` contracts reconstruct from persisted child `question_type`. Sequential children, `ceil(n/10)` credits, one Usage, charge once / release once remain unchanged.
 
 Phase 5.7G — Run-to-Question-Bank import, review/edit flow, question DOCX, and final hardening (`NOT STARTED`):
 

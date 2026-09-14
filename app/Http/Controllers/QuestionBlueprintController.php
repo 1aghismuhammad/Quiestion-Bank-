@@ -12,6 +12,7 @@ use App\Actions\QuestionBlueprints\DownloadConfirmedBlueprintDocx;
 use App\Actions\QuestionBlueprints\QueueBlueprintAiFill;
 use App\Actions\QuestionBlueprints\UpdateBlueprintDraft;
 use App\Actions\Subscriptions\ResolveActivePro;
+use App\Data\QuestionBlueprints\BlueprintFillTypeCounts;
 use App\Enums\AssessmentType;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
@@ -20,6 +21,7 @@ use App\Enums\BlueprintMode;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
 use App\Enums\MaterialProfileElementOrigin;
+use App\Enums\QuestionType;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
 use App\Http\Requests\QuestionBlueprints\StoreBlueprintAiFillRequest;
 use App\Http\Requests\QuestionBlueprints\StoreQuestionBlueprintRequest;
@@ -61,7 +63,9 @@ class QuestionBlueprintController extends Controller
             'readyProfile' => $this->assertProfile->matchingReady($material),
             'isPro' => $this->resolveActivePro->handle($request->user()),
             'modes' => BlueprintMode::cases(),
+            'questionTypes' => QuestionType::cases(),
             'maxAdvancedTotal' => (int) config('question_blueprint.max_advanced_total_requested', 30),
+            'maxSimpleTotal' => (int) config('question_blueprint.max_total_requested', 10),
         ]);
     }
 
@@ -78,6 +82,7 @@ class QuestionBlueprintController extends Controller
             'mappingOptions' => $this->mappingOptions($material),
             'isPro' => $this->resolveActivePro->handle($request->user()),
             'modes' => BlueprintMode::cases(),
+            'questionTypes' => QuestionType::cases(),
         ]);
     }
 
@@ -126,6 +131,7 @@ class QuestionBlueprintController extends Controller
             'isPro' => $this->resolveActivePro->handle($request->user()),
             'modes' => BlueprintMode::cases(),
             'maxRows' => (int) config('question_blueprint.max_rows', 5),
+            'questionTypes' => QuestionType::cases(),
         ]);
     }
 
@@ -232,9 +238,10 @@ class QuestionBlueprintController extends Controller
 
         try {
             $mode = BlueprintMode::from((string) $request->validated('mode'));
+            $typeCounts = $this->resolvedFillTypeCounts($request, $mode);
             $target = $mode === BlueprintMode::Advanced
-                ? (int) $request->validated('target_total')
-                : null;
+                ? (int) ($request->validated('target_total') ?? array_sum($typeCounts))
+                : (int) $request->validated('target_total');
             $title = $request->validated('title');
             $assessment = $request->validated('assessment_type');
 
@@ -246,6 +253,7 @@ class QuestionBlueprintController extends Controller
                 is_string($assessment) ? AssessmentType::from($assessment) : null,
                 $mode,
                 $target,
+                $typeCounts,
             );
         } catch (BlueprintRejectedException $exception) {
             if (in_array($exception->errorCode, [
@@ -405,6 +413,34 @@ class QuestionBlueprintController extends Controller
             'elements' => $elements,
             'chunks' => $chunks,
         ];
+    }
+
+    /**
+     * @return array{multiple_choice: int, true_false: int, essay: int}
+     */
+    private function resolvedFillTypeCounts(StoreBlueprintAiFillRequest $request, BlueprintMode $mode): array
+    {
+        if ($mode === BlueprintMode::Simple) {
+            $type = QuestionType::from((string) $request->validated('question_type'));
+            $counts = BlueprintFillTypeCounts::fromSingleType(
+                $type,
+                (int) $request->validated('target_total'),
+            );
+            $counts->assertCompatibleWith($mode);
+
+            return $counts->toArray();
+        }
+
+        $rawCounts = $request->validated('type_counts');
+
+        if (! is_array($rawCounts)) {
+            throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
+        }
+
+        $counts = BlueprintFillTypeCounts::parse($rawCounts);
+        $counts->assertCompatibleWith($mode);
+
+        return $counts->toArray();
     }
 
     private function assertOwned(Request $request, Material $material, QuestionBlueprint $blueprint): void

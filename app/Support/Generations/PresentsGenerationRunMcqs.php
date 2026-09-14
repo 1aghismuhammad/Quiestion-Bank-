@@ -6,6 +6,7 @@ namespace App\Support\Generations;
 
 use App\Data\Generations\GenerationRunMcqPresentation;
 use App\Data\Generations\PresentedMcqQuestion;
+use App\Enums\QuestionType;
 use App\Models\AiGeneration;
 use App\Models\AiGenerationRun;
 
@@ -40,6 +41,9 @@ final class PresentsGenerationRunMcqs
                 $items[] = [
                     'child_index' => (int) $child->child_index,
                     'original_index' => $originalIndex,
+                    'question_type' => $child->question_type instanceof QuestionType
+                        ? $child->question_type
+                        : QuestionType::MULTIPLE_CHOICE,
                     'question' => $question,
                 ];
             }
@@ -75,6 +79,7 @@ final class PresentsGenerationRunMcqs
                 $offset + 1,
                 (int) $item['child_index'],
                 (int) $item['original_index'],
+                $item['question_type'],
                 $item['question'],
             );
         }
@@ -97,8 +102,41 @@ final class PresentsGenerationRunMcqs
         int $number,
         int $childIndex,
         int $originalIndex,
+        QuestionType $questionType,
         array $question,
     ): PresentedMcqQuestion {
+        if ($questionType === QuestionType::TRUE_FALSE) {
+            $correct = $question['correct_answer'] === true;
+
+            return new PresentedMcqQuestion(
+                $number,
+                $childIndex,
+                $originalIndex,
+                (string) ($question['question'] ?? ''),
+                ['Benar' => 'Benar', 'Salah' => 'Salah'],
+                $correct ? 'Benar' : 'Salah',
+                (string) ($question['explanation'] ?? ''),
+                [],
+                $questionType,
+            );
+        }
+
+        if ($questionType === QuestionType::ESSAY) {
+            return new PresentedMcqQuestion(
+                $number,
+                $childIndex,
+                $originalIndex,
+                (string) ($question['question'] ?? ''),
+                [],
+                '',
+                (string) ($question['explanation'] ?? ''),
+                [],
+                $questionType,
+                (string) ($question['model_answer'] ?? ''),
+                (string) ($question['rubric'] ?? ''),
+            );
+        }
+
         $canonicalOptions = [];
 
         foreach (self::OPTION_KEYS as $key) {
@@ -137,6 +175,7 @@ final class PresentsGenerationRunMcqs
             $displayedCorrect,
             (string) ($question['explanation'] ?? ''),
             $canonicalToDisplayed,
+            QuestionType::MULTIPLE_CHOICE,
         );
     }
 }

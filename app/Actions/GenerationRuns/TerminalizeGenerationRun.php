@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace App\Actions\GenerationRuns;
 
 use App\Actions\Generations\DetectDuplicateMcqQuestions;
-use App\Data\Generations\ValidatedMcqSet;
 use App\Enums\GenerationAttemptStatus;
 use App\Enums\GenerationErrorCode;
 use App\Enums\GenerationRunStatus;
 use App\Enums\GenerationStatus;
+use App\Enums\QuestionType;
 use App\Enums\UsageStatus;
 use App\Models\AiGeneration;
 use App\Models\AiGenerationAttempt;
 use App\Models\AiGenerationRun;
 use App\Models\AiGenerationRunItem;
 use App\Models\AiUsageLog;
+use App\Support\Generations\ReconstructValidatedQuestionSet;
 use Illuminate\Database\Eloquent\Collection;
 
 class TerminalizeGenerationRun
@@ -221,7 +222,19 @@ class TerminalizeGenerationRun
                 return false;
             }
 
-            $set = is_array($child->result_json) ? ValidatedMcqSet::fromStoredJson($child->result_json) : new ValidatedMcqSet([]);
+            if (! $child->question_type instanceof QuestionType) {
+                return false;
+            }
+
+            try {
+                $set = ReconstructValidatedQuestionSet::fromStored(
+                    $child->question_type,
+                    $child->result_json,
+                    (int) $item->requested_count,
+                );
+            } catch (\InvalidArgumentException) {
+                return false;
+            }
 
             if ($set->count() !== (int) $child->question_count || $set->count() !== (int) $item->requested_count) {
                 return false;

@@ -8,6 +8,7 @@ use App\Enums\AssessmentType;
 use App\Enums\BlueprintMode;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
+use App\Enums\QuestionType;
 use App\Models\QuestionBlueprint;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -42,6 +43,7 @@ class UpdateQuestionBlueprintRequest extends FormRequest
             'rows.*.indicator' => ['required', 'string', 'max:'.$maxText],
             'rows.*.cognitive_level' => ['required', Rule::enum(CognitiveLevel::class)],
             'rows.*.difficulty' => ['required', Rule::enum(DifficultyLevel::class)],
+            'rows.*.question_type' => ['sometimes', 'nullable', Rule::enum(QuestionType::class)],
             'rows.*.requested_count' => ['required', 'integer', 'min:1', 'max:'.$maxCount],
             'rows.*.sources' => ['required', 'array', 'min:1', 'max:'.(int) config('question_blueprint.max_contexts_per_row', 4)],
             'rows.*.sources.*' => ['required', 'string', 'regex:/^(element|chunk):\d+$/'],

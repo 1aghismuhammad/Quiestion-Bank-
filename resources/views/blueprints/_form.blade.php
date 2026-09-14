@@ -21,6 +21,7 @@
             'indicator' => $row->indicator,
             'cognitive_level' => $row->cognitive_level->value,
             'difficulty' => $row->difficulty->value,
+            'question_type' => $row->question_type->value,
             'requested_count' => $row->requested_count,
             'sources' => $sources,
         ];
@@ -30,6 +31,7 @@
         'indicator' => '',
         'cognitive_level' => 'understand',
         'difficulty' => 'medium',
+        'question_type' => 'multiple_choice',
         'requested_count' => 5,
         'sources' => [],
     ]]);
@@ -72,8 +74,8 @@
     </select>
 </div>
 
-<p class="muted" id="blueprint-simple-help" style="margin-top: 16px;">Mode sederhana: semua baris pilihan ganda dan satu tingkat kesulitan. Total soal 1–10. Maksimal 5 baris, 1–10 soal per baris.</p>
-<p class="muted" id="blueprint-advanced-help" style="margin-top: 16px;">Mode lanjutan: semua baris pilihan ganda. Total soal 1–30. Maksimal 5 baris, 1–10 soal per baris. Tingkat kesulitan boleh berbeda.</p>
+<p class="muted" id="blueprint-simple-help" style="margin-top: 16px;">Mode sederhana: semua baris memakai satu tipe soal (pilihan ganda, benar/salah, atau esai) dan satu tingkat kesulitan. Total soal 1–10. Maksimal 5 baris, 1–10 soal per baris.</p>
+<p class="muted" id="blueprint-advanced-help" style="margin-top: 16px;">Mode lanjutan: tipe soal dan tingkat kesulitan boleh berbeda antar baris. Total soal 1–30. Maksimal 5 baris, 1–10 soal per baris. Pengacakan opsi hanya untuk baris pilihan ganda.</p>
 <p id="blueprint-live-summary" style="margin-top: 8px;"><strong>Total soal:</strong> <span data-live-total>0</span> · <strong>Perkiraan kredit:</strong> <span data-live-credits>0</span></p>
 
 <div id="blueprint-rows">
@@ -83,6 +85,7 @@
             'row' => $row,
             'cognitiveLevels' => $cognitiveLevels,
             'difficulties' => $difficulties,
+            'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
             'mappingOptions' => $mappingOptions,
             'canRemove' => count($rows) > 1,
         ])
@@ -102,11 +105,13 @@
             'indicator' => '',
             'cognitive_level' => 'understand',
             'difficulty' => 'medium',
+            'question_type' => 'multiple_choice',
             'requested_count' => 5,
             'sources' => [],
         ],
         'cognitiveLevels' => $cognitiveLevels,
         'difficulties' => $difficulties,
+        'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
         'mappingOptions' => $mappingOptions,
         'canRemove' => true,
     ])

@@ -11,6 +11,7 @@ final readonly class BlueprintFillRequest
 {
     /**
      * @param  list<BlueprintFillContextRef>  $contexts
+     * @param  array{multiple_choice: int, true_false: int, essay: int}|null  $requestedTypeCounts
      */
     public function __construct(
         public string $model,
@@ -20,5 +21,6 @@ final readonly class BlueprintFillRequest
         public array $contexts,
         public BlueprintMode $mode = BlueprintMode::Simple,
         public ?int $requestedTotal = null,
+        public ?array $requestedTypeCounts = null,
     ) {}
 }

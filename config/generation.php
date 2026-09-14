@@ -14,6 +14,10 @@ return [
 
     'prompt_version' => env('GENERATION_PROMPT_VERSION', 'mcq-v3'),
 
+    'true_false_prompt_version' => env('GENERATION_TRUE_FALSE_PROMPT_VERSION', 'true-false-v1'),
+
+    'essay_prompt_version' => env('GENERATION_ESSAY_PROMPT_VERSION', 'essay-v1'),
+
     'max_questions' => (int) env('GENERATION_MAX_QUESTIONS', 10),
 
     'max_material_chars' => (int) env('GENERATION_MAX_MATERIAL_CHARS', 80000),

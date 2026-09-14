@@ -74,6 +74,7 @@
                     'maxRows' => $maxRows ?? 5,
                     'mappingOptions' => $mappingOptions,
                     'isPro' => $isPro,
+                    'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
                 ])
                 <button class="button" type="submit">Simpan draf</button>
             </form>
@@ -88,6 +89,7 @@
                         <th>Indikator</th>
                         <th>Level</th>
                         <th>Kesulitan</th>
+                        <th>Tipe</th>
                         <th>Jumlah</th>
                     </tr>
                 </thead>
@@ -99,6 +101,7 @@
                             <td>{{ $row->indicator }}</td>
                             <td>{{ $row->cognitive_level->label() }}</td>
                             <td>{{ $row->difficulty->value }}</td>
+                            <td>{{ $row->question_type->label() }}</td>
                             <td>{{ $row->requested_count }}</td>
                         </tr>
                     @endforeach

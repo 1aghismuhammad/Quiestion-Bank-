@@ -42,9 +42,12 @@ class RunBlueprintAiFill
 
         $blueprint = QuestionBlueprint::query()->find($blueprintId);
         $mode = $blueprint?->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple;
+        $typeCounts = is_array($blueprint?->ai_fill_requested_type_counts)
+            ? $blueprint->ai_fill_requested_type_counts
+            : null;
 
         try {
-            $promptVersion = $this->promptBuilder->versionFor($mode);
+            $promptVersion = $this->promptBuilder->versionFor($mode, $typeCounts);
         } catch (BlueprintRejectedException $exception) {
             $this->fail->handle(
                 $blueprintId,
@@ -122,6 +125,7 @@ class RunBlueprintAiFill
                 $built['catalog'],
                 $built['request']->mode,
                 $built['request']->requestedTotal,
+                $built['request']->requestedTypeCounts,
             );
             $this->persistSuccess->handle(
                 $blueprintId,

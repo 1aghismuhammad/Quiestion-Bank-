@@ -13,6 +13,7 @@ use App\Enums\BlueprintMode;
 use App\Enums\GenerationRunMode;
 use App\Enums\GenerationStatus;
 use App\Enums\OutputLanguage;
+use App\Enums\QuestionType;
 use App\Exceptions\GenerationRuns\GenerationRunRejectedException;
 use App\Http\Requests\GenerationRuns\StoreGenerationRunRequest;
 use App\Models\AiGenerationRun;
@@ -46,6 +47,18 @@ class GenerationRunController extends Controller
         $mode = $blueprint->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple;
         $isPro = app(ResolveActivePro::class)->handle($request->user());
         $isAdvanced = $mode === BlueprintMode::Advanced;
+        $typeSummary = $blueprint->rows
+            ->groupBy(fn ($row): string => $row->question_type instanceof QuestionType
+                ? $row->question_type->value
+                : QuestionType::MULTIPLE_CHOICE->value)
+            ->map(function ($rows, $type): string {
+                $label = QuestionType::from($type)->label();
+                $count = (int) $rows->sum('requested_count');
+
+                return $count.' '.$label;
+            })
+            ->values()
+            ->implode(' · ');
 
         return view('generation-runs.create', [
             'material' => $material,
@@ -58,6 +71,7 @@ class GenerationRunController extends Controller
             'isAdvanced' => $isAdvanced,
             'rowCount' => $blueprint->rows->count(),
             'canStart' => ! $isAdvanced || $isPro,
+            'typeSummary' => $typeSummary === '' ? QuestionType::MULTIPLE_CHOICE->label() : $typeSummary,
         ]);
     }
 

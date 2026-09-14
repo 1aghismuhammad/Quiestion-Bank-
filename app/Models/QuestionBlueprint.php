@@ -98,6 +98,7 @@ class QuestionBlueprint extends Model
             'mode' => BlueprintMode::class,
             'assessment_type' => AssessmentType::class,
             'ai_fill_requested_total' => 'integer',
+            'ai_fill_requested_type_counts' => 'array',
             'confirmed_at' => 'datetime',
             'queued_at' => 'datetime',
             'claimed_at' => 'datetime',

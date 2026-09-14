@@ -7,6 +7,7 @@ namespace App\Actions\QuestionBlueprints;
 use App\Data\QuestionBlueprints\BlueprintFillContextCatalogEntry;
 use App\Data\QuestionBlueprints\BlueprintFillContextRef;
 use App\Data\QuestionBlueprints\BlueprintFillRequest;
+use App\Data\QuestionBlueprints\BlueprintFillTypeCounts;
 use App\Enums\BlueprintAiFillStatus;
 use App\Enums\BlueprintErrorCode;
 use App\Enums\BlueprintLifecycleStatus;
@@ -67,12 +68,25 @@ class BuildBlueprintFillRequest
 
             $profile = $this->assertProfile->requireReferencedReady($material, (int) $locked->profile_version_id);
             $mode = $locked->mode instanceof BlueprintMode ? $locked->mode : BlueprintMode::Simple;
+            $typeCounts = is_array($locked->ai_fill_requested_type_counts)
+                ? $locked->ai_fill_requested_type_counts
+                : null;
 
             if ($mode === BlueprintMode::Advanced) {
                 $target = $locked->ai_fill_requested_total;
                 $max = (int) config('question_blueprint.max_advanced_total_requested', 30);
 
                 if ($target === null || (int) $target < 1 || (int) $target > $max) {
+                    throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
+                }
+            }
+
+            if ($typeCounts !== null) {
+                $parsed = BlueprintFillTypeCounts::parse($typeCounts);
+                $parsed->assertCompatibleWith($mode);
+
+                if ($mode === BlueprintMode::Advanced
+                    && (int) $locked->ai_fill_requested_total !== $parsed->total()) {
                     throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
                 }
             }
@@ -184,6 +198,9 @@ class BuildBlueprintFillRequest
             $contexts,
             $blueprint->mode instanceof BlueprintMode ? $blueprint->mode : BlueprintMode::Simple,
             $blueprint->ai_fill_requested_total === null ? null : (int) $blueprint->ai_fill_requested_total,
+            is_array($blueprint->ai_fill_requested_type_counts)
+                ? $blueprint->ai_fill_requested_type_counts
+                : null,
         );
 
         $serialized = json_encode([

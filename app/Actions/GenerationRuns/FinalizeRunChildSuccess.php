@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\GenerationRuns;
 
-use App\Data\Generations\ValidatedMcqSet;
+use App\Data\Generations\ValidatedQuestionSet;
 use App\Enums\GenerationStatus;
 use App\Exceptions\GenerationRuns\GenerationRunChildAuthorityInvalidException;
 use App\Exceptions\Generations\InvalidGenerationUsageException;
@@ -22,7 +22,7 @@ class FinalizeRunChildSuccess
         private DispatchQueuedRunChild $dispatchQueued,
     ) {}
 
-    public function handle(int $generationId, string $executionToken, ValidatedMcqSet $questions): AiGeneration
+    public function handle(int $generationId, string $executionToken, ValidatedQuestionSet $questions): AiGeneration
     {
         $dispatch = null;
 

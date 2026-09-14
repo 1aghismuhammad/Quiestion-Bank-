@@ -58,7 +58,7 @@ class PersistBlueprintRows
                 'difficulty' => $row['difficulty'] instanceof DifficultyLevel
                     ? $row['difficulty']
                     : DifficultyLevel::from((string) $row['difficulty']),
-                'question_type' => QuestionType::MULTIPLE_CHOICE,
+                'question_type' => $this->resolveQuestionType($row['question_type'] ?? null),
                 'requested_count' => (int) $row['requested_count'],
                 'origin' => ($row['origin'] ?? null) instanceof BlueprintRowOrigin
                     ? $row['origin']
@@ -83,5 +83,24 @@ class PersistBlueprintRows
                 ]);
             }
         }
+    }
+
+    private function resolveQuestionType(mixed $raw): QuestionType
+    {
+        if ($raw instanceof QuestionType) {
+            return $raw;
+        }
+
+        if ($raw === null || $raw === '') {
+            return QuestionType::MULTIPLE_CHOICE;
+        }
+
+        $type = QuestionType::tryFrom((string) $raw);
+
+        if ($type === null) {
+            throw new BlueprintRejectedException(BlueprintErrorCode::ValidationFailed);
+        }
+
+        return $type;
     }
 }

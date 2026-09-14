@@ -5,9 +5,9 @@
 Prompt Engine mengubah materi dan konfigurasi user menjadi request Google Gemini yang terstruktur, tervalidasi, versioned, dan dapat diaudit.
 
 - Provider MVP: Google Gemini (Laravel HTTP Client, `generateContent`, JSON schema).
-- Prompt source of truth: `McqPromptBuilder` in code. Version string from `config('generation.prompt_version')` via `McqPromptBuilder::version()`.
+- Prompt source of truth: `McqPromptBuilder`, `TrueFalsePromptBuilder`, and `EssayPromptBuilder` in code. MCQ version from `config('generation.prompt_version')` via `McqPromptBuilder::version()`. True/False from `config('generation.true_false_prompt_version')`. Essay from `config('generation.essay_prompt_version')`.
 - Database mapping: `ai_generations`, `ai_usage_logs`, `ai_generation_attempts`, plus Phase 5.7C Blueprint fill attempts and Phase 5.7D run-child bounded spans. There is no `prompt_versions` table. Prompt version is stored **per attempt**, not on Start/`ai_generations`.
-- Runtime Phase 4: multiple choice only. Output harus berupa JSON, bukan Markdown atau prose bebas. Preview UI merender `result_json` hanya ketika `generation_status=completed`.
+- Runtime Phase 4: multiple choice only. Output harus berupa JSON, bukan Markdown atau prose bebas. Preview UI merender `result_json` hanya ketika `generation_status=completed`. Phase 5.7F Generation Run children execute True/False and Essay with typed contracts.
 - Bahasa output dipilih user (`id`/`en`), bukan bahasa Material.
 
 ## Configuration Dimensions
@@ -51,7 +51,7 @@ Satu `ai_generations` menghasilkan satu question type agar schema output, valida
 
 ## Prompt Composition
 
-Prompt dibangun oleh `McqPromptBuilder` dengan urutan:
+Prompt dibangun oleh builder per tipe (`McqPromptBuilder`, `TrueFalsePromptBuilder`, `EssayPromptBuilder`) dengan urutan:
 
 1. System instruction dan safety boundary (Material is untrusted DATA).
 2. Blueprint row instructions and immutable row attributes when a Generation Run child carries a `BlueprintGenerationContext` (`<<<BLUEPRINT_ROW>>>` … `<<<END_BLUEPRINT_ROW>>>`).
@@ -85,9 +85,40 @@ Rules:
 - Explanation wajib dan non-empty.
 - Duplicate detection deterministik (normalisasi teks); tidak ada second AI checker.
 - Panjang set pada success harus sama dengan `question_count`. Mid-loop boleh partial.
-- True/false dan essay schema di bawah tetap rancangan produk; runtime 4.3+4.4 tidak memanggil provider untuk tipe itu.
+- True/false dan essay schema historis di bawah adalah rancangan Question Bank. Runtime 4.3+4.4 tidak memanggil provider untuk tipe itu. Runtime Generation Run Phase 5.7F memakai kontrak persistensi typed di bagian True/False dan Essay berikut.
 
-## True/False Schema
+## True/False persistence contract (Phase 5.7F)
+
+```json
+{
+  "question": "...",
+  "correct_answer": true,
+  "explanation": "..."
+}
+```
+
+`ai_generations.result_json` stores the validated question array. `correct_answer` is a JSON boolean only (`true` / `false`), never a string. Do not persist generated options. Reconstruct from the child `question_type`, never by guessing from JSON. When N > 1, `|true − false| ≤ 1`. Compound statements and double negation fail validation. Owner preview always lists Benar then Salah and never option-shuffles True/False.
+
+Prompt identity: `true-false-v1` from `config('generation.true_false_prompt_version')`. Unsupported identities are rejected and never sent labelled as another contract.
+
+## Essay persistence contract (Phase 5.7F)
+
+```json
+{
+  "question": "...",
+  "model_answer": "...",
+  "rubric": "...",
+  "explanation": "..."
+}
+```
+
+Essay items have no MCQ options and no letter `correct_answer`. `rubric` is bounded structured teacher text covering required elements, full credit, partial credit, and insufficient/incorrect performance. It is not a table and not an auto-grading engine.
+
+Prompt identity: `essay-v1` from `config('generation.essay_prompt_version')`. Unsupported identities are rejected and never sent labelled as another contract.
+
+## True/False Schema (Question Bank later)
+
+The Question Bank product schema below remains deferred. Phase 5 Question Bank is MCQ-only. Do not import Run True/False rows into Question Sets in Phase 5.7F.
 
 ```json
 {
@@ -110,14 +141,16 @@ Rules:
 }
 ```
 
-Validation:
+Validation (Question Bank later):
 
 - Wajib memiliki tepat dua options.
 - Label canonical: `TRUE` dan `FALSE`.
 - Tepat satu option benar.
 - Statement tidak boleh mengandung dua klaim independen yang menghasilkan jawaban ambigu.
 
-## Essay Schema
+## Essay Schema (Question Bank later)
+
+The Question Bank product schema below remains deferred. Phase 5 Question Bank is MCQ-only. Do not import Run Essay rows into Question Sets in Phase 5.7F.
 
 ```json
 {
@@ -142,7 +175,7 @@ Validation:
 - Essay tidak memiliki `options`.
 - `model_answer` dan `rubric` wajib.
 - Rubric harus dapat digunakan untuk penilaian dan tidak hanya mengulang model answer.
-- Saat persistence, `model_answer` dipetakan ke `questions.correct_answer`.
+- Saat persistence Question Bank later, `model_answer` dipetakan ke `questions.correct_answer`. Phase 5.7F Run persistence keeps `model_answer` on the typed result contract.
 
 ## Quality Rules
 
@@ -165,7 +198,7 @@ Validation:
 ## Validation and Retry
 
 1. Parse response sebagai JSON.
-2. Validasi setiap kandidat MCQ (opsi A–D, satu jawaban, explanation).
+2. Validasi setiap kandidat sesuai tipe child: MCQ (opsi A–D, satu jawaban, explanation), True/False (boolean, satu proposisi, distribusi seimbang), atau Essay (`model_answer` + `rubric` + explanation).
 3. Duplicate detection deterministik terhadap slot yang sudah accepted.
 4. Targeted repair: minta hanya jumlah slot yang masih invalid/missing; jangan regenerate seluruh set.
 5. Jika invalid atau provider error: automatic retry pada Generation dan reservation yang sama sampai 3 HTTP started. Jangan persist full raw response. Persist `result_json` partial yang valid.
@@ -176,8 +209,9 @@ Output invalid/partial bukan success. Phase 4 tidak menyimpan generated question
 
 ## Versioning
 
-- Config `generation.prompt_version` (contoh `mcq-v1`, `mcq-v2`, atau `mcq-v3`) adalah identitas prompt deploy saat ini. Identitas yang tidak didukung ditolak dan tidak dikirim sebagai kontrak lain.
-- `mcq-v1` mempertahankan teks produksi asli. `mcq-v2` menambahkan semantik baris Blueprint dan larangan soal mekanika dokumen. `mcq-v3` mempertahankan semantik `mcq-v2` dan mewajibkan penjelasan mengidentifikasi jawaban benar lewat isi substansi, bukan huruf A/B/C/D atau referensi posisi opsi. Default deploy adalah `mcq-v3`.
+- Config `generation.prompt_version` (contoh `mcq-v1`, `mcq-v2`, atau `mcq-v3`) adalah identitas prompt MCQ deploy saat ini. Identitas yang tidak didukung ditolak dan tidak dikirim sebagai kontrak lain.
+- `mcq-v1` mempertahankan teks produksi asli. `mcq-v2` menambahkan semantik baris Blueprint dan larangan soal mekanika dokumen. `mcq-v3` mempertahankan semantik `mcq-v2` dan mewajibkan penjelasan mengidentifikasi jawaban benar lewat isi substansi, bukan huruf A/B/C/D atau referensi posisi opsi. Default deploy MCQ adalah `mcq-v3`.
+- `generation.true_false_prompt_version` default `true-false-v1`. `generation.essay_prompt_version` default `essay-v1`. Typed fills use `question_blueprint.multitype_prompt_version` default `blueprint-fill-v3`.
 - Perubahan prompt menaikkan version string dan harus diikuti tes.
 - Attempt yang dijalankan setelah deploy baru mencatat version baru, meskipun Generation di-queue di deploy lama.
 - Tidak ada tabel `prompt_versions` dan tidak ada `ai_generations.prompt_version`.
@@ -230,14 +264,14 @@ Material Profile analysis has its own provider boundary and prompt contract. It 
 - `material_profile_attempts` stores only provider, model, prompt version, purpose, status, input/output/total tokens, latency, a bounded error code, and timestamps.
 - The owner surface shows only validated Element text, validated evidence excerpts with canonical boundaries, Step counts, and mapped Indonesian messages. Workflow tokens, Step execution tokens, Attempt rows, model names, and provider payloads are never exposed.
 
-## Blueprint Fill Prompt Contracts (Phase 5.7C+E)
+## Blueprint Fill Prompt Contracts (Phase 5.7C+E+F)
 
 Blueprint AI fill has its own provider boundary and prompt contract. It never reuses the question-generation provider, the Material Profile provider, or `ai_usage_logs`.
 
 - Provider contract: `QuestionBlueprintAnalysisProvider`. The Gemini adapter is `GeminiQuestionBlueprintProvider`. Domain Actions and `FillQuestionBlueprintJob` never import the Gemini class.
-- Prompt source of truth: `BlueprintFillPromptBuilder`. `versionFor(mode)` reads `question_blueprint.prompt_version` for Simple (only `blueprint-fill-v1`) and `question_blueprint.advanced_prompt_version` for Advanced (only `blueprint-fill-v2`). `version()` delegates to Simple. `RunBlueprintAiFill` resolves that identity only after `ClaimBlueprintAiFill` returns Claimed or Resumed. Unsupported, blank, or cross-mode identities are then rejected before provider HTTP and never sent labelled as another contract. Duplicate same-token and stale jobs return before prompt resolution and cannot terminalize another workflow.
-- `blueprint-fill-v1` stays the exact Simple contract (one difficulty, total 1–10). `blueprint-fill-v2` allows mixed difficulty and requires the sum of `requested_count` to equal the requested target total (1–30).
-- Advanced `ai_fill_requested_total` is workflow input stored with new workflow/step tokens. The worker reads it only after those tokens match. Canonical totals are always `SUM(rows.requested_count)`.
+- Prompt source of truth: `BlueprintFillPromptBuilder`. `versionFor(mode, typeCounts)` reads `question_blueprint.prompt_version` for historical Simple fills with null type counts (only `blueprint-fill-v1`), `question_blueprint.advanced_prompt_version` for historical Advanced fills with null type counts (only `blueprint-fill-v2`), and `question_blueprint.multitype_prompt_version` when type counts are present (only `blueprint-fill-v3`). `version()` delegates to Simple. `RunBlueprintAiFill` claims workflow authority first, then resolves identity. Unsupported, blank, or cross-mode identities are then rejected before provider HTTP and never sent labelled as another contract. Duplicate same-token and stale jobs return before prompt resolution and cannot terminalize another workflow.
+- `blueprint-fill-v1` stays the exact Simple MCQ contract (one difficulty, total 1–10). `blueprint-fill-v2` stays the exact Advanced MCQ contract (mixed difficulty, sum equals requested target total). `blueprint-fill-v3` requires exact per-type composition for `multiple_choice`, `true_false`, and `essay` and never auto-confirms.
+- Advanced `ai_fill_requested_total` is workflow input stored with new workflow/step tokens. Typed `ai_fill_requested_type_counts` is stored the same way. The worker reads them only after those tokens match. Canonical totals are always `SUM(rows.requested_count)`. Historical null type counts keep v1/v2.
 - Audit: `question_blueprint_attempts` only. Zero `ai_usage_logs`. Zero generation credits.
 - Structured JSON, 60-second HTTP timeout, 10-second connect timeout. API key from `GEMINI_API_KEY` only, never in a URL, never logged.
 - Request context is a bounded list of opaque server-issued `context_ref` values plus excerpts. The provider returns `context_ref`, `excerpt_start`, and `excerpt_end` as UTF-8 code-point offsets into that exact excerpt. The server converts relative offsets to canonical offsets and hashes. Canonical offsets, ownership, IDs, fingerprint, and sort order supplied by the provider reject the whole response.

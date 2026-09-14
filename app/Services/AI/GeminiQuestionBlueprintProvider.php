@@ -36,7 +36,7 @@ class GeminiQuestionBlueprintProvider implements QuestionBlueprintAnalysisProvid
             $request->model,
             $this->promptBuilder->systemInstruction($request->promptVersion),
             $this->promptBuilder->userPrompt($request, $request->promptVersion),
-            $this->promptBuilder->responseSchema(),
+            $this->promptBuilder->responseSchema($request->promptVersion),
             $request->promptVersion,
         );
 
@@ -71,6 +71,7 @@ class GeminiQuestionBlueprintProvider implements QuestionBlueprintAnalysisProvid
                 $row['difficulty'] ?? null,
                 $row['requested_count'] ?? null,
                 $contexts,
+                $row['question_type'] ?? null,
             );
         }
 

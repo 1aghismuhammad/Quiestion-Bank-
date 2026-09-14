@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Tests\Feature\Generations;
 
 use App\Data\Generations\BlueprintGenerationContext;
+use App\Data\Generations\EssayQuestionCandidate;
 use App\Data\Generations\GenerationProviderRequest;
+use App\Data\Generations\McqQuestionCandidate;
+use App\Data\Generations\TrueFalseQuestionCandidate;
 use App\Enums\AssessmentType;
 use App\Enums\CognitiveLevel;
 use App\Enums\DifficultyLevel;
 use App\Enums\GenerationAttemptPurpose;
 use App\Enums\GenerationErrorCode;
 use App\Enums\OutputLanguage;
+use App\Enums\QuestionType;
 use App\Exceptions\Generations\GenerationConfigurationException;
 use App\Exceptions\Generations\GenerationMalformedResponseException;
 use App\Exceptions\Generations\GenerationProviderAuthException;
@@ -243,6 +247,271 @@ class GeminiQuestionGenerationProviderTest extends TestCase
         });
     }
 
+    public function test_true_false_schema_uses_json_boolean_and_parses_only_true_false_candidates(): void
+    {
+        config(['generation.true_false_prompt_version' => 'true-false-v1']);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::trueFalseQuestions(2, 'TfProvider')),
+                200,
+            ),
+        ]);
+
+        $result = $this->provider()->generate($this->typedRequest(QuestionType::TRUE_FALSE, 2));
+
+        $this->assertCount(2, $result->candidates);
+        $this->assertContainsOnlyInstancesOf(TrueFalseQuestionCandidate::class, $result->candidates);
+        $this->assertFalse(collect($result->candidates)->contains(
+            fn (mixed $candidate): bool => $candidate instanceof McqQuestionCandidate || $candidate instanceof EssayQuestionCandidate,
+        ));
+
+        Http::assertSent(function ($request): bool {
+            $schema = $request->data()['generationConfig']['responseSchema'] ?? [];
+            $item = $schema['properties']['questions']['items']['properties'] ?? [];
+            $this->assertSame('boolean', $item['correct_answer']['type'] ?? null);
+            $this->assertArrayNotHasKey('options', $item);
+            $this->assertSame(
+                ['question', 'correct_answer', 'explanation'],
+                $schema['properties']['questions']['items']['required'] ?? null,
+            );
+
+            return true;
+        });
+    }
+
+    public function test_essay_schema_requires_four_fields_and_parses_only_essay_candidates(): void
+    {
+        config(['generation.essay_prompt_version' => 'essay-v1']);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::essayQuestions(2, 'EsProvider')),
+                200,
+            ),
+        ]);
+
+        $result = $this->provider()->generate($this->typedRequest(QuestionType::ESSAY, 2));
+
+        $this->assertCount(2, $result->candidates);
+        $this->assertContainsOnlyInstancesOf(EssayQuestionCandidate::class, $result->candidates);
+        $this->assertFalse(collect($result->candidates)->contains(
+            fn (mixed $candidate): bool => $candidate instanceof McqQuestionCandidate || $candidate instanceof TrueFalseQuestionCandidate,
+        ));
+
+        Http::assertSent(function ($request): bool {
+            $schema = $request->data()['generationConfig']['responseSchema'] ?? [];
+            $item = $schema['properties']['questions']['items']['properties'] ?? [];
+            $this->assertArrayHasKey('model_answer', $item);
+            $this->assertArrayHasKey('rubric', $item);
+            $this->assertArrayNotHasKey('options', $item);
+            $this->assertSame(
+                ['question', 'model_answer', 'rubric', 'explanation'],
+                $schema['properties']['questions']['items']['required'] ?? null,
+            );
+
+            return true;
+        });
+    }
+
+    public function test_cross_type_prompt_identity_fails_before_http(): void
+    {
+        config(['generation.true_false_prompt_version' => 'true-false-v1']);
+        Http::fake();
+
+        try {
+            $this->provider()->generate($this->typedRequest(
+                QuestionType::TRUE_FALSE,
+                1,
+                promptVersion: McqPromptBuilder::V3,
+            ));
+            $this->fail('Cross-type prompt identity must fail before HTTP.');
+        } catch (GenerationConfigurationException) {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_unsupported_true_false_prompt_identity_fails_before_http(): void
+    {
+        config(['generation.true_false_prompt_version' => 'true-false-v1']);
+        Http::fake();
+
+        try {
+            $this->provider()->generate($this->typedRequest(
+                QuestionType::TRUE_FALSE,
+                1,
+                promptVersion: 'true-false-v9',
+            ));
+            $this->fail('Unsupported True/False identity must fail before HTTP.');
+        } catch (GenerationConfigurationException) {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_blank_true_false_and_essay_prompt_configuration_fails_before_http(): void
+    {
+        Http::fake();
+
+        config(['generation.true_false_prompt_version' => '']);
+
+        try {
+            $this->provider()->generate($this->typedRequest(QuestionType::TRUE_FALSE, 1));
+            $this->fail('Blank True/False prompt configuration must fail before HTTP.');
+        } catch (GenerationConfigurationException) {
+            Http::assertNothingSent();
+        }
+
+        config([
+            'generation.true_false_prompt_version' => 'true-false-v1',
+            'generation.essay_prompt_version' => '',
+        ]);
+
+        try {
+            $this->provider()->generate($this->typedRequest(QuestionType::ESSAY, 1));
+            $this->fail('Blank Essay prompt configuration must fail before HTTP.');
+        } catch (GenerationConfigurationException) {
+            Http::assertNothingSent();
+        }
+    }
+
+    public function test_typed_prompts_carry_immutable_blueprint_row_attributes(): void
+    {
+        config([
+            'generation.true_false_prompt_version' => 'true-false-v1',
+            'generation.essay_prompt_version' => 'essay-v1',
+        ]);
+        $blueprint = new BlueprintGenerationContext(
+            objective: 'Tujuan typed.',
+            topic: 'Topik typed',
+            indicator: 'Indikator typed.',
+            cognitiveLevel: CognitiveLevel::Evaluate,
+            difficulty: DifficultyLevel::HARD,
+            assessmentType: AssessmentType::SUMMATIVE,
+            requestedCount: 2,
+        );
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::trueFalseQuestions(2, 'TfRow')),
+                200,
+            ),
+        ]);
+        $this->provider()->generate($this->typedRequest(
+            QuestionType::TRUE_FALSE,
+            2,
+            blueprint: $blueprint,
+        ));
+        Http::assertSent(function ($request): bool {
+            $user = $request->data()['contents'][0]['parts'][0]['text'] ?? '';
+            $this->assertStringContainsString('<<<BLUEPRINT_ROW>>>', $user);
+            $this->assertStringContainsString('Tujuan typed.', $user);
+            $this->assertStringContainsString('Topik typed', $user);
+            $this->assertStringContainsString('Indikator typed.', $user);
+            $this->assertStringContainsString('Cognitive level: evaluate', $user);
+            $this->assertStringContainsString('Question type: true_false', $user);
+
+            return true;
+        });
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::essayQuestions(2, 'EsRow')),
+                200,
+            ),
+        ]);
+        $this->provider()->generate($this->typedRequest(
+            QuestionType::ESSAY,
+            2,
+            blueprint: $blueprint,
+        ));
+        Http::assertSent(function ($request): bool {
+            $user = $request->data()['contents'][0]['parts'][0]['text'] ?? '';
+            $this->assertStringContainsString('<<<BLUEPRINT_ROW>>>', $user);
+            $this->assertStringContainsString('Tujuan typed.', $user);
+            $this->assertStringContainsString('Question type: essay', $user);
+            $this->assertStringNotContainsString('"options"', json_encode($request->data()['generationConfig']['responseSchema'] ?? []));
+
+            return true;
+        });
+    }
+
+    public function test_true_false_repair_includes_exact_remaining_counts(): void
+    {
+        config(['generation.true_false_prompt_version' => 'true-false-v1']);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success([
+                    GeminiFakeResponses::trueFalse('Repair false 1', false),
+                    GeminiFakeResponses::trueFalse('Repair false 2', false),
+                ]),
+                200,
+            ),
+        ]);
+
+        $this->provider()->repair($this->typedRequest(
+            QuestionType::TRUE_FALSE,
+            2,
+            purpose: GenerationAttemptPurpose::REPAIR,
+            accepted: ['Accepted true 1', 'Accepted true 2'],
+            remainingTrue: 0,
+            remainingFalse: 2,
+        ));
+
+        Http::assertSent(function ($request): bool {
+            $user = $request->data()['contents'][0]['parts'][0]['text'] ?? '';
+            $this->assertStringContainsString('exactly 0 true and 2 false', $user);
+            $this->assertStringContainsString('Accepted true 1', $user);
+            $this->assertSame('application/json', $request->data()['generationConfig']['responseMimeType'] ?? null);
+
+            return true;
+        });
+    }
+
+    public function test_essay_repair_requests_only_missing_slots(): void
+    {
+        config(['generation.essay_prompt_version' => 'essay-v1']);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::essayQuestions(1, 'RepairEssay')),
+                200,
+            ),
+        ]);
+
+        $this->provider()->repair($this->typedRequest(
+            QuestionType::ESSAY,
+            1,
+            purpose: GenerationAttemptPurpose::REPAIR,
+            accepted: ['Already accepted essay'],
+        ));
+
+        Http::assertSent(function ($request): bool {
+            $user = $request->data()['contents'][0]['parts'][0]['text'] ?? '';
+            $this->assertStringContainsString('Requested count: 1', $user);
+            $this->assertStringContainsString('missing or invalid slots', $user);
+            $this->assertStringContainsString('Already accepted essay', $user);
+
+            return true;
+        });
+    }
+
+    public function test_typed_provider_result_does_not_include_raw_prompt_or_body(): void
+    {
+        config(['generation.true_false_prompt_version' => 'true-false-v1']);
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                GeminiFakeResponses::success(GeminiFakeResponses::trueFalseQuestions(1, 'Meta')),
+                200,
+            ),
+        ]);
+
+        $result = $this->provider()->generate($this->typedRequest(QuestionType::TRUE_FALSE, 1));
+        $encoded = json_encode($result->metadata, JSON_THROW_ON_ERROR);
+
+        $this->assertStringNotContainsString('systemInstruction', $encoded);
+        $this->assertStringNotContainsString('<<<MATERIAL>>>', $encoded);
+        $this->assertStringNotContainsString('You are a true/false', $encoded);
+        $this->assertSame('google_gemini', $result->metadata->provider);
+        $this->assertSame('STOP', $result->metadata->finishReason);
+    }
+
     private function provider(): GeminiQuestionGenerationProvider
     {
         return $this->app->make(GeminiQuestionGenerationProvider::class);
@@ -265,6 +534,36 @@ class GeminiQuestionGenerationProviderTest extends TestCase
             materialContent: 'Fotosintesis membutuhkan cahaya.',
             purpose: $purpose,
             model: (string) config('generation.primary_model'),
+        );
+    }
+
+    /**
+     * @param  list<string>  $accepted
+     */
+    private function typedRequest(
+        QuestionType $type,
+        int $count,
+        GenerationAttemptPurpose $purpose = GenerationAttemptPurpose::INITIAL,
+        array $accepted = [],
+        ?string $promptVersion = null,
+        ?int $remainingTrue = null,
+        ?int $remainingFalse = null,
+        ?BlueprintGenerationContext $blueprint = null,
+    ): GenerationProviderRequest {
+        return new GenerationProviderRequest(
+            outputLanguage: OutputLanguage::ID,
+            difficultyLevel: DifficultyLevel::MEDIUM,
+            assessmentType: AssessmentType::FORMATIVE,
+            requestedCount: $count,
+            acceptedQuestionTexts: $accepted,
+            materialContent: 'Fotosintesis membutuhkan cahaya.',
+            purpose: $purpose,
+            model: (string) config('generation.primary_model'),
+            blueprintContext: $blueprint,
+            questionType: $type,
+            promptVersion: $promptVersion,
+            trueFalseRemainingTrue: $remainingTrue,
+            trueFalseRemainingFalse: $remainingFalse,
         );
     }
 }

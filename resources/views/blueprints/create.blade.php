@@ -21,6 +21,7 @@
                 'maxRows' => $maxRows,
                 'mappingOptions' => $mappingOptions,
                 'isPro' => $isPro,
+                'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
             ])
             <button class="button" type="submit">Simpan draf</button>
         </form>

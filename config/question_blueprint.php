@@ -26,6 +26,7 @@ return [
     'primary_model' => env('QUESTION_BLUEPRINT_PRIMARY_MODEL', 'gemini-3.5-flash-lite'),
     'prompt_version' => env('QUESTION_BLUEPRINT_PROMPT_VERSION', 'blueprint-fill-v1'),
     'advanced_prompt_version' => env('QUESTION_BLUEPRINT_ADVANCED_PROMPT_VERSION', 'blueprint-fill-v2'),
+    'multitype_prompt_version' => env('QUESTION_BLUEPRINT_MULTITYPE_PROMPT_VERSION', 'blueprint-fill-v3'),
     'max_output_tokens' => (int) env('QUESTION_BLUEPRINT_MAX_OUTPUT_TOKENS', 4096),
     'backoff_seconds' => [5, 15],
     'status_poll_interval_ms' => 5_000,

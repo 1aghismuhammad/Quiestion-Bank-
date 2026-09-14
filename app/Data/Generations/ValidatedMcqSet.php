@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Data\Generations;
 
-final readonly class ValidatedMcqSet
+final readonly class ValidatedMcqSet implements ValidatedQuestionSet
 {
     /**
      * @param  list<ValidatedMcqQuestion>  $questions
@@ -36,6 +36,14 @@ final readonly class ValidatedMcqSet
             fn (ValidatedMcqQuestion $question): string => $question->question,
             $this->questions,
         );
+    }
+
+    /**
+     * @return list<ValidatedMcqQuestion>
+     */
+    public function items(): array
+    {
+        return $this->questions;
     }
 
     /**
