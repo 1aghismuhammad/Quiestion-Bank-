@@ -22,3 +22,9 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# QA Archives
+phase-*-qa.zip
+question.zip
+qa-archive*.zip
+phase-qa-archive-*.zip
