@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="MySqlConcurrency">
+            <directory>tests/Feature/MySqlConcurrency</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="H3_MYSQL_ENABLED" value="true"/>
+        <env name="H3_DB_HOST" value="127.0.0.1"/>
+        <env name="H3_DB_PORT" value="3306"/>
+        <env name="H3_DB_DATABASE" value="ai_question_bank_h3_test"/>
+        <env name="H3_DB_USERNAME" value="root"/>
+        <env name="H3_DB_PASSWORD" value=""/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+    </php>
+</phpunit>
