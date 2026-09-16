@@ -80,5 +80,7 @@ Mulai dari [README](README.md) untuk peta lengkap dokumentasi, lalu gunakan:
 - [Database Reference](docs/database/DATABASE_REFERENCE.md)
 - [Prompt Engine Rules](docs/ai/PROMPT_ENGINE_RULES.md)
 - [Development Rules](docs/rules/DEVELOPMENT_RULES.md)
+- [Local Development](docs/operations/LOCAL_DEVELOPMENT.md)
+- [Database Backup Recovery](docs/operations/DATABASE_BACKUP_RECOVERY.md)
 - [Development Roadmap](docs/project-management/PHASE_ROADMAP.md)
 - [Change Log](docs/project-management/CHANGE_LOG.md)

@@ -28,3 +28,15 @@ phase-*-qa.zip
 question.zip
 qa-archive*.zip
 phase-qa-archive-*.zip
+
+# Database Backups & Artifacts
+/backups/
+/recovery/
+/database/backups/
+*.sql.gz
+*.sql.zst
+*.dump
+
+# Protect Material Storage (keep .gitignore)
+/storage/app/materials/*
+!/storage/app/materials/.gitignore

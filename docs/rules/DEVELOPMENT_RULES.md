@@ -115,6 +115,16 @@ Checklist perubahan schema:
 5. Tambah atau update test.
 6. Catat database impact di changelog.
 
+## Data Preservation & Operations
+
+- **Normal Development Database is Persistent**: `ai_question_bank` is VALUABLE PERSISTENT DEVELOPMENT DATA. It is NOT disposable, temporary, test-only, or safe to reset. It must NEVER be deleted or reset via `migrate:fresh`, `migrate:refresh`, `migrate:reset`, `migrate:rollback`, or `db:wipe`. A technical guard blocks these destructive commands at runtime.
+- **Double Human Confirmation Rule**: Any mutating command (`migrate`, `db:seed`) targeting the normal development, staging, or production database requires TWO explicit, unique human approvals before execution.
+- **Migration Policy**: Forward migrations (`php artisan migrate`) are NOT technically blocked, but require runtime DB verification, double human confirmation, backup/recovery awareness, preflight for existing data, and post-migration integrity audits. Database evolution must work against EXISTING persistent data.
+- **Seeding Policy**: `php artisan db:seed` requires double human confirmation on `ai_question_bank`. Before seeding, operators must identify the runtime DB, exact seeder, affected tables, idempotency, impacts on existing rows, and backup status. Never use blanket seeding as a troubleshooting mechanism.
+- **Test Environments**: A destructive test setup is allowed ONLY when `APP_ENV=testing` AND the runtime DB is explicitly disposable (follows `*_test` convention or `:memory:`) AND `DB != ai_question_bank`.
+- **Integrity Audits**: Use `php artisan db:integrity-audit` to inspect invariants safely without mutating the DB. Always capture a sanitized fingerprint (counts of core tables) before and after major operational interventions.
+- **Continuous Documentation**: Any operational discovery that affects successful execution must be moved from chat/memory into repository documentation (`docs/operations/LOCAL_DEVELOPMENT.md`).
+
 ## Domain Invariants
 
 - Paling banyak satu subscription efektif untuk user pada satu instant. Beberapa row berstatus `active` boleh ada untuk renewal berurutan selama effective windows `[starts_at, ends_at)` tidak overlap. Unique `(user_id, status)` tidak dipakai. Resolver memvalidasi seluruh antrian `active` current/future sebagai Plan Pro dengan window well-formed; overlap efektif fail-closed. Data stale historis tidak mengunci akun.

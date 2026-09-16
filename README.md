@@ -68,6 +68,8 @@ Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap s
 - [Canonical DBML](docs/database/AI_QUESTION_BANK.dbml) - schema domain yang dapat dikompilasi.
 - [Prompt Engine Rules](docs/ai/PROMPT_ENGINE_RULES.md) - Gemini prompt, JSON contract, validation, dan audit.
 - [Development Rules](docs/rules/DEVELOPMENT_RULES.md) - aturan coding, testing, security, dan dokumentasi.
+- [Local Development](docs/operations/LOCAL_DEVELOPMENT.md) - topologi worker, startup runbook, dan troubleshooting aman.
+- [Database Backup & Recovery](docs/operations/DATABASE_BACKUP_RECOVERY.md) - kebijakan backup, restore konsisten, dan preservasi data persisten.
 - [Development Roadmap](docs/project-management/PHASE_ROADMAP.md) - urutan fase dan Definition of Done.
 - [Change Log](docs/project-management/CHANGE_LOG.md) - riwayat keputusan dan database impact.
 

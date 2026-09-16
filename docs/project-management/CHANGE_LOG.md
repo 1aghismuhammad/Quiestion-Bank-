@@ -37,6 +37,10 @@ Added:
 
 - `scripts/create-qa-archive.php` canonical safe archive workflow (H1).
 - Documentation reconciled to officially close Phase 5.7 and Pre-Phase-6 H0-H2 as `COMPLETE`.
+- (Pre-Phase-6 Operations Hardening) Designate `ai_question_bank` as a persistent, non-disposable development database.
+- (Pre-Phase-6 Operations Hardening) Introduce `DatabaseSafetyGuard` to block destructive console commands (`migrate:fresh`, `db:wipe`, etc.) on persistent databases at runtime.
+- (Pre-Phase-6 Operations Hardening) Introduce read-only `php artisan db:integrity-audit` command.
+- (Pre-Phase-6 Operations Hardening) Add `LOCAL_DEVELOPMENT.md` and `DATABASE_BACKUP_RECOVERY.md` runbooks.
 
 Changed:
 
