@@ -2,9 +2,13 @@
 
 use App\Actions\GenerationRuns\ConsumeGenerationRunCredit;
 use App\Actions\GenerationRuns\StartGenerationRun;
+use App\Actions\MaterialProfiles\PersistMaterialProfileMapSuccess;
 use App\Actions\MaterialProfiles\StartMaterialProfileAnalysis;
 use App\Actions\QuestionSets\ImportCompletedGenerationRunIntoQuestionSet;
+use App\Data\MaterialProfiles\ProfileMapResult;
+use App\Data\MaterialProfiles\ProfileProviderAttemptMetadata;
 use App\Enums\GenerationRunStatus;
+use App\Enums\MaterialProfileStepPurpose;
 use App\Enums\OutputLanguage;
 use App\Models\AiGenerationRun;
 use App\Models\Material;
@@ -84,11 +88,39 @@ try {
         exit(0);
     }
 
+    if ($action === 'persist-map-success') {
+        $service = app(PersistMaterialProfileMapSuccess::class);
+        $result = new ProfileMapResult(
+            candidates: [],
+            metadata: new ProfileProviderAttemptMetadata(
+                provider: 'gemini',
+                model: 'gemini-1.5-flash',
+                promptVersion: '1.0',
+                purpose: MaterialProfileStepPurpose::MAP,
+                inputTokens: 10,
+                outputTokens: 10,
+                totalTokens: 20,
+            ),
+        );
+        $persistResult = $service->handle(
+            $payload['profile_version_id'],
+            $payload['profile_step_id'],
+            $payload['workflow_token'],
+            $payload['step_execution_token'],
+            $payload['attempt_id'],
+            $result,
+        );
+        echo json_encode(['success' => $persistResult->persisted]);
+        exit(0);
+    }
+
 } catch (Throwable $e) {
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage(),
         'class' => get_class($e),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
     ]);
     exit(1);
 }

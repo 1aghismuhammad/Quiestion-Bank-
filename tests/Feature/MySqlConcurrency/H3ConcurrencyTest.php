@@ -5,15 +5,20 @@ namespace Tests\Feature\MySqlConcurrency;
 use App\Enums\BlueprintLifecycleStatus;
 use App\Enums\BlueprintMode;
 use App\Enums\GenerationRunStatus;
+use App\Enums\MaterialProfileAttemptStatus;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Enums\MaterialProfileStatus;
+use App\Enums\MaterialProfileStepPurpose;
+use App\Enums\MaterialProfileStepStatus;
 use App\Enums\PlanCode;
 use App\Enums\UsageStatus;
 use App\Models\AiGenerationRun;
 use App\Models\AiUsageLog;
 use App\Models\Material;
+use App\Models\MaterialProfileAttempt;
 use App\Models\MaterialProfileChunk;
 use App\Models\MaterialProfileElement;
+use App\Models\MaterialProfileStep;
 use App\Models\MaterialProfileVersion;
 use App\Models\Plan;
 use App\Models\QuestionBlueprint;
@@ -156,7 +161,7 @@ class H3ConcurrencyTest extends MySqlConcurrencyTestCase
         $this->assertNull(AiUsageLog::where('generation_run_id', $run->generation_run_id)->where('status', UsageStatus::RELEASED)->first());
     }
 
-    public function test_h3c_material_profile_sequential_dispatch()
+    public function test_h3c_material_profile_sequential_dispatch_start()
     {
         $user = User::factory()->create();
         $material = Material::factory()->text()->for($user)->create();
@@ -186,6 +191,91 @@ class H3ConcurrencyTest extends MySqlConcurrencyTestCase
 
         $this->assertEquals(1, $successes, 'One process should succeed. Output: '.json_encode($outputs));
         $this->assertEquals(1, $failures, 'One process should be rejected due to InFlightExists. Output: '.json_encode($outputs));
+    }
+
+    public function test_h3c2_workflow_completion_dispatch_race()
+    {
+        $user = User::factory()->create();
+        $content = 'Test content matching hash.';
+        $material = Material::factory()->text()->for($user)->create(['content' => $content]);
+        $version = MaterialProfileVersion::factory()->for($material)->create([
+            'status' => MaterialProfileStatus::PROCESSING,
+            'material_content_hash' => app(MaterialContentHasher::class)->hash($content),
+        ]);
+
+        $chunk = MaterialProfileChunk::factory()->create([
+            'profile_version_id' => $version->profile_version_id,
+            'chunk_index' => 1,
+            'char_start' => 0,
+            'char_end' => 27,
+            'core_text_hash' => app(MaterialContentHasher::class)->hash(mb_substr($content, 0, 27, 'UTF-8')),
+        ]);
+
+        $step = MaterialProfileStep::factory()->create([
+            'profile_version_id' => $version->profile_version_id,
+            'profile_chunk_id' => $chunk->profile_chunk_id,
+            'purpose' => MaterialProfileStepPurpose::MAP,
+            'status' => MaterialProfileStepStatus::PROCESSING,
+            'workflow_token' => $version->workflow_token,
+            'step_execution_token' => Str::uuid()->toString(),
+            'step_index' => 1,
+            'lease_expires_at' => now()->addMinutes(10),
+        ]);
+
+        $reduceStep = MaterialProfileStep::factory()->create([
+            'profile_version_id' => $version->profile_version_id,
+            'purpose' => MaterialProfileStepPurpose::REDUCE,
+            'status' => MaterialProfileStepStatus::QUEUED,
+            'workflow_token' => $version->workflow_token,
+            'step_index' => 2,
+        ]);
+
+        $attempt = MaterialProfileAttempt::factory()->create([
+            'profile_version_id' => $version->profile_version_id,
+            'profile_step_id' => $step->profile_step_id,
+            'status' => MaterialProfileAttemptStatus::STARTED,
+            'attempt_number' => 1,
+            'provider' => 'gemini',
+            'model' => 'gemini-1.5-flash',
+            'prompt_version' => '1.0',
+            'purpose' => MaterialProfileStepPurpose::MAP,
+        ]);
+
+        $args = [
+            'profile_version_id' => $version->profile_version_id,
+            'profile_step_id' => $step->profile_step_id,
+            'workflow_token' => $version->workflow_token,
+            'step_execution_token' => $step->step_execution_token,
+            'attempt_id' => $attempt->profile_attempt_id,
+        ];
+
+        $outputs = ConcurrentRunner::run('persist-map-success', $args, 2);
+
+        // Check winner/loser behavior FIRST so we see the error output on failure
+        $successes = 0;
+        $failures = 0;
+        foreach ($outputs as $output) {
+            $result = json_decode($output['output'], true);
+            if ($output['exitCode'] === 0 && ($result['success'] ?? false)) {
+                $successes++;
+            } else {
+                $failures++;
+            }
+        }
+        $this->assertEquals(1, $successes, 'Only one process should successfully persist the map step. Output: '.json_encode($outputs));
+        $this->assertEquals(1, $failures, 'One process should be discarded or rejected cleanly. Output: '.json_encode($outputs));
+
+        $step->refresh();
+        $reduceStep->refresh();
+        $attempt->refresh();
+
+        $this->assertEquals(MaterialProfileStepStatus::READY, $step->status);
+        $this->assertEquals(MaterialProfileStepStatus::QUEUED, $reduceStep->status);
+        $this->assertEquals(MaterialProfileAttemptStatus::SUCCEEDED, $attempt->status);
+
+        // Assert attempt identity - only one SUCCEEDED attempt, no duplicates created
+        $attempts = MaterialProfileAttempt::where('profile_step_id', $step->profile_step_id)->get();
+        $this->assertCount(1, $attempts, 'Concurrent runners should not create phantom duplicate attempts');
     }
 
     public function test_h3d_generation_run_to_question_set_import()
@@ -261,21 +351,58 @@ class H3ConcurrencyTest extends MySqlConcurrencyTestCase
         DB::purge('mysql');
         DB::setDefaultConnection('mysql');
 
-        // Migrate is now handled in the base case setup.
-
-        // Both non-null should be rejected by constraint
+        // CASE C: Both non-null must be rejected by the schema CHECK.
         try {
             DB::table('question_sets')->insert([
                 'user_id' => $user->id,
                 'title' => 'Test',
                 'generation_id' => 1,
                 'generation_run_id' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
-            $this->fail('MySQL CHECK constraint should have rejected both non-null');
+            $this->fail('MySQL CHECK constraint should have rejected both non-null (Case C)');
         } catch (QueryException $e) {
             $this->assertStringContainsString('qs_source_exclusive_chk', $e->getMessage());
         }
 
-        $this->assertTrue(true);
+        // CASE D: Both null must be rejected by the true XOR CHECK.
+        // Requires migration 2026_09_16_150001_fix_question_sets_source_xor_constraint
+        // to have been applied to the H3 test DB.
+        try {
+            DB::table('question_sets')->insert([
+                'user_id' => $user->id,
+                'title' => 'Test',
+                'generation_id' => null,
+                'generation_run_id' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $this->fail('MySQL CHECK constraint should have rejected both null (Case D — true XOR required)');
+        } catch (QueryException $e) {
+            $this->assertStringContainsString('qs_source_exclusive_chk', $e->getMessage());
+        }
+
+        // CASE A: generation_id only (generation_run_id null) must be accepted.
+        $setIdA = DB::table('question_sets')->insertGetId([
+            'user_id' => $user->id,
+            'title' => 'Test',
+            'generation_id' => 1,
+            'generation_run_id' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->assertIsNumeric($setIdA);
+
+        // CASE B: generation_run_id only (generation_id null) must be accepted.
+        $setIdB = DB::table('question_sets')->insertGetId([
+            'user_id' => $user->id,
+            'title' => 'Test',
+            'generation_id' => null,
+            'generation_run_id' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $this->assertIsNumeric($setIdB);
     }
 }
