@@ -29,8 +29,8 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 4.3 + 4.4 - Gemini + structured output + async orchestration: `COMPLETE`
 - Phase 4.5 - Generation Web UI / Result Preview: `COMPLETE`
 - Phase 4.6 - Reliability / Stale Recovery / Phase Closure: `COMPLETE`
-- Phase 5 - Question Bank: `COMPLETE` (MCQ-only MVP: completed-Generation import to draft, owner list/detail, draft edit, atomic whole-set save, `draft → published`, published read-only)
-- Phase 5.7 - Pre-Phase-6 enhancements: `IN PROGRESS`
+- Phase 5 - Question Bank: `COMPLETE` (MCQ, True/False, and Essay MVP: completed-Generation import to draft, owner list/detail, draft edit, atomic whole-set save, `draft → published`, published read-only)
+- Phase 5.7 - Pre-Phase-6 enhancements: `COMPLETE`
 - Phase 5.7A - Upload-only Material Transition: `COMPLETE` (new Material creation is upload-only; legacy `source_type=text` rows remain readable/editable)
 - Phase 5.7B1 - Material Profile Foundation: `COMPLETE` (persistence, hashing, splitting, eligibility, tokens, leases, recovery)
 - Phase 5.7B2 - Sequential Material Profile Map/Reduce Provider Calls: `COMPLETE` (dedicated provider boundary, lossless bounded reduce, fingerprint revalidation, sequential `material-intelligence` jobs, no generation credits)
@@ -38,19 +38,19 @@ AI Question Bank adalah aplikasi Laravel untuk menghasilkan, meninjau, dan menge
 - Phase 5.7C - Question Blueprint domain, AI fill, and confirmed kisi-kisi DOCX: `COMPLETE` (completed and committed before the Phase 5.7E baseline)
 - Phase 5.7D - Multi-credit SUM ledger and Simple Generation Runs: `COMPLETE` (completed and committed before the Phase 5.7E baseline)
 - Phase 5.7E - Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle: `COMPLETE`
-- Phase 5.7F - True/False and Essay generation: `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`
-- Phase 5.7G - Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening: `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`
+- Phase 5.7F - True/False and Essay generation: `COMPLETE`
+- Phase 5.7G - Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening: `COMPLETE`
 - Next numbered main phase: Phase 6 Admin Dashboard (`PLANNED`)
 - Documentation version: 0.15.14
 - MVP target: Phase 0-6
-- Database design: 32 domain entities documented in the canonical DBML
+- Database design: 30 domain runtime (33 canonical) entities documented in the canonical DBML
 
-Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP delivered MCQ-only import/edit/publish; Phase 5.7G adds Run import and typed MCQ/True-False/Essay edit/publish plus question DOCX. Phase 5.7 is `IN PROGRESS`; Phase 5.7A through Phase 5.7B3 are `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E Advanced MCQ is `COMPLETE` (v0.15.12; source review and owner manual QA accepted as PASS). Phase 5.7F True/False and Essay is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA` (v0.15.13; code committed; source review passed). Phase 5.7G is `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA` (v0.15.14). Simple Mode remains available to Free and Pro. New Material creation is upload-only; legacy `source_type=text` rows remain readable and editable. Phase 6 remains `PLANNED`.
+Dokumentasi adalah rancangan implementasi. Fitur yang tercantum belum dianggap selesai sampai Definition of Done pada roadmap terpenuhi. Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP delivered MCQ, True/False, and Essay import/edit/publish; Phase 5.7G adds Run import and typed MCQ/True-False/Essay edit/publish plus question DOCX. Phase 5.7 is `COMPLETE`; Phase 5.7A through Phase 5.7B3 are `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E Advanced MCQ is `COMPLETE` (v0.15.12; source review and owner manual QA accepted as PASS). Phase 5.7F True/False and Essay is `COMPLETE` (v0.15.13; code committed; source review passed). Phase 5.7G is `COMPLETE` (v0.15.14). Simple Mode remains available to Free and Pro. New Material creation is upload-only; legacy `source_type=text` rows remain readable and editable. Phase 6 remains `PLANNED`.
 
 ## Architecture Decisions
 
 - PHP 8.3+ dan Laravel 13.
-- Blade + Livewire untuk UI.
+- Blade + Vanilla JS untuk UI.
 - Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Google OAuth only melalui Laravel Socialite.
 - Google Gemini sebagai AI provider MVP.

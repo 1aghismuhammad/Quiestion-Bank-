@@ -26,6 +26,27 @@ Notes:
 -
 ```
 
+## v0.15.15 Pre-Phase-6 Hardening H0-H2
+
+- Date: 16 September 2026
+- Version: 0.15.15
+- Phase: Pre-Phase-6 Hardening (H0-H2)
+- Type: Documentation / Maintenance
+
+Added:
+
+- `scripts/create-qa-archive.php` canonical safe archive workflow (H1).
+- Documentation reconciled to officially close Phase 5.7 and Pre-Phase-6 H0-H2 as `COMPLETE`.
+
+Changed:
+
+- Stale current-state claims regarding `PENDING MANUAL QA`, `MCQ-only`, and `Livewire` removed from non-historical documentation.
+- Typed Question Bank (MCQ, True/False, Essay) and Student/Teacher DOCX accurately recorded as implemented.
+
+Fixed:
+
+- H0: Removed obsolete negative assertions from `MaterialProfileIsolationTest` that conflicted with valid Phase 5.7G Run import flows.
+
 ## v0.15.14 Phase 5.7G Run-to-Question-Bank import, typed bank, question DOCX
 
 - Date: 14 September 2026

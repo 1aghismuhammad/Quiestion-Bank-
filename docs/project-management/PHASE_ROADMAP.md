@@ -30,7 +30,7 @@ Definition of Done:
 
 - Semua dokumen menggunakan istilah dan scope yang sama.
 - DBML dapat dikompilasi menjadi SQL.
-- Google-only OAuth, Blade+Livewire, Gemini, dan tiga question type terdokumentasi.
+- Google-only OAuth, Blade+Vanilla JS, Gemini, dan tiga question type terdokumentasi.
 - Keputusan arsitektur yang memblokir Phase 1 sudah diselesaikan.
 - Open decision lain memiliki target phase sebelum implementasinya dimulai.
 
@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `COMPLETE`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -133,7 +133,7 @@ Definition of Done:
 - User dapat melihat paket, storage, dan allowance generation. Phase 4.5 menampilkan Terpakai (charged), Diproses (reserved), dan Tersedia (`max(0, available)`) tanpa DTO kuota kedua.
 - Upgrade manual dapat disetujui, ditolak (alasan wajib), atau dibatalkan admin; approval menulis window Pro.
 
-Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 4 generation runtime, UI, dan stale recovery sudah `COMPLETE`. Question Bank Phase 5 is `COMPLETE` (MCQ-only MVP).
+Catatan: payment gateway dan invoice otomatis tidak termasuk MVP. Phase 4 generation runtime, UI, dan stale recovery sudah `COMPLETE`. Question Bank Phase 5 is `COMPLETE` (MCQ, True/False, and Essay MVP).
 
 ## Phase 4 - AI Question Engine
 
@@ -205,7 +205,7 @@ Technical slices:
 - Phase 5.1–5.3 Batch 1 (`COMPLETE`): schema + models + ownership; explicit import of a completed MCQ Generation into a draft Question Set; owner list/detail.
 - Phase 5.4–5.6 Batch 2 (`COMPLETE`): draft MCQ edit; atomic whole-set save; publish `draft → published`; published read-only; integrity; QA/docs.
 
-Delivered MVP scope (MCQ-only):
+Delivered MVP scope (MCQ, True/False, and Essay):
 
 - Explicit import of a completed MCQ Generation into a draft Question Set (one Generation → at most one Question Set, `UNIQUE(generation_id)`).
 - Owner list/detail.
@@ -237,13 +237,13 @@ Definition of Done (delivered Phase 5 MVP):
 - Ownership policy is active on mutations; foreign IDs including Admin are 404.
 - Question Set lifecycle has feature tests. Automated tests, MySQL concurrency QA, and owner browser QA passed.
 
-The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. True/false and essay Question Bank remain later.
+The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. At original Phase 5 closure, True/False and Essay Question Bank were deferred. They were subsequently delivered through Phase 5.7F/G.
 
-Current enhancement program: Phase 5.7 (`IN PROGRESS`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G is `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G is `COMPLETE`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D `COMPLETE` (completed and committed before the Phase 5.7E baseline); Phase 5.7E `COMPLETE`; Phase 5.7F `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`; Phase 5.7G `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`)
+Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D `COMPLETE` (completed and committed before the Phase 5.7E baseline); Phase 5.7E `COMPLETE`; Phase 5.7F `COMPLETE`; Phase 5.7G `COMPLETE`)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -330,7 +330,7 @@ Phase 5.7E — Advanced MCQ (`COMPLETE`):
 
 Out of scope for 5.7E: True/False, Essay, mixed question types, Question Bank import, Question Set changes, generated-question editing, question DOCX, add/delete/reorder generated questions, Run cancellation, and parallel child execution.
 
-Phase 5.7F — True/False and Essay (`IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`):
+Phase 5.7F — True/False and Essay (`COMPLETE`):
 
 - Simple Blueprint/Run: one shared type among MCQ, True/False, or Essay; one difficulty; total 1–10; no shuffle; Free and Pro.
 - Advanced Blueprint/Run: mixed types and mixed difficulty; 1–5 rows; 1–10 per row; total 1–30; Pro gating unchanged from 5.7E. Totals 1–10 qualify by mixed difficulty, mixed type, or shuffle. `shuffle_options` is rejected when there is no MCQ row.
@@ -339,7 +339,7 @@ Phase 5.7F — True/False and Essay (`IMPLEMENTED — PENDING FINAL INTEGRATED M
 - Essay runtime `essay-v1`: `question`, `model_answer`, `rubric`, `explanation`; rubric is bounded teacher text, not a table and not auto-grading.
 - Typed `ValidatedQuestionSet` contracts reconstruct from persisted child `question_type`. Sequential children, `ceil(n/10)` credits, one Usage, charge once / release once remain unchanged.
 
-Phase 5.7G — Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening (`IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`):
+Phase 5.7G — Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening (`COMPLETE`):
 
 - Nullable unique `question_sets.generation_run_id` FK RESTRICT; mutually exclusive with `generation_id` (MySQL CHECK `qs_source_exclusive_chk`; SQLite `QuestionSetSourceExclusive`).
 - Idempotent Run import: `POST /generation-runs/{id}/question-sets`; lock order User → Run → items → children; no credit/provider; typed snapshot matches Run presentation shuffle.
@@ -347,6 +347,19 @@ Phase 5.7G — Run-to-Question-Bank import, typed edit/publish, question DOCX, a
 - Published student (`Soal-[title].docx`) and teacher/key (`Soal-Kunci-[title].docx`) DOCX via PhpWord with try/finally cleanup.
 - Automated QA: 1210 tests, 6976 assertions (1 skipped: MySQL CHECK on SQLite). Source-review corrective applied for strict Run import validation, MariaDB rollback dialect, and DOCX leakage/cleanup hardening. Manual QA deferred with Phase 5.7F into integrated owner QA. QA archive: `phase-5.7g-v0.15.14-qa.zip`.
 - Out of scope: Run cancellation, parallel children, add/delete/reorder, unpublish, archive, public visibility, admin review.
+
+
+## Pre-Phase-6 Hardening Gate
+
+H0 — COMPLETE
+H1 — COMPLETE
+H2 — COMPLETE after this documentation corrective
+H3 — PLANNED
+H4 — PLANNED
+H5 — PLANNED
+
+Phase 6 — PLANNED
+Start only after H0-H5 are complete.
 
 ## Phase 6 - Admin Dashboard
 

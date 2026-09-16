@@ -116,7 +116,7 @@ Essay items have no MCQ options and no letter `correct_answer`. `rubric` is boun
 
 Prompt identity: `essay-v1` from `config('generation.essay_prompt_version')`. Unsupported identities are rejected and never sent labelled as another contract.
 
-## True/False Schema (Question Bank later)
+## True/False Schema
 
 Phase 5.7G imports completed Run True/False into Question Sets using typed reconstruction and the same presentation shuffle as the Run preview. The product schema below is the persisted Question Bank shape. Question Bank import, edit, publish, and DOCX export never persist raw prompts or provider bodies.
 
@@ -148,7 +148,7 @@ Validation (Question Bank later):
 - Tepat satu option benar.
 - Statement tidak boleh mengandung dua klaim independen yang menghasilkan jawaban ambigu.
 
-## Essay Schema (Question Bank later)
+## Essay Schema
 
 Phase 5.7G imports completed Run Essay rows into Question Sets using typed reconstruction. The product schema below is the persisted Question Bank shape. Question Bank import, edit, publish, and DOCX export never persist raw prompts or provider bodies.
 

@@ -5,7 +5,7 @@
 - Product: AI Question Bank SaaS
 - Version: 0.15.14
 - Updated: 14 September 2026
-- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP is MCQ-only; Phase 5.7G adds Run import and typed MCQ/True-False/Essay edit/publish plus question DOCX. Phase 5.7 is `IN PROGRESS`. Phase 5.7A through Phase 5.7B3 are `COMPLETE`. Phase 5.7C+D is `COMPLETE` (completed and committed before the Phase 5.7E baseline). Phase 5.7E is `COMPLETE` (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle). Phase 5.7F is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA` (True/False and Essay generation, mixed types; code committed; source review passed). Phase 5.7G is `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA` (Run-to-Question-Bank import, typed edit/publish, question DOCX). Phase 6 Admin Dashboard remains `PLANNED`.
+- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5 Question Bank MVP is MCQ, True/False, and Essay; Phase 5.7G adds Run import and typed MCQ/True-False/Essay edit/publish plus question DOCX. Phase 5.7 is `COMPLETE`. Phase 5.7A through Phase 5.7B3 are `COMPLETE`. Phase 5.7C+D is `COMPLETE` (completed and committed before the Phase 5.7E baseline). Phase 5.7E is `COMPLETE` (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle). Phase 5.7F is `COMPLETE` (True/False and Essay generation, mixed types; code committed; source review passed). Phase 5.7G is `COMPLETE` (Run-to-Question-Bank import, typed edit/publish, question DOCX). Phase 6 Admin Dashboard remains `PLANNED`.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -32,7 +32,7 @@ Pengelola platform yang memonitor user, question bank, penggunaan AI, dan subscr
 ## Architecture Decisions
 
 - Authentication: Google OAuth only.
-- Frontend: Laravel Blade + Livewire.
+- Frontend: Laravel Blade + Vanilla JS.
 - AI provider MVP: Google Gemini.
 - Question types MVP: multiple choice, true/false, dan essay.
 - AI generation diproses secara asynchronous melalui queue.
@@ -123,7 +123,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Question Bank
 
 - FR-RUN-01: Owner dapat memulai Simple Generation Run dari Blueprint confirmed yang masih current plus Profil ready yang cocok. Total 1–10, satu tipe, satu difficulty, tanpa shuffle. Advanced Run mensyaratkan Pro aktif, 1–30 soal, mixed type/difficulty diizinkan, dan kualifikasi: total 11–30 lolos karena skala; total 1–10 membutuhkan mixed difficulty, mixed type, atau shuffle soal/opsi. `shuffle_options` ditolak jika tidak ada baris MCQ. Mode Run di-snapshot dari Blueprint persisted. Posted mode/shuffle untuk Simple `true` ditolak sebelum side effect.
 - FR-RUN-02: Satu reservasi per Run pada `generation_run_id` dengan `credits = GenerationCredits::required()` = `ceil(n/10)` (1–10=1, 11–20=2, 21–30=3). Child Generation tidak punya baris usage. Sukses menagih sekali; gagal me-release sekali. Run Advanced yang sudah reserved boleh menyelesaikan child sekuensial setelah Pro kedaluwarsa; retry manual atau Run baru tetap butuh Pro aktif.
-- FR-RUN-03: Owner dapat melihat soal completed Run secara read-only, escaped, bernomor lintas child. MCQ memakai kunci yang sudah di-remap jika opsi diacak. True/False selalu Benar lalu Salah dan tidak pernah mengacak opsi. Essay menampilkan contoh jawaban dan rubrik teks, tanpa opsi MCQ. Shuffle deterministik SHA-256 dari identitas Run; `result_json` kanonis tidak diubah. Owner dapat mengimpor Run completed ke Question Bank melalui `POST /generation-runs/{id}/question-sets` (idempotent; tanpa credit/provider). Snapshot typed memakai presenter shuffle yang sama dengan preview. Legacy import `POST /generations/{id}/question-sets` tetap MCQ-only.
+- FR-RUN-03: Owner dapat melihat soal completed Run secara read-only, escaped, bernomor lintas child. MCQ memakai kunci yang sudah di-remap jika opsi diacak. True/False selalu Benar lalu Salah dan tidak pernah mengacak opsi. Essay menampilkan contoh jawaban dan rubrik teks, tanpa opsi MCQ. Shuffle deterministik SHA-256 dari identitas Run; `result_json` kanonis tidak diubah. Owner dapat mengimpor Run completed ke Question Bank melalui `POST /generation-runs/{id}/question-sets` (idempotent; tanpa credit/provider). Snapshot typed memakai presenter shuffle yang sama dengan preview. Legacy import `POST /generations/{id}/question-sets` tetap MCQ, True/False, and Essay.
 
 ### AI Generation
 
@@ -152,7 +152,7 @@ Phase 5 delivered constraints:
 - Owner-only. Foreign Question Set IDs, including Admin, are 404. Admin has no ownership bypass.
 - Edit and publish do not charge generation quota and do not call Gemini. `result_json` remains unchanged.
 - No add, delete, or reorder of questions. No unpublish, archive, delete, or restore.
-- Legacy import remains MCQ-only. Run import and typed edit/publish (MCQ/TF/Essay) are Phase 5.7G and pending final source review and integrated manual QA.
+- Legacy import remains MCQ, True/False, and Essay. Run import and typed edit/publish (MCQ/TF/Essay) are Phase 5.7G and COMPLETE.
 - Public visibility and admin review remain later.
 - No Phase 5 Batch 2 migration.
 
@@ -218,7 +218,7 @@ Satu Plan entitlement. Storage 500 MiB (`524288000` bytes). Generation 100 per w
 
 ### Institution Plan
 
-Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, dan shared ownership belum termasuk dalam 31 entitas database saat ini.
+Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, dan shared ownership belum termasuk dalam 30 domain runtime (33 canonical) database saat ini.
 
 ## MVP Acceptance Criteria
 
@@ -226,9 +226,9 @@ Dicatat sebagai arah produk post-MVP. Dukungan organization, membership, seat, d
 - Admin menggunakan login yang sama, tetapi aksesnya dibatasi role.
 - User dapat membuat materi upload atau teks dan memilih topik/fokus.
 - Quota diperiksa sebelum generation (definisi limit Phase 3.5; reservation/charge/release Phase 4.1+4.2; Gemini MCQ job Phase 4.3+4.4; owner UI Phase 4.5; SUM ledger, Simple/Advanced Run, dan typed True/False/Essay Phase 5.7D–F).
-- Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). Generation Run juga menghasilkan True/False dan Essay terstruktur (5.7F). Owner dapat mengonfigurasi generasi, memantau queued/processing, melihat pratinjau completed, dan retry failed. Owner dapat membuat kisi-kisi Simple atau Advanced (satu tipe atau campuran), mengonfirmasi, mengisi dengan AI (0 credit; komposisi tipe tepat pada `blueprint-fill-v3`), mengunduh DOCX confirmed, dan menjalankan Generation Run (`ceil(n/10)` credit; Simple 1–10 tanpa shuffle; Advanced Pro 1–30 dengan mixed type/difficulty dan pengacakan deterministik). Owner dapat mengimpor generation completed MCQ atau Run completed typed ke Question Set `draft`, mengedit typed draft, menerbitkan, dan mengunduh question DOCX siswa/guru (Phase 5.7G; pending final source review and integrated manual QA).
+- Gemini menghasilkan MCQ terstruktur yang divalidasi server-side (4.3+4.4). Generation Run juga menghasilkan True/False dan Essay terstruktur (5.7F). Owner dapat mengonfigurasi generasi, memantau queued/processing, melihat pratinjau completed, dan retry failed. Owner dapat membuat kisi-kisi Simple atau Advanced (satu tipe atau campuran), mengonfirmasi, mengisi dengan AI (0 credit; komposisi tipe tepat pada `blueprint-fill-v3`), mengunduh DOCX confirmed, dan menjalankan Generation Run (`ceil(n/10)` credit; Simple 1–10 tanpa shuffle; Advanced Pro 1–30 dengan mixed type/difficulty dan pengacakan deterministik). Owner dapat mengimpor generation completed MCQ atau Run completed typed ke Question Set `draft`, mengedit typed draft, menerbitkan, dan mengunduh question DOCX siswa/guru (Phase 5.7G; COMPLETE).
 - Failure AI tidak mengurangi credit secara permanen (Release pada terminal failure via `FinalizeGenerationFailure` atau stale recovery).
-- User dapat mengimpor generation completed MCQ ke Question Set `draft`, mengedit MCQ secara atomik, dan menerbitkan ke `published` (Phase 5 `COMPLETE`). Published read-only. Manual create, add/delete/reorder, TF/essay Question Bank, unpublish, archive, public visibility, and admin review are later.
+- User dapat mengimpor generation completed MCQ ke Question Set `draft`, mengedit MCQ secara atomik, dan menerbitkan ke `published` (Phase 5 `COMPLETE`). Published read-only. Manual create, add/delete/reorder, unpublish, archive, public visibility, and admin review are later.
 - Admin dapat menjalankan modul Phase 6 pada flow admin; branch broadcast baru wajib pada Phase 7.
 - Semua generation dan penggunaan credit dapat diaudit.
 

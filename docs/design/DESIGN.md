@@ -5,7 +5,7 @@
 - Version: 0.15.14
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
-- UI: Blade + Livewire + Tailwind CSS
+- UI: Blade + Vanilla JS + Tailwind CSS
 - Authentication: Google OAuth only
 - AI provider: Google Gemini
 - Database source of truth: `docs/database/AI_QUESTION_BANK.dbml`
@@ -15,7 +15,7 @@
 ```mermaid
 flowchart TB
     Browser[Browser]
-    UI[Blade + Livewire]
+    UI[Blade + Vanilla JS]
     App[Laravel Application]
     Queue[Queue Worker]
     DB[(Relational Database)]
@@ -41,9 +41,9 @@ Generation AI dipisahkan dari request web agar timeout provider tidak memblokir 
 
 MVP dibangun sebagai satu aplikasi Laravel agar deployment, authorization, transaksi database, dan pengembangan UI tetap sederhana. Pemisahan dilakukan berdasarkan modul dan service, bukan microservice.
 
-### Blade + Livewire
+### Blade + Vanilla JS
 
-Blade menangani layout dan server-rendered page. Livewire menangani form interaktif, status queue, filter dashboard, review soal, dan admin tools. REST API publik tidak menjadi kebutuhan MVP.
+Blade menangani layout dan server-rendered page. JavaScript vanilla menangani interaksi frontend dan polling. REST API publik tidak menjadi kebutuhan MVP.
 
 Phase 2 Material Management secara khusus menggunakan Blade, controller, Form Request, policy, action/service, dan JavaScript polling minimal. Phase 2 tidak menginstal atau membuat Livewire component; Livewire hanya dapat diperkenalkan pada phase lain melalui keputusan terpisah.
 

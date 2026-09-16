@@ -27,12 +27,12 @@ Question type MVP:
 ## Technology Direction
 
 - Backend: Laravel 13 on PHP 8.3+.
-- Frontend: Blade + Livewire.
+- Frontend: Blade + Vanilla JS.
 - Phase 2 UI: Blade/controller only; no Livewire component.
 - Authentication: Google OAuth only.
 - AI: Google Gemini.
 - Processing: queue for long-running operation.
-- Database: MySQL 8+ (Laragon for local development; `DB_CONNECTION=mysql`). 32 domain entities documented in the canonical DBML.
+- Database: MySQL 8+ (Laragon for local development; `DB_CONNECTION=mysql`). 30 domain runtime (33 canonical) entities documented in the canonical DBML.
 - Automated tests: SQLite in-memory via `phpunit.xml`.
 
 ## Product Modules
@@ -64,8 +64,8 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 - Phase 2: standalone material management dari dashboard (`COMPLETE`). Originally delivered upload (PDF, DOCX, TXT) and manual-text creation. Phase 5.7A later retired HTTP/UI text creation; new Material creation is upload-only. Legacy `source_type=text` rows remain readable/editable.
 - Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine (`COMPLETE`; 4.1–4.6 including owner generation UI and stale recovery).
-- Phase 5: question bank (`COMPLETE`; MCQ-only MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). Phase 5.7G extends the bank with Run import and typed MCQ/True-False/Essay edit/publish plus student/teacher question DOCX.
-- Phase 5.7: pre-Phase-6 enhancements (`IN PROGRESS`). Phase 5.7A–5.7B3 are `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle) is `COMPLETE`. Phase 5.7F (True/False and Essay) is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, final hardening) is `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`.
+- Phase 5: question bank (`COMPLETE`; MCQ, True/False, and Essay MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). Phase 5.7G extends the bank with Run import and typed MCQ/True-False/Essay edit/publish plus student/teacher question DOCX.
+- Phase 5.7: pre-Phase-6 enhancements (`COMPLETE`). Phase 5.7A–5.7B3 are `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle) is `COMPLETE`. Phase 5.7F (True/False and Essay) is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, final hardening) is `COMPLETE`.
 - Phase 6: admin dashboard dan MVP release (`PLANNED`).
 - Phase 7: WhatsApp CRM.
 - Phase 8: optimization dan scaling.

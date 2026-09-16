@@ -6,7 +6,7 @@ Dokumen ini menerjemahkan rancangan flowchart user dan admin ke alur implementas
 
 - Google OAuth only.
 - Admin dan user menggunakan login yang sama serta dibedakan role.
-- Blade + Livewire untuk UI.
+- Blade + Vanilla JS untuk UI.
 - Phase 2 Material Management menggunakan Blade/controller tanpa Livewire component.
 - Phase 4.5 generation UI menggunakan Blade/controller dan vanilla JS polling, tanpa Livewire/React/Vue/websockets.
 - Phase 5.7B3 Material Profile UI menggunakan Blade/controller dan vanilla JS polling bounded, tanpa Livewire/React/Vue/websockets.
