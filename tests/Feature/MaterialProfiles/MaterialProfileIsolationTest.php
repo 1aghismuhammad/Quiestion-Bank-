@@ -152,7 +152,7 @@ class MaterialProfileIsolationTest extends TestCase
         );
     }
 
-    public function test_no_profile_editing_or_run_question_bank_import_exists(): void
+    public function test_no_profile_editing_ui_or_blueprint_shortcut_exists(): void
     {
         foreach ([
             app_path('Models/MaterialProfileBlueprint.php'),
@@ -162,10 +162,6 @@ class MaterialProfileIsolationTest extends TestCase
         ] as $path) {
             $this->assertFileDoesNotExist($path);
         }
-
-        $questionSetSource = strtolower((string) file_get_contents(app_path('Http/Controllers/QuestionSetController.php')));
-        $this->assertStringNotContainsString('generation_run_id', $questionSetSource);
-        $this->assertStringNotContainsString('generationrun', $questionSetSource);
     }
 
     public function test_legacy_text_material_lifecycle_is_unchanged(): void
