@@ -47,40 +47,30 @@ class DatabaseSafetyGuard
 
         $environment = app()->environment();
 
-        if ($databaseName === 'ai_question_bank') {
+        // FAIL-CLOSED ALLOWLIST MODEL
+        
+        // 1. Must be testing environment
+        if ($environment !== 'testing') {
             throw new RuntimeException(
                 "REFUSED:\n" .
-                "normal development database is persistent and non-disposable.\n\n" .
+                "Destructive command blocked. Environment is not 'testing'.\n\n" .
                 "database: {$databaseName}\n" .
                 "environment: {$environment}"
             );
         }
 
-        // Allow destructive commands ONLY if ALL safe testing conditions pass
-        if ($environment === 'testing') {
-            if ($databaseName === ':memory:') {
-                return; // SQLite memory is safe
-            }
-
-            // Must contain a test marker
-            if (str_ends_with($databaseName, '_test')) {
-                return;
-            }
-            
+        // 2. Must not be the normal development database or any production/staging variant
+        if ($databaseName === 'ai_question_bank' || ! str_ends_with($databaseName, '_test') && $databaseName !== ':memory:') {
             throw new RuntimeException(
                 "REFUSED:\n" .
-                "Testing environment database does not follow the approved disposable convention (*_test or :memory:).\n\n" .
+                "Destructive command blocked. Database is not explicitly disposable.\n" .
+                "Must be :memory: or follow the *_test naming convention.\n\n" .
                 "database: {$databaseName}\n" .
                 "environment: {$environment}"
             );
         }
 
-        // If not in testing environment, any other DB (e.g. production) is also protected
-        throw new RuntimeException(
-            "REFUSED:\n" .
-            "Destructive command blocked. Test isolation criteria not met.\n\n" .
-            "database: {$databaseName}\n" .
-            "environment: {$environment}"
-        );
+        // Passed all disposable-test conditions
+        return;
     }
 }

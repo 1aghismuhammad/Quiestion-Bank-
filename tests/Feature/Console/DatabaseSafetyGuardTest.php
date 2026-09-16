@@ -17,14 +17,14 @@ use PHPUnit\Framework\Attributes\DataProvider;
 class DatabaseSafetyGuardTest extends TestCase
 {
     #[DataProvider('destructiveCommandsProvider')]
-    public function test_destructive_commands_are_refused_for_ai_question_bank(string $command): void
+    public function test_destructive_commands_are_refused_for_ai_question_bank_in_testing(string $command): void
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('normal development database is persistent and non-disposable');
+        $this->expectExceptionMessage('Destructive command blocked. Database is not explicitly disposable.');
 
         Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank']);
         Config::set('database.default', 'testing');
-        App::detectEnvironment(fn () => 'local');
+        App::detectEnvironment(fn () => 'testing');
 
         $guard = new DatabaseSafetyGuard();
         $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
@@ -34,11 +34,25 @@ class DatabaseSafetyGuardTest extends TestCase
     public function test_destructive_commands_are_refused_when_environment_is_not_testing_even_if_disposable_name(string $command): void
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Destructive command blocked. Test isolation criteria not met.');
+        $this->expectExceptionMessage("Destructive command blocked. Environment is not 'testing'.");
 
         Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank_h3_test']);
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'local');
+
+        $guard = new DatabaseSafetyGuard();
+        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+    }
+
+    #[DataProvider('destructiveCommandsProvider')]
+    public function test_destructive_commands_are_refused_for_production_variants_even_in_testing(string $command): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Destructive command blocked. Database is not explicitly disposable.');
+
+        Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank_prod']);
+        Config::set('database.default', 'testing');
+        App::detectEnvironment(fn () => 'testing');
 
         $guard = new DatabaseSafetyGuard();
         $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
