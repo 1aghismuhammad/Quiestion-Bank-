@@ -137,18 +137,18 @@ class PublishQuestionSetTest extends TestCase
         $this->assertSame(QuestionSetStatus::DRAFT, $empty->fresh()->status);
     }
 
-    public function test_publish_rejects_non_mcq_and_non_draft_lifecycle(): void
+    public function test_publish_rejects_malformed_true_false_and_non_draft_lifecycle(): void
     {
         $owner = $this->createCompleteUser();
-        $nonMcq = $this->draftMcqSet($owner, 1);
-        $nonMcq->questions[0]->forceFill(['question_type' => QuestionType::TRUE_FALSE])->save();
+        $malformedTf = $this->draftMcqSet($owner, 1);
+        $malformedTf->questions[0]->forceFill(['question_type' => QuestionType::TRUE_FALSE])->save();
 
         $this->actingAs($owner)
-            ->from(route('question-sets.show', $nonMcq))
-            ->post(route('question-sets.publish', $nonMcq))
-            ->assertSessionHasErrors('question_type');
+            ->from(route('question-sets.show', $malformedTf))
+            ->post(route('question-sets.publish', $malformedTf))
+            ->assertSessionHasErrors();
 
-        $this->assertSame(QuestionSetStatus::DRAFT, $nonMcq->fresh()->status);
+        $this->assertSame(QuestionSetStatus::DRAFT, $malformedTf->fresh()->status);
 
         foreach ([QuestionSetStatus::GENERATING, QuestionSetStatus::REVIEW, QuestionSetStatus::ARCHIVED] as $status) {
             $set = $this->draftMcqSet($owner, 1, ['status' => $status]);

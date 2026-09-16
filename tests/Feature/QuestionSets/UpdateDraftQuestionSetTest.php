@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\QuestionSets;
 
 use App\Enums\QuestionSetStatus;
-use App\Enums\QuestionType;
 use App\Enums\ReviewStatus;
 use App\Enums\RoleName;
 use App\Enums\Visibility;
@@ -209,7 +208,7 @@ class UpdateDraftQuestionSetTest extends TestCase
             ->from(route('question-sets.edit', $set))
             ->patch(route('question-sets.update', $set), $foreignId)
             ->assertRedirect(route('question-sets.edit', $set))
-            ->assertSessionHasErrors('questions');
+            ->assertSessionHasErrors('questions.0.question_id');
 
         $duplicate = $this->updatePayload($set);
         $duplicate['questions'][1]['question_id'] = $set->questions[0]->question_id;
@@ -372,35 +371,16 @@ class UpdateDraftQuestionSetTest extends TestCase
         $this->assertSame(8, QuestionOption::query()->count());
     }
 
-    public function test_true_false_question_cannot_be_edited_even_with_valid_mcq_options(): void
+    public function test_generation_run_id_is_prohibited_in_update_payload(): void
     {
         $owner = $this->createCompleteUser();
-        $set = $this->draftMcqSet($owner, 1, ['title' => 'Judul asli']);
-        $question = $set->questions[0];
-        $question->forceFill(['question_type' => QuestionType::TRUE_FALSE])->save();
-        $this->assertSame(4, $question->options()->count());
-        $this->assertSame(1, $question->options()->where('is_correct', true)->count());
-
-        $payload = $this->updatePayload($set->fresh()->load('questions.options'), [
-            'title' => 'Judul ditolak',
-            'questions' => [
-                ['question_text' => 'Stem ditolak'],
-            ],
-        ]);
+        $set = $this->draftMcqSet($owner, 1);
+        $payload = $this->updatePayload($set, ['generation_run_id' => 99]);
 
         $this->actingAs($owner)
             ->from(route('question-sets.edit', $set))
             ->patch(route('question-sets.update', $set), $payload)
             ->assertRedirect(route('question-sets.edit', $set))
-            ->assertSessionHasErrors('question_type');
-
-        $set->refresh()->load('questions.options');
-        $this->assertSame('Judul asli', $set->title);
-        $this->assertSame('Stem 1', $set->questions[0]->question_text);
-        $this->assertSame(QuestionType::TRUE_FALSE, $set->questions[0]->question_type);
-        $this->assertNull($set->questions[0]->correct_answer);
-        $this->assertSame(['A', 'B', 'C', 'D'], $set->questions[0]->options->pluck('option_label')->all());
-        $this->assertSame(1, Question::query()->count());
-        $this->assertSame(4, QuestionOption::query()->count());
+            ->assertSessionHasErrors('generation_run_id');
     }
 }

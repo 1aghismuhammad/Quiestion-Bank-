@@ -45,6 +45,24 @@
     </div>
 
     @if ($run->status->value === 'completed')
+        @error('generation_run')
+            <div class="error-text">{{ $message }}</div>
+        @enderror
+        @error('result')
+            <div class="error-text">{{ $message }}</div>
+        @enderror
+
+        @if ($run->questionSet)
+            <p style="margin-bottom: 20px;">
+                <a class="button" href="{{ route('question-sets.show', $run->questionSet) }}">Buka di Question Bank</a>
+            </p>
+        @else
+            <form method="POST" action="{{ route('question-sets.import-run', $run) }}" style="margin-bottom: 20px;">
+                @csrf
+                <button class="button" type="submit">Simpan ke Question Bank</button>
+            </form>
+        @endif
+
         <div class="card" style="margin-bottom: 20px;">
             <h2>Soal yang dihasilkan</h2>
             @foreach ($presentation->questions as $question)

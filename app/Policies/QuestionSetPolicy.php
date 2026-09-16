@@ -31,6 +31,12 @@ class QuestionSetPolicy
         return $this->owns($user, $questionSet);
     }
 
+    public function download(User $user, QuestionSet $questionSet): bool
+    {
+        return $this->owns($user, $questionSet)
+            && $questionSet->status === QuestionSetStatus::PUBLISHED;
+    }
+
     private function owns(User $user, QuestionSet $questionSet): bool
     {
         return (int) $questionSet->user_id === (int) $user->id;

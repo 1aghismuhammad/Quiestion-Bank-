@@ -98,6 +98,11 @@ class AiGenerationRun extends Model
         return $this->hasOne(AiUsageLog::class, 'generation_run_id', 'generation_run_id');
     }
 
+    public function questionSet(): HasOne
+    {
+        return $this->hasOne(QuestionSet::class, 'generation_run_id', 'generation_run_id');
+    }
+
     /**
      * @return array<string, string>
      */

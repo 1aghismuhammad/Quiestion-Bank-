@@ -6,6 +6,7 @@ namespace App\Support\Generations;
 
 use App\Data\Generations\GenerationRunMcqPresentation;
 use App\Data\Generations\PresentedMcqQuestion;
+use App\Enums\DifficultyLevel;
 use App\Enums\QuestionType;
 use App\Models\AiGeneration;
 use App\Models\AiGenerationRun;
@@ -19,9 +20,6 @@ final class PresentsGenerationRunMcqs
 
     public function present(AiGenerationRun $run): GenerationRunMcqPresentation
     {
-        $shuffleQuestions = (bool) $run->shuffle_questions;
-        $shuffleOptions = (bool) $run->shuffle_options;
-        $seed = $this->shuffle->seedMaterial($run);
         $children = $run->children
             ->sortBy(fn (AiGeneration $child): int => (int) $child->child_index)
             ->values();
@@ -44,10 +42,25 @@ final class PresentsGenerationRunMcqs
                     'question_type' => $child->question_type instanceof QuestionType
                         ? $child->question_type
                         : QuestionType::MULTIPLE_CHOICE,
+                    'difficulty' => $child->difficulty_level instanceof DifficultyLevel
+                        ? $child->difficulty_level
+                        : DifficultyLevel::MEDIUM,
                     'question' => $question,
                 ];
             }
         }
+
+        return $this->presentItems($run, $items);
+    }
+
+    /**
+     * @param  list<array{child_index: int, original_index: int, question_type: QuestionType, difficulty: DifficultyLevel, question: array<string, mixed>}>  $items
+     */
+    public function presentItems(AiGenerationRun $run, array $items): GenerationRunMcqPresentation
+    {
+        $shuffleQuestions = (bool) $run->shuffle_questions;
+        $shuffleOptions = (bool) $run->shuffle_options;
+        $seed = $this->shuffle->seedMaterial($run);
 
         if ($shuffleQuestions) {
             usort($items, function (array $left, array $right) use ($seed): int {
@@ -80,6 +93,7 @@ final class PresentsGenerationRunMcqs
                 (int) $item['child_index'],
                 (int) $item['original_index'],
                 $item['question_type'],
+                $item['difficulty'],
                 $item['question'],
             );
         }
@@ -103,6 +117,7 @@ final class PresentsGenerationRunMcqs
         int $childIndex,
         int $originalIndex,
         QuestionType $questionType,
+        DifficultyLevel $difficulty,
         array $question,
     ): PresentedMcqQuestion {
         if ($questionType === QuestionType::TRUE_FALSE) {
@@ -118,6 +133,9 @@ final class PresentsGenerationRunMcqs
                 (string) ($question['explanation'] ?? ''),
                 [],
                 $questionType,
+                null,
+                null,
+                $difficulty,
             );
         }
 
@@ -134,6 +152,7 @@ final class PresentsGenerationRunMcqs
                 $questionType,
                 (string) ($question['model_answer'] ?? ''),
                 (string) ($question['rubric'] ?? ''),
+                $difficulty,
             );
         }
 
@@ -176,6 +195,9 @@ final class PresentsGenerationRunMcqs
             (string) ($question['explanation'] ?? ''),
             $canonicalToDisplayed,
             QuestionType::MULTIPLE_CHOICE,
+            null,
+            null,
+            $difficulty,
         );
     }
 }

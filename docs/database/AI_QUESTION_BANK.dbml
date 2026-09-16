@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////
 // AI QUESTION BANK SaaS - CANONICAL DATABASE DESIGN
-// Version: 0.15.13
+// Version: 0.15.14
 // Target: Laravel 13 / MySQL 8+
 //////////////////////////////////////////////////////
 
@@ -893,7 +893,8 @@ Table ai_generation_attempts {
 Table question_sets {
   question_set_id bigint [pk, increment]
   user_id bigint [not null]
-  generation_id bigint [unique]
+  generation_id bigint [unique, note: 'Legacy completed-MCQ import. XOR with generation_run_id.']
+  generation_run_id bigint [unique, note: 'Phase 5.7G completed-Run typed import. XOR with generation_id. FK ai_generation_runs RESTRICT.']
   title varchar(255) [not null]
   description text
   subject varchar(255)
@@ -915,7 +916,7 @@ Table question_sets {
     reviewed_by
   }
 
-  Note: 'Phase 5 COMPLETE (MCQ-only). Phase 4 generation jobs do not create Question Sets. Import creates a draft snapshot from one completed MCQ Generation. generation_id is UNIQUE and nullable (future manual sets). Edit updates draft MCQ content only. Publish writes status=published only. Locked product lifecycle is draft to published. generating/review/archived are not active paths. True/false and essay Question Bank are later.'
+  Note: 'Phase 5 COMPLETE (MCQ-only MVP) plus Phase 5.7G Run import. Phase 4 generation jobs do not create Question Sets. Legacy import: one completed MCQ Generation to draft (UNIQUE generation_id). Run import: one completed Run to typed draft (UNIQUE generation_run_id). generation_id and generation_run_id are mutually exclusive (MySQL CHECK qs_source_exclusive_chk; SQLite QuestionSetSourceExclusive). Edit updates draft content (MCQ legacy; MCQ/TF/Essay on Run imports). Publish writes status=published only. Published student/teacher DOCX export. Locked lifecycle draft to published. generating/review/archived are not active paths.'
 }
 
 Table questions {
@@ -1097,6 +1098,7 @@ Ref: ai_generations.generation_id < ai_generation_attempts.generation_id [delete
 
 Ref: users.id < question_sets.user_id
 Ref: ai_generations.generation_id - question_sets.generation_id
+Ref: ai_generation_runs.generation_run_id - question_sets.generation_run_id [delete: restrict]
 Ref: users.id < question_sets.reviewed_by
 Ref: question_sets.question_set_id < questions.question_set_id [delete: cascade]
 Ref: questions.question_id < question_options.question_id [delete: cascade]

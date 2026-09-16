@@ -24,6 +24,7 @@ class QuestionSetFactory extends Factory
         return [
             'user_id' => User::factory(),
             'generation_id' => null,
+            'generation_run_id' => null,
             'title' => fake()->sentence(4),
             'description' => null,
             'subject' => null,

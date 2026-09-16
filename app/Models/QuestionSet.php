@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable([
     'user_id',
     'generation_id',
+    'generation_run_id',
     'title',
     'description',
     'subject',
@@ -45,6 +46,11 @@ class QuestionSet extends Model
     public function generation(): BelongsTo
     {
         return $this->belongsTo(AiGeneration::class, 'generation_id', 'generation_id');
+    }
+
+    public function generationRun(): BelongsTo
+    {
+        return $this->belongsTo(AiGenerationRun::class, 'generation_run_id', 'generation_run_id');
     }
 
     public function reviewer(): BelongsTo

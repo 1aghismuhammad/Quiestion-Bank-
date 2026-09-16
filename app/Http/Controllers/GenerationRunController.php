@@ -110,7 +110,13 @@ class GenerationRunController extends Controller
         $this->assertOwnedRun($request, $generationRun);
         $this->authorize('view', $generationRun);
 
-        $generationRun->load(['items', 'children' => fn ($query) => $query->orderBy('child_index'), 'blueprint', 'material']);
+        $generationRun->load([
+            'items',
+            'children' => fn ($query) => $query->orderBy('child_index'),
+            'blueprint',
+            'material',
+            'questionSet' => fn ($query) => $query->where('user_id', $request->user()->id),
+        ]);
         $isPro = app(ResolveActivePro::class)->handle($request->user());
         $isAdvanced = $generationRun->mode === GenerationRunMode::Advanced;
 

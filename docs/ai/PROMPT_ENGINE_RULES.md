@@ -118,7 +118,7 @@ Prompt identity: `essay-v1` from `config('generation.essay_prompt_version')`. Un
 
 ## True/False Schema (Question Bank later)
 
-The Question Bank product schema below remains deferred. Phase 5 Question Bank is MCQ-only. Do not import Run True/False rows into Question Sets in Phase 5.7F.
+Phase 5.7G imports completed Run True/False into Question Sets using typed reconstruction and the same presentation shuffle as the Run preview. The product schema below is the persisted Question Bank shape. Question Bank import, edit, publish, and DOCX export never persist raw prompts or provider bodies.
 
 ```json
 {
@@ -150,7 +150,7 @@ Validation (Question Bank later):
 
 ## Essay Schema (Question Bank later)
 
-The Question Bank product schema below remains deferred. Phase 5 Question Bank is MCQ-only. Do not import Run Essay rows into Question Sets in Phase 5.7F.
+Phase 5.7G imports completed Run Essay rows into Question Sets using typed reconstruction. The product schema below is the persisted Question Bank shape. Question Bank import, edit, publish, and DOCX export never persist raw prompts or provider bodies.
 
 ```json
 {

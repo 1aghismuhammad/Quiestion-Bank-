@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.15.13
+- Version: 0.15.14
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Livewire + Tailwind CSS
@@ -134,7 +134,8 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Phase 5.7C menambahkan Question Blueprint: Series/versi, draf/konfirmasi/klon, mapping konteks eksplisit, AI fill terpisah dari generation, anggaran input agregat, offset excerpt-relative, throttle event durable, dan DOCX kisi-kisi confirmed (PhpWord 1.4.0, try/finally). Confirm dan fill mensyaratkan Profil ready yang fingerprint-nya cocok. AI fill tidak auto-confirm dan tidak memotong credit. v0.15.7 menolak first-N/full-book fallback. v0.15.8: opsi mapping owner hanya extracted/source-backed.
 - Phase 5.7D menambahkan ledger `SUM(credits)` dengan XOR subjek Generation vs Run, plus Simple Generation Run sekuensial menurut `child_index`. Child tidak punya baris usage. Attempt started ditutup pada kegagalan/recovery. Owner melihat soal completed read-only. Advanced/shuffle/Run QB import/question DOCX belum. v0.15.8: anggaran child memakai span terikat, recheck pasca-HTTP atomik, cutoff otoritas stale, referensi span ketat, dispatcher next-child kanonis, dan retry mempertahankan `idempotency_key`. v0.15.9: Begin menolak Attempt `started` ganda; jam queued hanya pada child eligible.
 - Phase 5.7E menambahkan Advanced MCQ: `question_blueprints.mode` plus `ai_fill_requested_total`, Pro aktif via `ResolveActivePro`, mixed difficulty, total 1–30, kualifikasi Run 1–10, `blueprint-fill-v2`, default `mcq-v3` (penjelasan tanpa huruf/posisi opsi), dan presenter shuffle deterministik SHA-256 yang meremap kunci lewat peta kanonis tanpa mengubah `result_json`. Expired-Pro bersifat read-only untuk sumber Advanced existing.
-- Phase 5.7F menambahkan True/False dan Essay pada Blueprint dan Generation Run: Simple satu tipe; Advanced mixed type; `ai_fill_requested_type_counts`; `blueprint-fill-v3` untuk fill bertipe; `true-false-v1` (`correct_answer` JSON boolean, tanpa opsi generated); `essay-v1` (`model_answer` + `rubric` teks); rekonstruksi dari `question_type` child; shuffle opsi MCQ-only dan ditolak jika tidak ada baris MCQ. Question Bank tetap MCQ-only. Run-to-Question-Bank import, alur review/edit, question DOCX, dan hardening akhir tetap Phase 5.7G.
+- Phase 5.7F menambahkan True/False dan Essay pada Blueprint dan Generation Run: Simple satu tipe; Advanced mixed type; `ai_fill_requested_type_counts`; `blueprint-fill-v3` untuk fill bertipe; `true-false-v1` (`correct_answer` JSON boolean, tanpa opsi generated); `essay-v1` (`model_answer` + `rubric` teks); rekonstruksi dari `question_type` child; shuffle opsi MCQ-only dan ditolak jika tidak ada baris MCQ.
+- Phase 5.7G menambahkan Run-to-Question-Bank import (`generation_run_id` nullable unique FK RESTRICT; exclusive dengan `generation_id`), typed draft edit/publish MCQ/TF/Essay, dan student/teacher question DOCX dari published sets. Import idempotent tanpa credit/provider; snapshot typed memakai presenter shuffle yang sama dengan preview Run. Legacy `generation_id` import MCQ-only tetap.
 
 ### Subscription and Quota
 
@@ -186,16 +187,17 @@ AI Engine consists of:
 - MCQ schema validation and deterministic duplicate detection. Targeted repair requests only missing/invalid slots.
 - Automatic retry on the same Generation and reservation; `execution_token` is DB-authoritative. Manual retry after `failed` creates a new Generation with `parent_generation_id` written in the Start transaction.
 - Provider/model/token metadata on attempts and optional Generation aggregates. Do not persist raw prompt or full raw Gemini response. Diagnostic/error metadata is sanitized.
-- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5.1–5.6 import an owned completed MCQ Generation into a draft Question Set, allow draft MCQ edit, and publish without modifying Generation runtime data. Phase 5.7D Simple Runs do not import into Question Bank.
+- Phase 4 does not create `question_sets`. Completed `result_json` is a read-only preview. Phase 5.1–5.6 import an owned completed MCQ Generation into a draft Question Set, allow draft MCQ edit, and publish without modifying Generation runtime data. Phase 5.7G imports completed Runs into typed draft Question Sets with the same presentation shuffle as the Run preview; edit/publish and DOCX export do not call Gemini or charge quota.
 - Stale queued (`queued_at`) or processing (`updated_at`) reserved **legacy** generations (`generation_run_id` null) are terminalized to `failed` + `released` with `stale_recovery` by `generations:recover-stale`. Run recovery is `generation-runs:recover-stale`. No provider HTTP and no Job redispatch from recovery.
 - Simple Generation Run (Phase 5.7D): confirmed current Blueprint + current ready Profile + persisted bounded mappings; one reservation on the Run; sequential child Generations by `child_index`; same-token duplicate calls the provider zero times; success charges once; failure releases once and closes started Attempts. Legacy finalize refuses run children. Owner preview is read-only.
 
 ### Question Bank
 
 - Phase 5.1–5.6 `COMPLETE`: owner Blade index/show/edit; explicit import from completed MCQ Generation; atomic draft MCQ save; publish `draft → published` after persisted integrity checks; `UNIQUE(generation_id)`; snapshot rows in `question_sets` / `questions` / `question_options`.
+- Phase 5.7G: `POST /generation-runs/{id}/question-sets` imports completed Run questions into typed draft sets (`UNIQUE(generation_run_id)`; exclusive with `generation_id`). Typed draft edit/publish for MCQ, True/False, and Essay. Published student/teacher DOCX via PhpWord with try/finally cleanup.
 - Import writes `status=draft`, `visibility=private`, `review_status=not_submitted`. Publish changes only `status` to `published`. Locked lifecycle is `draft → published`.
-- Owner-only; foreign IDs 404; Admin has no ownership bypass. Generation `result_json` is unchanged. Edit/publish do not charge quota and do not call Gemini. No Phase 5 Batch 2 migration.
-- Manual create, add/delete/reorder, unpublish, archive, delete/restore, public visibility, admin review, and TF/essay Question Bank are later.
+- Owner-only; foreign IDs 404; Admin has no ownership bypass. Generation/Run `result_json` is unchanged. Edit/publish/import/DOCX do not charge quota and do not call Gemini. No Phase 5 Batch 2 migration.
+- Manual create, add/delete/reorder, unpublish, archive, delete/restore, public visibility, and admin review are later.
 - Schema preserves canonical enum values (`generating`, `review`, `archived`) but Phase 5 does not transition into them.
 - Optional admin review and public visibility remain later (Phase 6).
 

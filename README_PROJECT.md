@@ -64,8 +64,8 @@ Admin menggunakan Google login yang sama dengan role admin untuk mengelola user 
 - Phase 2: standalone material management dari dashboard (`COMPLETE`). Originally delivered upload (PDF, DOCX, TXT) and manual-text creation. Phase 5.7A later retired HTTP/UI text creation; new Material creation is upload-only. Legacy `source_type=text` rows remain readable/editable.
 - Phase 3: subscription/quota foundation (`COMPLETE`).
 - Phase 4: AI question engine (`COMPLETE`; 4.1–4.6 including owner generation UI and stale recovery).
-- Phase 5: question bank (`COMPLETE`; MCQ-only MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). True/false and essay Question Bank remain later.
-- Phase 5.7: pre-Phase-6 enhancements (`IN PROGRESS`). Phase 5.7A–5.7B3 are `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle) is `COMPLETE`. Phase 5.7F (True/False and Essay) is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G (Run-to-Question-Bank import, review/edit flow, question DOCX, final hardening) is `NOT STARTED`.
+- Phase 5: question bank (`COMPLETE`; MCQ-only MVP: schema, explicit completed-MCQ import to draft, owner list/detail, draft edit, atomic save, `draft → published`, published read-only). Phase 5.7G extends the bank with Run import and typed MCQ/True-False/Essay edit/publish plus student/teacher question DOCX.
+- Phase 5.7: pre-Phase-6 enhancements (`IN PROGRESS`). Phase 5.7A–5.7B3 are `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E (Advanced MCQ, Pro gating, mixed difficulty, deterministic shuffle) is `COMPLETE`. Phase 5.7F (True/False and Essay) is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, final hardening) is `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`.
 - Phase 6: admin dashboard dan MVP release (`PLANNED`).
 - Phase 7: WhatsApp CRM.
 - Phase 8: optimization dan scaling.

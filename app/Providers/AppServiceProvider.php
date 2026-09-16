@@ -16,6 +16,8 @@ use App\Services\Materials\Extraction\TxtExtractor;
 use App\Services\Materials\MaterialStorageService;
 use App\Support\QuestionBlueprints\BlueprintDocxSaver;
 use App\Support\QuestionBlueprints\PhpWordBlueprintDocxSaver;
+use App\Support\QuestionSets\PhpWordQuestionSetDocxSaver;
+use App\Support\QuestionSets\QuestionSetDocxSaver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(MaterialProfileAnalysisProvider::class, GeminiMaterialProfileProvider::class);
         $this->app->bind(QuestionBlueprintAnalysisProvider::class, GeminiQuestionBlueprintProvider::class);
         $this->app->bind(BlueprintDocxSaver::class, PhpWordBlueprintDocxSaver::class);
+        $this->app->bind(QuestionSetDocxSaver::class, PhpWordQuestionSetDocxSaver::class);
         $this->app->bind(MaterialExtractorRouter::class, function (): MaterialExtractorRouter {
             return new MaterialExtractorRouter(
                 new TxtExtractor,

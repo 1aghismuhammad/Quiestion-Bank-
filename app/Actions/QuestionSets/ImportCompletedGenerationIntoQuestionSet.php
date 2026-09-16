@@ -18,6 +18,7 @@ use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\QuestionSet;
 use App\Models\User;
+use App\Support\QuestionSets\QuestionSetSourceExclusive;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -162,6 +163,8 @@ class ImportCompletedGenerationIntoQuestionSet
      */
     private function insertSnapshot(User $owner, AiGeneration $generation, array $questions): QuestionSet
     {
+        QuestionSetSourceExclusive::assert((int) $generation->generation_id, null);
+
         $set = QuestionSet::query()->create([
             'user_id' => $owner->id,
             'generation_id' => $generation->generation_id,

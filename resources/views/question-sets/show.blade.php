@@ -1,5 +1,6 @@
 @php
     use App\Enums\QuestionSetStatus;
+    use App\Enums\QuestionType;
 
     $statusLabels = [
         'draft' => 'Draf',
@@ -9,6 +10,7 @@
         'archived' => 'Arsip',
     ];
     $isDraft = $questionSet->status === QuestionSetStatus::DRAFT;
+    $isPublished = $questionSet->status === QuestionSetStatus::PUBLISHED;
 @endphp
 
 @extends('layouts.app')
@@ -21,12 +23,19 @@
         @if ($questionSet->generation)
             <a href="{{ route('generations.show', $questionSet->generation) }}">Lihat generasi sumber</a>
         @endif
+        @if ($questionSet->generationRun)
+            <a href="{{ route('generation-runs.show', $questionSet->generationRun) }}">Lihat generasi kisi-kisi sumber</a>
+        @endif
         @if ($isDraft)
             <a class="button" href="{{ route('question-sets.edit', $questionSet) }}">Edit</a>
             <form method="POST" action="{{ route('question-sets.publish', $questionSet) }}" onsubmit="return confirm('Terbitkan soal ini? Setelah terbit, soal tidak dapat diedit.')">
                 @csrf
                 <button class="button" type="submit">Terbitkan</button>
             </form>
+        @endif
+        @if ($isPublished)
+            <a class="button" href="{{ route('question-sets.download-student', $questionSet) }}">Unduh DOCX Siswa</a>
+            <a class="button" href="{{ route('question-sets.download-teacher', $questionSet) }}">Unduh DOCX Guru</a>
         @endif
     </div>
 
@@ -58,17 +67,47 @@
 
     @foreach ($questionSet->questions as $question)
         <div class="card" style="margin-bottom: 16px;">
-            <p><strong>{{ $question->question_number }}.</strong> {{ $question->question_text }}</p>
-            @foreach ($question->options as $option)
-                <p>
-                    <strong>{{ $option->option_label }}.</strong>
-                    {{ $option->option_text }}
-                    @if ($option->is_correct)
-                        <span class="muted">(Jawaban benar)</span>
-                    @endif
-                </p>
-            @endforeach
-            <p><strong>Penjelasan:</strong> {{ $question->explanation }}</p>
+            <p>
+                <strong>{{ $question->question_number }}.</strong> {{ $question->question_text }}
+            </p>
+            <p class="muted">
+                {{ $question->question_type->label() }}
+                @if ($question->difficulty_level)
+                    · {{ $question->difficulty_level->label() }}
+                @endif
+            </p>
+
+            @if ($question->question_type === QuestionType::MULTIPLE_CHOICE)
+                @foreach ($question->options as $option)
+                    <p>
+                        <strong>{{ $option->option_label }}.</strong>
+                        {{ $option->option_text }}
+                        @if ($option->is_correct)
+                            <span class="muted">(Jawaban benar)</span>
+                        @endif
+                    </p>
+                @endforeach
+            @elseif ($question->question_type === QuestionType::TRUE_FALSE)
+                @foreach ($question->options as $option)
+                    <p>
+                        {{ $option->option_text }}
+                        @if ($option->is_correct)
+                            <span class="muted">(Jawaban benar)</span>
+                        @endif
+                    </p>
+                @endforeach
+            @elseif ($question->question_type === QuestionType::ESSAY)
+                @if ($question->correct_answer)
+                    <p><strong>Contoh jawaban:</strong> {{ $question->correct_answer }}</p>
+                @endif
+                @if ($question->rubric)
+                    <p><strong>Rubrik:</strong> {{ $question->rubric }}</p>
+                @endif
+            @endif
+
+            @if ($question->explanation)
+                <p><strong>Penjelasan:</strong> {{ $question->explanation }}</p>
+            @endif
         </div>
     @endforeach
 @endsection

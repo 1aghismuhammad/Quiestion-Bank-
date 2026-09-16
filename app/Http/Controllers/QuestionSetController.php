@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\QuestionSets\DownloadPublishedQuestionSetDocx;
 use App\Actions\QuestionSets\ImportCompletedGenerationIntoQuestionSet;
+use App\Actions\QuestionSets\ImportCompletedGenerationRunIntoQuestionSet;
 use App\Actions\QuestionSets\PublishQuestionSet;
 use App\Actions\QuestionSets\UpdateDraftQuestionSet;
 use App\Http\Requests\QuestionSets\UpdateQuestionSetRequest;
 use App\Models\AiGeneration;
+use App\Models\AiGenerationRun;
 use App\Models\QuestionSet;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class QuestionSetController extends Controller
 {
@@ -44,6 +48,7 @@ class QuestionSetController extends Controller
         $model->load([
             'questions.options',
             'generation' => fn ($query) => $query->where('user_id', $request->user()->id),
+            'generationRun' => fn ($query) => $query->where('user_id', $request->user()->id),
         ]);
 
         return view('question-sets.show', [
@@ -117,11 +122,67 @@ class QuestionSetController extends Controller
             ->with('success', 'Soal disimpan ke Question Bank.');
     }
 
+    public function storeFromGenerationRun(
+        Request $request,
+        int $generationRun,
+        ImportCompletedGenerationRunIntoQuestionSet $import,
+    ): RedirectResponse {
+        $model = $this->ownedGenerationRun($request, $generationRun);
+        $this->authorize('import', $model);
+
+        try {
+            $questionSet = $import->handle($request->user(), $model);
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
+        }
+
+        return to_route('question-sets.show', $questionSet)
+            ->with('success', 'Soal disimpan ke Question Bank.');
+    }
+
+    public function downloadStudent(
+        Request $request,
+        int $questionSet,
+        DownloadPublishedQuestionSetDocx $download,
+    ): BinaryFileResponse|RedirectResponse {
+        $model = $this->ownedQuestionSet($request, $questionSet);
+        $this->authorize('download', $model);
+
+        try {
+            return $download->handle($request->user(), $model, 'student');
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
+        }
+    }
+
+    public function downloadTeacher(
+        Request $request,
+        int $questionSet,
+        DownloadPublishedQuestionSetDocx $download,
+    ): BinaryFileResponse|RedirectResponse {
+        $model = $this->ownedQuestionSet($request, $questionSet);
+        $this->authorize('download', $model);
+
+        try {
+            return $download->handle($request->user(), $model, 'teacher');
+        } catch (ValidationException $exception) {
+            return back()->withErrors($exception->errors());
+        }
+    }
+
     private function ownedGeneration(Request $request, int $generationId): AiGeneration
     {
         return $request->user()
             ->generations()
             ->whereKey($generationId)
+            ->firstOrFail();
+    }
+
+    private function ownedGenerationRun(Request $request, int $generationRunId): AiGenerationRun
+    {
+        return $request->user()
+            ->generationRuns()
+            ->whereKey($generationRunId)
             ->firstOrFail();
     }
 

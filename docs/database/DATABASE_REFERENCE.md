@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.13
+- Version: 0.15.14
 - Domain entities: 32 domain entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, `option_id`, `blueprint_series_id`, `blueprint_id`, `blueprint_row_id`, `generation_run_id`, dan PK custom Profile mengikuti custom PK
@@ -326,7 +326,7 @@ Sequential children: `ClaimRunChildExecution` then `RunGenerationRunChild`. Same
 
 #### `question_sets`
 
-Phase 5 (`COMPLETE`). Container question milik user. **Tidak dibuat oleh job generasi Phase 4.** Persistensi hanya melalui import eksplisit generation completed MCQ. Satu `generation_id` paling banyak satu Question Set (`UNIQUE`, nullable untuk set manual di masa depan). Import menulis `status=draft`, `visibility=private`, `review_status=not_submitted`. Owner boleh mengedit draf MCQ (judul, teks, opsi A–D, jawaban benar via `is_correct`, penjelasan) dengan simpan atomik. Publish memvalidasi snapshot tersimpan lalu `draft → published` tanpa mengubah visibility atau review_status. Published read-only. Edit/publish tidak memanggil Gemini dan tidak menagih kuota generation. `result_json` generasi tidak diubah. Tidak ada migrasi Batch 2. Enum schema tetap memuat `generating` / `review` / `archived` tanpa transisi aktif ke nilai itu. True/false, essay, create manual, add/delete/reorder, unpublish, archive, visibilitas publik, dan admin review bukan Phase 5.
+Phase 5 (`COMPLETE`) plus Phase 5.7G extensions. Container question milik user. **Tidak dibuat oleh job generasi Phase 4.** Persistensi hanya melalui import eksplisit: legacy generation completed MCQ (`generation_id`, `UNIQUE`, nullable untuk set manual di masa depan) atau Phase 5.7G Run completed typed (`generation_run_id`, nullable `UNIQUE`, FK `ai_generation_runs` `RESTRICT`). `generation_id` dan `generation_run_id` mutually exclusive (MySQL CHECK `qs_source_exclusive_chk`; SQLite tests enforce `QuestionSetSourceExclusive`). Import menulis `status=draft`, `visibility=private`, `review_status=not_submitted`. Owner mengedit draf: Phase 5 MVP MCQ-only; Phase 5.7G typed MCQ/True-False/Essay pada set hasil Run import. Simpan atomik; publish memvalidasi snapshot tersimpan lalu `draft → published` tanpa mengubah visibility atau review_status. Published read-only; student/teacher DOCX hanya dari published. Edit/publish/import/DOCX tidak memanggil Gemini dan tidak menagih kuota generation. `result_json` generasi/Run tidak diubah. Tidak ada migrasi Batch 2. Enum schema tetap memuat `generating` / `review` / `archived` tanpa transisi aktif ke nilai itu. Create manual, add/delete/reorder, unpublish, archive, visibilitas publik, dan admin review bukan Phase 5/5.7G.
 
 Admin review menggunakan `review_status` (default `not_submitted`). Tidak dijalankan di Phase 5.
 
@@ -340,7 +340,7 @@ Question type (schema):
 - `true_false`
 - `essay`
 
-Schema dapat menyimpan ketiga tipe. Question Bank Phase 5 hanya mengimpor, mengedit, dan menerbitkan **multiple choice**. True/false dan essay di Question Bank ditunda ke fase yang di-scope secara eksplisit.
+Schema dapat menyimpan ketiga tipe. Question Bank Phase 5 MVP hanya mengimpor, mengedit, dan menerbitkan **multiple choice** dari legacy Generation. Phase 5.7G menambahkan import Run typed serta edit/publish MCQ, True/False, dan Essay pada snapshot hasil Run.
 
 Nomor question wajib unique dalam satu question set.
 
@@ -488,6 +488,12 @@ Phase 5.7C+D (additive; do not edit committed migrations):
 11. alter `ai_usage_logs` (`credits` default 1, nullable `generation_id`, unique nullable `generation_run_id`, MySQL XOR CHECK)
 
 Forward deploy in that order after Phase 5.1. Rollback of step 11 is **not** safe after Run usage or `credits>1` exists.
+
+Phase 5.7G (additive; do not edit committed migrations):
+
+1. alter `question_sets` (nullable unique `generation_run_id`, FK RESTRICT, MySQL CHECK `qs_source_exclusive_chk`)
+
+Forward deploy after Phase 5.7D step 11. Rollback drops FK, unique index, column, and CHECK only.
 
 `prompt_versions` remains planned and is not a PHP migration.
 

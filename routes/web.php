@@ -99,6 +99,10 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('question-sets.update');
                 Route::post('/question-sets/{questionSet}/publish', [QuestionSetController::class, 'publish'])
                     ->name('question-sets.publish');
+                Route::get('/question-sets/{questionSet}/download/student', [QuestionSetController::class, 'downloadStudent'])
+                    ->name('question-sets.download-student');
+                Route::get('/question-sets/{questionSet}/download/teacher', [QuestionSetController::class, 'downloadTeacher'])
+                    ->name('question-sets.download-teacher');
             });
 
         Route::whereNumber('generation')
@@ -121,6 +125,8 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('generation-runs.status');
                 Route::post('/generation-runs/{generationRun}/retry', [GenerationRunController::class, 'retry'])
                     ->name('generation-runs.retry');
+                Route::post('/generation-runs/{generationRun}/question-sets', [QuestionSetController::class, 'storeFromGenerationRun'])
+                    ->name('question-sets.import-run');
             });
 
         Route::scopeBindings()

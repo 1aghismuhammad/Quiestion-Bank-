@@ -8,6 +8,7 @@ use App\Enums\QuestionSetStatus;
 use App\Enums\ReviewStatus;
 use App\Enums\Visibility;
 use App\Models\AiGeneration;
+use App\Models\AiGenerationRun;
 use App\Models\Material;
 use App\Models\Question;
 use App\Models\QuestionOption;
@@ -35,6 +36,7 @@ class PhaseFiveQuestionBankSchemaTest extends TestCase
             'question_set_id',
             'user_id',
             'generation_id',
+            'generation_run_id',
             'title',
             'description',
             'subject',
@@ -97,6 +99,34 @@ class PhaseFiveQuestionBankSchemaTest extends TestCase
 
         $this->expectException(QueryException::class);
         QuestionSet::factory()->for($user)->create(['generation_id' => $generation->generation_id]);
+    }
+
+    public function test_generation_run_id_is_nullable_and_unique(): void
+    {
+        $this->assertTrue($this->hasIndex('question_sets', ['generation_run_id'], unique: true));
+
+        $user = User::factory()->create();
+        QuestionSet::factory()->for($user)->create(['generation_run_id' => null]);
+        QuestionSet::factory()->for($user)->create(['generation_run_id' => null]);
+        $this->assertSame(2, QuestionSet::query()->count());
+
+        $run = AiGenerationRun::factory()->for($user)->create();
+        QuestionSet::factory()->for($user)->create(['generation_run_id' => $run->generation_run_id]);
+
+        $this->expectException(QueryException::class);
+        QuestionSet::factory()->for($user)->create(['generation_run_id' => $run->generation_run_id]);
+    }
+
+    public function test_both_source_columns_null_is_allowed(): void
+    {
+        $user = User::factory()->create();
+
+        QuestionSet::factory()->for($user)->create([
+            'generation_id' => null,
+            'generation_run_id' => null,
+        ]);
+
+        $this->assertSame(1, QuestionSet::query()->count());
     }
 
     public function test_question_number_is_unique_per_set(): void
@@ -166,6 +196,10 @@ class PhaseFiveQuestionBankSchemaTest extends TestCase
         $generationFk = $this->foreignKey('question_sets', 'generation_id');
         $this->assertSame('ai_generations', $generationFk['foreign_table']);
         $this->assertContains($generationFk['on_delete'], ['restrict', 'no action']);
+
+        $generationRunFk = $this->foreignKey('question_sets', 'generation_run_id');
+        $this->assertSame('ai_generation_runs', $generationRunFk['foreign_table']);
+        $this->assertContains($generationRunFk['on_delete'], ['restrict', 'no action']);
 
         $questionFk = $this->foreignKey('questions', 'question_set_id');
         $this->assertContains($questionFk['on_delete'], ['cascade']);

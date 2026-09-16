@@ -26,6 +26,39 @@ Notes:
 -
 ```
 
+## v0.15.14 Phase 5.7G Run-to-Question-Bank import, typed bank, question DOCX
+
+- Date: 14 September 2026
+- Version: 0.15.14
+- Phase: Phase 5.7G - Run-to-Question-Bank import, typed Question Bank edit/publish, student/teacher question DOCX
+- Type: Feature
+
+Added:
+
+- Forward-only nullable unique `question_sets.generation_run_id` FK to `ai_generation_runs` with `RESTRICT` delete. Source exclusivity: at most one of `generation_id` or `generation_run_id` (MySQL CHECK `qs_source_exclusive_chk`; SQLite tests enforce `QuestionSetSourceExclusive`).
+- Idempotent Run import: `POST /generation-runs/{generationRun}/question-sets`. Lock order User → Run → items → children. No credit charge and no provider HTTP. Snapshot uses typed reconstruction plus the same presentation shuffle as the completed Run preview (`PresentsGenerationRunMcqs`); canonical child `result_json` is unchanged.
+- Typed Question Bank draft edit and publish for MCQ, True/False, and Essay on imported Run sets (and existing legacy MCQ import). Persisted integrity uses the same typed validators as Run reconstruction. Published-only student and teacher DOCX export (PhpWord, try/finally temp cleanup, `deleteFileAfterSend`; filenames `Soal-[title].docx` / `Soal-Kunci-[title].docx`).
+
+Changed:
+
+- Docs record version 0.15.14. Phase 5.7A–B3 remain `COMPLETE`. Phase 5.7C+D was completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `IMPLEMENTED — PENDING FINAL INTEGRATED MANUAL QA` (code committed; source review passed). Phase 5.7G is `IMPLEMENTED — PENDING FINAL SOURCE REVIEW AND INTEGRATED MANUAL QA`. Phase 5.7 remains `IN PROGRESS`. Phase 6 remains `PLANNED`.
+- Legacy completed-MCQ import via `POST /generations/{generation}/question-sets` and `UNIQUE(generation_id)` is preserved unchanged.
+
+Fixed:
+
+- N/A (forward feature slice).
+
+Database Impact:
+
+- New forward migration `2026_09_14_100001_add_generation_run_id_to_question_sets_table.php`. No earlier migration edited. Rollback drops FK, unique index, column, and MySQL CHECK only.
+
+Notes:
+
+- Automated QA uses fakes/spies and does not call Gemini. Question Bank import, edit, publish, and DOCX never persist raw prompts or provider bodies.
+- Source-review corrective: Run import now uses import-specific strict validation (`ValidateStoredRunImportResults`) with canonical MCQ/True-False/Essay candidate validators before any Question Bank insert; historical permissive MCQ reconstruction remains unchanged for legacy runtime paths. MariaDB rollback uses `DROP CONSTRAINT`; MySQL keeps `DROP CHECK`. Student/teacher DOCX tests now assert literal teacher-only leakage boundaries; DOCX temp cleanup runs only after successful response construction.
+- Automated QA: 1210 tests, 6976 assertions (1 skipped: MySQL CHECK on SQLite). Manual QA for Phase 5.7F and Phase 5.7G is deferred into one integrated owner QA pass after source review. QA archive: `phase-5.7g-v0.15.14-qa.zip`.
+- Run cancellation, parallel children, add/delete/reorder, unpublish, archive, public visibility, and admin review remain out of scope.
+
 ## v0.15.13 Phase 5.7F True/False and Essay generation
 
 - Date: 13 September 2026
