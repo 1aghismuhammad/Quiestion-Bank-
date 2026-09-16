@@ -65,18 +65,26 @@ class DatabaseIntegrityAuditCommand extends Command
         
         $report['fingerprint'] = $this->captureFingerprint();
 
+        $hasFailures = false;
+        foreach ($report['checks'] as $check) {
+            if ($check['status'] === 'FAIL') {
+                $hasFailures = true;
+                break;
+            }
+        }
+
         if ($this->option('json')) {
             $this->line(json_encode($report, JSON_PRETTY_PRINT));
-            return 0;
+            return $hasFailures ? 1 : 0;
         }
 
         $this->displayReport($report);
-        return 0;
+        return $hasFailures ? 1 : 0;
     }
 
     private function checkCanonicalRoles(): array
     {
-        $roles = Role::whereIn('name', ['ADMIN', 'USER'])->pluck('name')->toArray();
+        $roles = Role::whereIn('role_name', ['ADMIN', 'USER'])->pluck('role_name')->toArray();
         $missing = array_diff(['ADMIN', 'USER'], $roles);
         
         return [
@@ -87,18 +95,18 @@ class DatabaseIntegrityAuditCommand extends Command
 
     private function checkCanonicalPlans(): array
     {
-        $plans = Plan::whereIn('code', ['FREE', 'PRO'])->pluck('code')->toArray();
-        $missing = array_diff(['FREE', 'PRO'], $plans);
+        $plans = Plan::whereIn('code', ['free', 'pro'])->pluck('code')->map(fn($c) => $c->value ?? $c)->toArray();
+        $missing = array_diff(['free', 'pro'], $plans);
         
         return [
             'status' => empty($missing) ? 'PASS' : 'FAIL',
-            'details' => empty($missing) ? 'FREE and PRO canonical plans exist.' : 'Missing canonical plans: ' . implode(', ', $missing),
+            'details' => empty($missing) ? 'free and pro canonical plans exist.' : 'Missing canonical plans: ' . implode(', ', $missing),
         ];
     }
 
     private function checkPlanOffers(): array
     {
-        $count = PlanOffer::where('is_active', true)->count();
+        $count = PlanOffer::where('status', 'active')->count();
         return [
             'status' => $count > 0 ? 'PASS' : 'WARN',
             'details' => "Found {$count} active plan offers.",
@@ -112,24 +120,23 @@ class DatabaseIntegrityAuditCommand extends Command
             ->whereNull('role_user.role_id')
             ->count();
 
-        $usersWithMultipleRoles = DB::table('role_user')
-            ->select('user_id')
-            ->groupBy('user_id')
-            ->havingRaw('COUNT(role_id) > 1')
+        $invalidRoles = DB::table('role_user')
+            ->leftJoin('roles', 'role_user.role_id', '=', 'roles.id')
+            ->whereNull('roles.id')
             ->count();
 
-        $status = ($usersWithoutRoles > 0 || $usersWithMultipleRoles > 0) ? 'WARN' : 'PASS';
+        $status = ($usersWithoutRoles > 0 || $invalidRoles > 0) ? 'WARN' : 'PASS';
         $details = [];
         if ($usersWithoutRoles > 0) {
             $details[] = "{$usersWithoutRoles} users have no role.";
         }
-        if ($usersWithMultipleRoles > 0) {
-            $details[] = "{$usersWithMultipleRoles} users have multiple roles.";
+        if ($invalidRoles > 0) {
+            $details[] = "{$invalidRoles} role_user entries reference invalid roles.";
         }
 
         return [
             'status' => $status,
-            'details' => empty($details) ? 'No user-role anomalies detected.' : implode(' ', $details),
+            'details' => empty($details) ? 'No user-role anomalies detected (USER+ADMIN is allowed).' : implode(' ', $details),
         ];
     }
 
@@ -165,17 +172,17 @@ class DatabaseIntegrityAuditCommand extends Command
 
     private function checkMaterialConsistency(): array
     {
-        $materials = Material::where('source_type', 'file')->get(['id', 'file_path']);
+        $materials = Material::where('source_type', 'upload')->get(['material_id', 'file_path']);
         $missingFiles = 0;
         
         foreach ($materials as $material) {
-            if ($material->file_path && ! Storage::disk('local')->exists($material->file_path)) {
+            if ($material->file_path && ! Storage::disk('materials')->exists($material->file_path)) {
                 $missingFiles++;
             }
         }
 
         return [
-            'status' => $missingFiles > 0 ? 'WARN' : 'PASS',
+            'status' => $missingFiles > 0 ? 'FAIL' : 'PASS',
             'details' => $missingFiles > 0 ? "{$missingFiles} file materials have missing physical files." : 'All file materials exist in storage.',
         ];
     }

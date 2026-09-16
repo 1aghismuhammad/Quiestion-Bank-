@@ -34,8 +34,21 @@ class DatabaseSafetyGuard
             return;
         }
 
-        $connection = DB::connection();
-        $databaseName = $connection->getDatabaseName();
+        $connectionName = $event->input->hasParameterOption('--database') 
+            ? $event->input->getParameterOption('--database') 
+            : null;
+
+        try {
+            $connection = $connectionName ? DB::connection($connectionName) : DB::connection();
+            $databaseName = $connection->getDatabaseName();
+        } catch (\Throwable $e) {
+            throw new RuntimeException(
+                "REFUSED:\n" .
+                "Could not resolve the target database connection.\n" .
+                "Ambiguous or missing connection fails closed for destructive commands.\n" .
+                "Error: " . $e->getMessage()
+            );
+        }
 
         if ($databaseName === null || $databaseName === '') {
             throw new RuntimeException(

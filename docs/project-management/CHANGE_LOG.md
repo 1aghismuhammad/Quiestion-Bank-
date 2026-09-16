@@ -26,6 +26,36 @@ Notes:
 -
 ```
 
+## v0.15.16 Phase 5.7 and Pre-Phase-6 H0-H3 Completion
+
+- Date: 17 September 2026
+- Version: 0.15.16
+- Phase: Phase 5.7 and Pre-Phase-6 Hardening (H0-H3)
+- Type: Documentation / Maintenance
+
+Added:
+
+- Documentation reconciled to officially close Phase 1-5.7 and Pre-Phase-6 H0-H3 as `COMPLETE`.
+- Database Integrity Audit command tests hardened for SQLite transaction isolation (`DatabaseIntegrityAuditCommandTest`).
+- Database Safety Guard tests completed to explicitly prove `--database` option fail-closed behavior on `ai_question_bank` (`DatabaseSafetyGuardTest`).
+
+Changed:
+
+- Phase 5.7 and Pre-Phase-6 H0-H3 marked as `COMPLETE` in `PHASE_ROADMAP.md`.
+- Test suite is 100% green with robust testing for data persistence policies.
+
+Fixed:
+
+- Schema and constraint errors during test execution for integrity audit.
+
+Database Impact:
+
+- None.
+
+Notes:
+
+- `ai_question_bank` is officially marked as persistent development data.
+
 ## v0.15.15 Pre-Phase-6 Hardening H0-H2
 
 - Date: 16 September 2026

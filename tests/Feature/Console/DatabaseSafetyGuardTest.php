@@ -72,6 +72,56 @@ class DatabaseSafetyGuardTest extends TestCase
     }
 
     #[DataProvider('destructiveCommandsProvider')]
+    public function test_destructive_commands_evaluate_explicit_database_option_attack_scenario(string $command): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Destructive command blocked. Database is not explicitly disposable.');
+
+        // Default looks safe
+        Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank_h3_test']);
+        Config::set('database.default', 'testing');
+        
+        // Target looks dangerous
+        Config::set('database.connections.mysql', ['driver' => 'mysql', 'database' => 'ai_question_bank']);
+        App::detectEnvironment(fn () => 'testing');
+
+        $guard = new DatabaseSafetyGuard();
+        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'mysql']), new NullOutput()));
+    }
+
+    #[DataProvider('destructiveCommandsProvider')]
+    public function test_destructive_commands_evaluate_explicit_database_option_reverse_scenario(string $command): void
+    {
+        // Default looks dangerous
+        Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank']);
+        Config::set('database.default', 'testing');
+        
+        // Target looks safe
+        Config::set('database.connections.safe_test', ['driver' => 'mysql', 'database' => 'ai_question_bank_safe_test']);
+        App::detectEnvironment(fn () => 'testing');
+
+        $guard = new DatabaseSafetyGuard();
+        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'safe_test']), new NullOutput()));
+        
+        // If we reach here, it passed the guard
+        $this->assertTrue(true);
+    }
+
+    #[DataProvider('destructiveCommandsProvider')]
+    public function test_destructive_commands_are_refused_when_explicit_connection_unresolved(string $command): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Could not resolve the target database connection');
+
+        Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank_h3_test']);
+        Config::set('database.default', 'testing');
+        App::detectEnvironment(fn () => 'testing');
+
+        $guard = new DatabaseSafetyGuard();
+        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'nonexistent_connection']), new NullOutput()));
+    }
+
+    #[DataProvider('destructiveCommandsProvider')]
     public function test_destructive_commands_are_allowed_for_valid_test_database(string $command): void
     {
         Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank_h3_test']);

@@ -243,7 +243,7 @@ Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A is `COMPLETE`. P
 
 ## Phase 5.7 - Pre-Phase-6 enhancements
 
-Status: `IN PROGRESS` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D `COMPLETE` (completed and committed before the Phase 5.7E baseline); Phase 5.7E `COMPLETE`; Phase 5.7F `COMPLETE`; Phase 5.7G `COMPLETE`)
+Status: `COMPLETE` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D `COMPLETE` (completed and committed before the Phase 5.7E baseline); Phase 5.7E `COMPLETE`; Phase 5.7F `COMPLETE`; Phase 5.7G `COMPLETE`)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -353,8 +353,8 @@ Phase 5.7G — Run-to-Question-Bank import, typed edit/publish, question DOCX, a
 
 H0 — COMPLETE
 H1 — COMPLETE
-H2 — COMPLETE after this documentation corrective
-H3 — PLANNED
+H2 — COMPLETE
+H3 — COMPLETE
 H4 — PLANNED
 H5 — PLANNED
 
