@@ -113,18 +113,18 @@ class ValidateProfileMapCandidates
             return [$start, $end];
         }
 
-        $starts = $this->exactCoreOccurrenceStarts($coreText, $excerpt);
+        $occurrences = $this->exactCoreOccurrences($coreText, $excerpt);
 
-        if ($starts === []) {
+        if ($occurrences === []) {
             throw new MaterialProfileCandidateValidationException('Evidence excerpt does not match the canonical core.');
         }
 
-        if (count($starts) > 1) {
+        if (count($occurrences) > 1) {
             throw new MaterialProfileCandidateValidationException('Evidence excerpt is ambiguous in the canonical core.');
         }
 
-        $derivedStart = $starts[0];
-        $derivedEnd = $derivedStart + mb_strlen($excerpt, 'UTF-8');
+        $derivedStart = $occurrences[0][0];
+        $derivedEnd = $occurrences[0][1];
 
         if ($derivedStart < 0
             || $derivedEnd <= $derivedStart
@@ -159,10 +159,11 @@ class ValidateProfileMapCandidates
      * Exact, case-sensitive, character-for-character occurrences inside the
      * canonical core. The search advances one UTF-8 code point so overlapping
      * repeats such as "aa" in "aaa" are counted as two.
+     * Agnostic to \r\n vs \n differences.
      *
-     * @return list<int>
+     * @return list<array{0: int, 1: int}>
      */
-    private function exactCoreOccurrenceStarts(string $coreText, string $excerpt): array
+    private function exactCoreOccurrences(string $coreText, string $excerpt): array
     {
         $excerptLength = mb_strlen($excerpt, 'UTF-8');
         $coreLength = mb_strlen($coreText, 'UTF-8');
@@ -171,21 +172,27 @@ class ValidateProfileMapCandidates
             return [];
         }
 
-        $starts = [];
-        $from = 0;
+        $normalized = str_replace("\r\n", "\n", $excerpt);
+        $pattern = preg_quote($normalized, '/');
+        $pattern = str_replace("\n", "\r?\n", $pattern);
 
-        while ($from <= ($coreLength - $excerptLength)) {
-            $found = mb_strpos($coreText, $excerpt, $from, 'UTF-8');
-
-            if ($found === false) {
-                break;
-            }
-
-            $starts[] = $found;
-            $from = $found + 1;
+        if (preg_match_all('/(?=(' . $pattern . '))/u', $coreText, $matches, PREG_OFFSET_CAPTURE) === 0 || empty($matches[1])) {
+            return [];
         }
 
-        return $starts;
+        $occurrences = [];
+
+        foreach ($matches[1] as $match) {
+            $matchedString = $match[0];
+            $byteOffset = $match[1];
+
+            $charStart = mb_strlen(substr($coreText, 0, $byteOffset), 'UTF-8');
+            $charEnd = $charStart + mb_strlen($matchedString, 'UTF-8');
+
+            $occurrences[] = [$charStart, $charEnd];
+        }
+
+        return $occurrences;
     }
 
     /**
