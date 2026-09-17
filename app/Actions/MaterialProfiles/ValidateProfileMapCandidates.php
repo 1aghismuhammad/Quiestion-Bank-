@@ -8,6 +8,7 @@ use App\Data\MaterialProfiles\ExtractedProfileCandidate;
 use App\Data\MaterialProfiles\ValidatedProfileElement;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Exceptions\MaterialProfiles\MaterialProfileCandidateValidationException;
+use App\Support\MaterialProfiles\CanonicalEvidenceLocator;
 use App\Support\MaterialProfiles\MaterialProfileBudgets;
 
 /**
@@ -22,6 +23,8 @@ use App\Support\MaterialProfiles\MaterialProfileBudgets;
 class ValidateProfileMapCandidates
 {
     use NormalizesProfileCandidateText;
+
+    public function __construct(private CanonicalEvidenceLocator $locator) {}
 
     /**
      * @param  list<ExtractedProfileCandidate>  $candidates
@@ -113,18 +116,14 @@ class ValidateProfileMapCandidates
             return [$start, $end];
         }
 
-        $occurrences = $this->exactCoreOccurrences($coreText, $excerpt);
+        $occurrences = $this->locator->locateUnique($coreText, $excerpt);
 
         if ($occurrences === []) {
-            throw new MaterialProfileCandidateValidationException('Evidence excerpt does not match the canonical core.');
+            throw new MaterialProfileCandidateValidationException('Evidence excerpt does not match or is ambiguous in the canonical core.');
         }
 
-        if (count($occurrences) > 1) {
-            throw new MaterialProfileCandidateValidationException('Evidence excerpt is ambiguous in the canonical core.');
-        }
-
-        $derivedStart = $occurrences[0][0];
-        $derivedEnd = $occurrences[0][1];
+        $derivedStart = $occurrences[0];
+        $derivedEnd = $occurrences[1];
 
         if ($derivedStart < 0
             || $derivedEnd <= $derivedStart
@@ -153,46 +152,6 @@ class ValidateProfileMapCandidates
         }
 
         return $excerpt === mb_substr($coreText, $start, $end - $start, 'UTF-8');
-    }
-
-    /**
-     * Exact, case-sensitive, character-for-character occurrences inside the
-     * canonical core. The search advances one UTF-8 code point so overlapping
-     * repeats such as "aa" in "aaa" are counted as two.
-     * Agnostic to \r\n vs \n differences.
-     *
-     * @return list<array{0: int, 1: int}>
-     */
-    private function exactCoreOccurrences(string $coreText, string $excerpt): array
-    {
-        $excerptLength = mb_strlen($excerpt, 'UTF-8');
-        $coreLength = mb_strlen($coreText, 'UTF-8');
-
-        if ($excerptLength === 0 || $excerptLength > $coreLength) {
-            return [];
-        }
-
-        $normalized = str_replace("\r\n", "\n", $excerpt);
-        $pattern = preg_quote($normalized, '/');
-        $pattern = str_replace("\n", "\r?\n", $pattern);
-
-        if (preg_match_all('/(?=(' . $pattern . '))/u', $coreText, $matches, PREG_OFFSET_CAPTURE) === 0 || empty($matches[1])) {
-            return [];
-        }
-
-        $occurrences = [];
-
-        foreach ($matches[1] as $match) {
-            $matchedString = $match[0];
-            $byteOffset = $match[1];
-
-            $charStart = mb_strlen(substr($coreText, 0, $byteOffset), 'UTF-8');
-            $charEnd = $charStart + mb_strlen($matchedString, 'UTF-8');
-
-            $occurrences[] = [$charStart, $charEnd];
-        }
-
-        return $occurrences;
     }
 
     /**

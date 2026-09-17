@@ -252,7 +252,7 @@ class MaterialProfileAttemptMetadataIntegrityTest extends TestCase
 
         $version = $version->fresh();
         $this->assertSame(MaterialProfileStatus::FAILED, $version->status);
-        $this->assertSame(MaterialProfileErrorCode::ProviderFailed->value, (string) $version->error_code);
+        $this->assertSame(MaterialProfileErrorCode::ValidationFailed->value, (string) $version->error_code);
         $this->assertSame([], $this->pushedReduceJobs());
         $this->assertSame(0, MaterialProfileElement::query()->count());
 

@@ -361,7 +361,7 @@ class MaterialProfileMapEvidenceTest extends TestCase
         $this->drainProfileJobsExpectingFailure();
 
         $this->assertSame(MaterialProfileStatus::FAILED, $version->fresh()->status);
-        $this->assertSame(MaterialProfileErrorCode::ProviderFailed->value, (string) $version->fresh()->error_code);
+        $this->assertSame(MaterialProfileErrorCode::ValidationFailed->value, (string) $version->fresh()->error_code);
     }
 
     /**
@@ -464,7 +464,7 @@ class MaterialProfileMapEvidenceTest extends TestCase
 
         $version = $version->fresh();
         $this->assertSame(MaterialProfileStatus::FAILED, $version->status);
-        $this->assertSame(MaterialProfileErrorCode::ProviderFailed->value, (string) $version->error_code);
+        $this->assertSame(MaterialProfileErrorCode::ValidationFailed->value, (string) $version->error_code);
         $this->assertSame(3, MaterialProfileAttempt::query()->count());
         $this->assertSame(0, MaterialProfileElement::query()->count());
     }

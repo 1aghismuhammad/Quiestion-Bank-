@@ -158,7 +158,7 @@ class MaterialProfileReduceTest extends TestCase
 
         $version = $version->fresh();
         $this->assertSame(MaterialProfileStatus::FAILED, $version->status);
-        $this->assertSame(MaterialProfileErrorCode::ProviderFailed->value, (string) $version->error_code);
+        $this->assertSame(MaterialProfileErrorCode::ValidationFailed->value, (string) $version->error_code);
         $this->assertSame(0, $this->suggestedCount($version));
         $this->assertSame(MaterialProfileStepStatus::FAILED, $this->reduceStepOf($version)->fresh()->status);
     }

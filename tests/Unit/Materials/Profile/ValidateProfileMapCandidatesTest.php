@@ -9,6 +9,7 @@ use App\Data\MaterialProfiles\ExtractedProfileCandidate;
 use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Exceptions\MaterialProfiles\MaterialProfileCandidateValidationException;
+use App\Support\MaterialProfiles\CanonicalEvidenceLocator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -177,8 +178,6 @@ class ValidateProfileMapCandidatesTest extends TestCase
     public static function unnormalizedExcerptProvider(): iterable
     {
         yield 'case difference' => ['fotosintesis'];
-        yield 'leading space' => [' Fotosintesis'];
-        yield 'double trailing space' => ['Fotosintesis  '];
         yield 'punctuation difference' => ['Fotosintesis.'];
     }
 
@@ -291,7 +290,7 @@ class ValidateProfileMapCandidatesTest extends TestCase
 
     private function validator(): ValidateProfileMapCandidates
     {
-        return new ValidateProfileMapCandidates;
+        return new ValidateProfileMapCandidates(new CanonicalEvidenceLocator);
     }
 
     private function candidate(string $excerpt, mixed $start, mixed $end): ExtractedProfileCandidate

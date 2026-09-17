@@ -39,6 +39,10 @@ trait RecordsMaterialProfileProviderOutcome
             || $this->beginAttempt->isFinalAttempt($attemptNumber);
 
         if ($terminal) {
+            $workflowErrorCode = $exception->attemptErrorCode === MaterialProfileAttemptErrorCode::ValidationFailed
+                ? MaterialProfileErrorCode::ValidationFailed
+                : MaterialProfileErrorCode::ProviderFailed;
+
             $this->failAttemptAndWorkflow->handle(
                 $profileVersionId,
                 $profileStepId,
@@ -46,7 +50,7 @@ trait RecordsMaterialProfileProviderOutcome
                 $stepExecutionToken,
                 $attemptId,
                 $exception->attemptErrorCode,
-                MaterialProfileErrorCode::ProviderFailed,
+                $workflowErrorCode,
                 $metadata,
             );
 
