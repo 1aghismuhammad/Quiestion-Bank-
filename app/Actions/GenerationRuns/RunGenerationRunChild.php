@@ -121,7 +121,7 @@ class RunGenerationRunChild
 
         try {
             $this->assertConfigured($questionType);
-            $promptIdentity = $this->promptIdentity->versionFor($questionType);
+            $promptIdentity = $this->promptIdentity->versionForBlueprintRun($questionType);
         } catch (GenerationConfigurationException $exception) {
             $this->finalizeFailure->handle($generationId, $executionToken, $exception->errorCode());
 
@@ -495,7 +495,7 @@ class RunGenerationRunChild
             throw new GenerationConfigurationException('The generation model is not configured.');
         }
 
-        $this->promptIdentity->versionFor($type);
+        $this->promptIdentity->versionForBlueprintRun($type);
     }
 
     private function backoff(int $startedAttempts, ?int $retryAfterSeconds): void

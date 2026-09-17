@@ -117,7 +117,7 @@ class GenerationRunBlueprintPromptAndPresentationTest extends TestCase
         $this->assertStringNotContainsString('Tujuan unik fotosintesis.', $second['user']);
 
         foreach (AiGenerationAttempt::query()->get() as $attempt) {
-            $this->assertSame(McqPromptBuilder::V2, $attempt->prompt_version);
+            $this->assertSame(McqPromptBuilder::V4, $attempt->prompt_version);
             foreach ($attempt->getAttributes() as $value) {
                 if (! is_string($value)) {
                     continue;

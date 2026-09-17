@@ -227,7 +227,7 @@ class TypedStoredResultRuntimeTest extends TestCase
         });
         $this->assertSame(GenerationRunStatus::Completed, $run->fresh()->status);
         $this->assertSame(UsageStatus::CHARGED, $run->fresh()->usageLog->status);
-        $this->assertSame('true-false-v1', $run->children()->first()?->attempts()->first()?->prompt_version);
+        $this->assertSame('true-false-v2', $run->children()->first()?->attempts()->first()?->prompt_version);
     }
 
     public function test_final_balanced_true_false_sets_still_complete(): void
@@ -286,7 +286,7 @@ class TypedStoredResultRuntimeTest extends TestCase
         $this->assertSame(UsageStatus::CHARGED, $run->usageLog->status);
         $this->assertSame(1, AiUsageLog::query()->where('generation_run_id', $run->generation_run_id)->count());
         $this->assertSame(
-            ['mcq-v3', 'true-false-v1', 'essay-v1'],
+            ['mcq-v4', 'true-false-v2', 'essay-v2'],
             $run->children->sortBy('child_index')->map(
                 fn (AiGeneration $child): string => (string) $child->attempts()->orderBy('attempt_number')->first()?->prompt_version,
             )->values()->all(),

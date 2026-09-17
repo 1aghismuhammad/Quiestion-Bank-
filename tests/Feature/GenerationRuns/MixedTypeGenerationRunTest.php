@@ -115,7 +115,7 @@ class MixedTypeGenerationRunTest extends TestCase
         $attempts = $run->children->sortBy('child_index')->map(
             fn (AiGeneration $child): string => (string) $child->attempts()->orderBy('attempt_number')->first()?->prompt_version,
         )->all();
-        $this->assertSame(['mcq-v3', 'true-false-v1', 'essay-v1'], $attempts);
+        $this->assertSame(['mcq-v4', 'true-false-v2', 'essay-v2'], $attempts);
 
         $tf = $run->children->firstWhere('question_type', QuestionType::TRUE_FALSE);
         $this->assertIsBool($tf?->result_json[0]['correct_answer'] ?? null);
@@ -260,35 +260,37 @@ class MixedTypeGenerationRunTest extends TestCase
         $this->assertSame(UsageStatus::RELEASED, $run->fresh()->usageLog->status);
     }
 
-    public function test_invalid_true_false_prompt_config_fails_before_http(): void
+    public function test_invalid_legacy_true_false_prompt_config_fails_before_http(): void
     {
         $user = User::factory()->create();
         $material = Material::factory()->text()->for($user)->create([
             'content' => str_repeat('Kalimat materi untuk generasi soal. ', 30),
         ]);
-        $this->readyProfile($user, $material);
-        $blueprint = $this->confirmDraft(
-            $user,
-            $this->createDraft($user, $material, [
-                $this->sampleRow(2, DifficultyLevel::MEDIUM, QuestionType::TRUE_FALSE),
-            ]),
-        );
+
+        $legacyGen = \App\Models\AiGeneration::factory()->create([
+            'user_id' => $user->id,
+            'material_id' => $material->id,
+            'question_type' => QuestionType::TRUE_FALSE,
+            'question_count' => 2,
+            'output_language' => OutputLanguage::ID->value,
+            'assessment_type' => \App\Enums\AssessmentType::FORMATIVE->value,
+            'difficulty_level' => \App\Enums\DifficultyLevel::MEDIUM->value,
+            'generation_status' => \App\Enums\GenerationStatus::QUEUED,
+        ]);
+
+        \App\Models\AiUsageLog::factory()->create([
+            'user_id' => $user->id,
+            'generation_id' => $legacyGen->generation_id,
+        ]);
+
         Http::fake();
         config(['generation.true_false_prompt_version' => 'true-false-v9']);
 
-        $run = $this->app->make(StartGenerationRun::class)->handle(
-            $user,
-            $blueprint,
-            OutputLanguage::ID,
-            (string) Str::uuid(),
-        );
-
-        Queue::pushed(GenerateQuestionsJob::class)->first()
-            ->handle($this->app->make(RunQuestionGeneration::class));
+        $this->app->make(RunQuestionGeneration::class)->handle((int) $legacyGen->generation_id, (string) Str::uuid());
 
         Http::assertNothingSent();
-        $this->assertSame(GenerationRunStatus::Failed, $run->fresh()->status);
-        $this->assertSame(0, $run->fresh()->children()->first()?->attempts()->count());
+        $this->assertSame(GenerationStatus::FAILED, $legacyGen->fresh()->generation_status);
+        $this->assertSame(0, $legacyGen->fresh()->attempts()->count());
     }
 
     /**

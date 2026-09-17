@@ -87,7 +87,7 @@ class SelectRunItemSpans
         $spans = [];
 
         foreach ($ranges as $range) {
-            $window = $this->expandAroundEvidence($content, $length, $range);
+            $window = $this->requireExactEvidence($content, $length, $range);
             $slice = mb_substr($content, $window['char_start'], $window['char_end'] - $window['char_start'], 'UTF-8');
 
             if (trim($slice) === '') {
@@ -121,7 +121,7 @@ class SelectRunItemSpans
      * @param  array{char_start: int, char_end: int, profile_element_id: int, profile_chunk_id: int, context_hash?: string, rank?: int}  $range
      * @return array{char_start: int, char_end: int, profile_element_id: int, profile_chunk_id: int, rank: int}
      */
-    private function expandAroundEvidence(string $content, int $length, array $range): array
+    private function requireExactEvidence(string $content, int $length, array $range): array
     {
         $evidenceStart = (int) $range['char_start'];
         $evidenceEnd = (int) $range['char_end'];
@@ -165,37 +165,9 @@ class SelectRunItemSpans
             throw new GenerationRunRejectedException(GenerationRunErrorCode::SpanUnavailable);
         }
 
-        $evidenceLength = $evidenceEnd - $evidenceStart;
-        $target = max(
-            $evidenceLength,
-            max(1, (int) config('question_blueprint.run_item_span_context_chars', 2_000)),
-        );
-        $target = min($target, $chunkEnd - $chunkStart);
-
-        $pad = max(0, $target - $evidenceLength);
-        $roomBefore = $evidenceStart - $chunkStart;
-        $roomAfter = $chunkEnd - $evidenceEnd;
-        $before = min(intdiv($pad, 2), $roomBefore);
-        $after = min($pad - $before, $roomAfter);
-        $leftover = $pad - $before - $after;
-
-        if ($leftover > 0) {
-            $extraBefore = min($leftover, $roomBefore - $before);
-            $before += $extraBefore;
-            $leftover -= $extraBefore;
-            $after += min($leftover, $roomAfter - $after);
-        }
-
-        $start = $evidenceStart - $before;
-        $end = $evidenceEnd + $after;
-
-        if ($start > $evidenceStart || $end < $evidenceEnd || $start < $chunkStart || $end > $chunkEnd) {
-            throw new GenerationRunRejectedException(GenerationRunErrorCode::SpanUnavailable);
-        }
-
         return [
-            'char_start' => $start,
-            'char_end' => $end,
+            'char_start' => $evidenceStart,
+            'char_end' => $evidenceEnd,
             'profile_element_id' => (int) $elementId,
             'profile_chunk_id' => (int) $chunkId,
             'rank' => (int) ($range['rank'] ?? 1),
