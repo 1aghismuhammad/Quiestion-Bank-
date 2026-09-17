@@ -26,6 +26,22 @@ Notes:
 -
 ```
 
+## v0.15.17 Material Profile Evidence Reliability Corrective
+
+- Date: 17 September 2026
+- Version: 0.15.17
+- Phase: Material Profile Evidence Corrective
+- Type: Bugfix
+
+Added:
+
+- Explicit documentation of canonical truths for Material Profile evidence generation: provider evidence offsets are treated only as hints. The server resolves canonical source coordinates.
+- Fallback searches ONLY authorized core.
+- Only a unique deterministic match is accepted. No fuzzy/semantic/paraphrase evidence matching.
+- Persisted evidence is the raw canonical source slice.
+- Validation failures are classified distinctly from provider failures.
+- Only READY Material Profiles may feed Blueprint. Segment-ID evidence contract and failed-step resume are FOLLOW-UPs.
+
 ## v0.15.16 Phase 5.7 and Pre-Phase-6 H0-H3 Completion
 
 - Date: 17 September 2026

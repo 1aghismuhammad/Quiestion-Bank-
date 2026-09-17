@@ -22,8 +22,8 @@ class CanonicalEvidenceLocator
         }
 
         // Normalize spaces in the excerpt to create a robust regex pattern
-        // 1. Collapse all control characters and whitespaces in the excerpt to a single space
-        $normalized = preg_replace('/[\s\x00-\x1F\x7F]+/u', ' ', $excerpt);
+        // 1. Collapse all whitespaces in the excerpt to a single space
+        $normalized = preg_replace('/\s+/u', ' ', $excerpt);
         if (! is_string($normalized) || trim($normalized) === '') {
             return [];
         }
@@ -34,7 +34,7 @@ class CanonicalEvidenceLocator
         $pattern = preg_quote($normalized, '/');
 
         // 3. Replace the quoted spaces with a pattern that matches any whitespace sequences
-        $pattern = str_replace(' ', '[\s\x00-\x1F\x7F]+', $pattern);
+        $pattern = str_replace(' ', '\s+', $pattern);
 
         // 4. PREG_OFFSET_CAPTURE returns byte offsets, so we need to match byte-by-byte safely.
         // We stop after 2 matches to prevent extreme performance cost.

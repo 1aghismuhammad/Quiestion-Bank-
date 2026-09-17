@@ -182,7 +182,7 @@ class ValidateProfileMapCandidatesTest extends TestCase
     }
 
     #[DataProvider('unnormalizedExcerptProvider')]
-    public function test_whitespace_case_and_punctuation_are_not_normalized(string $excerpt): void
+    public function test_case_and_punctuation_are_not_normalized(string $excerpt): void
     {
         $this->expectException(MaterialProfileCandidateValidationException::class);
 
@@ -200,6 +200,56 @@ class ValidateProfileMapCandidatesTest extends TestCase
             1,
         );
     }
+
+    /**
+     * @return iterable<string, array{0: string, 1: int, 2: int, 3: string}>
+     */
+    public static function allowedWhitespaceProvider(): iterable
+    {
+        yield 'leading space' => [' Fotosintesis', 0, 12, 'Fotosintesis'];
+        yield 'double trailing space' => ['Fotosintesis  ', 0, 12, 'Fotosintesis'];
+        yield 'internal multiple spaces' => ['Fotosintesis  adalah', 0, 19, 'Fotosintesis adalah'];
+        yield 'newline representation' => ["Fotosintesis\nadalah", 0, 19, 'Fotosintesis adalah'];
+        yield 'tab representation' => ["Fotosintesis\tadalah", 0, 19, 'Fotosintesis adalah'];
+    }
+
+    #[DataProvider('allowedWhitespaceProvider')]
+    public function test_allowed_whitespace_variance_is_reconciled(string $excerpt, int $expectedStart, int $expectedEnd, string $expectedExcerpt): void
+    {
+        $core = 'Fotosintesis adalah proses tumbuhan.';
+        $elements = $this->validator()->handle(
+            [new ExtractedProfileCandidate(
+                MaterialProfileElementKind::TOPIC->value,
+                'Fotosintesis',
+                $excerpt,
+                0,
+                $expectedEnd,
+            )],
+            $core,
+            0,
+            0,
+            1,
+        );
+
+        $this->assertCount(1, $elements);
+        $this->assertSame($expectedStart, $elements[0]->charStart);
+        $this->assertSame($expectedEnd, $elements[0]->charEnd);
+        $this->assertSame($expectedExcerpt, $elements[0]->evidenceExcerpt);
+    }
+
+    public function test_disallowed_control_character_is_rejected(): void
+    {
+        $this->expectException(MaterialProfileCandidateValidationException::class);
+
+        $this->validator()->handle(
+            [$this->candidate("Fotosintesis\x00adalah", 0, 19)],
+            'Fotosintesis adalah proses tumbuhan.',
+            0,
+            0,
+            1,
+        );
+    }
+
 
     public function test_oversized_evidence_is_rejected_even_when_unique(): void
     {
