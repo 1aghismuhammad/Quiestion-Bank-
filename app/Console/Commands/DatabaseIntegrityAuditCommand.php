@@ -49,7 +49,7 @@ class DatabaseIntegrityAuditCommand extends Command
                 $version = DB::selectOne('SELECT VERSION() as version');
                 $report['mysql_version'] = $version->version;
             } catch (\Throwable $e) {
-                $report['mysql_version'] = 'Error: ' . $e->getMessage();
+                $report['mysql_version'] = 'Error: '.$e->getMessage();
             }
         }
 
@@ -62,7 +62,7 @@ class DatabaseIntegrityAuditCommand extends Command
         $report['checks']['question_sets'] = $this->checkQuestionSetXorViolations();
         $report['checks']['ai_usage'] = $this->checkAiUsageInvariants();
         $report['checks']['migrations'] = $this->checkPendingMigrations();
-        
+
         $report['fingerprint'] = $this->captureFingerprint();
 
         $hasFailures = false;
@@ -75,10 +75,12 @@ class DatabaseIntegrityAuditCommand extends Command
 
         if ($this->option('json')) {
             $this->line(json_encode($report, JSON_PRETTY_PRINT));
+
             return $hasFailures ? 1 : 0;
         }
 
         $this->displayReport($report);
+
         return $hasFailures ? 1 : 0;
     }
 
@@ -86,27 +88,28 @@ class DatabaseIntegrityAuditCommand extends Command
     {
         $roles = Role::whereIn('role_name', ['ADMIN', 'USER'])->pluck('role_name')->toArray();
         $missing = array_diff(['ADMIN', 'USER'], $roles);
-        
+
         return [
             'status' => empty($missing) ? 'PASS' : 'FAIL',
-            'details' => empty($missing) ? 'USER and ADMIN canonical roles exist.' : 'Missing canonical roles: ' . implode(', ', $missing),
+            'details' => empty($missing) ? 'USER and ADMIN canonical roles exist.' : 'Missing canonical roles: '.implode(', ', $missing),
         ];
     }
 
     private function checkCanonicalPlans(): array
     {
-        $plans = Plan::whereIn('code', ['free', 'pro'])->pluck('code')->map(fn($c) => $c->value ?? $c)->toArray();
+        $plans = Plan::whereIn('code', ['free', 'pro'])->pluck('code')->map(fn ($c) => $c->value ?? $c)->toArray();
         $missing = array_diff(['free', 'pro'], $plans);
-        
+
         return [
             'status' => empty($missing) ? 'PASS' : 'FAIL',
-            'details' => empty($missing) ? 'free and pro canonical plans exist.' : 'Missing canonical plans: ' . implode(', ', $missing),
+            'details' => empty($missing) ? 'free and pro canonical plans exist.' : 'Missing canonical plans: '.implode(', ', $missing),
         ];
     }
 
     private function checkPlanOffers(): array
     {
         $count = PlanOffer::where('status', 'active')->count();
+
         return [
             'status' => $count > 0 ? 'PASS' : 'WARN',
             'details' => "Found {$count} active plan offers.",
@@ -143,7 +146,7 @@ class DatabaseIntegrityAuditCommand extends Command
     private function checkSubscriptionAnomalies(): array
     {
         $malformedWindows = Subscription::whereRaw('ends_at <= starts_at')->count();
-        
+
         // Find overlapping subscriptions for the same user (same plan or pro plans)
         // Simplified check: subscriptions with status active that overlap in time
         $overlapping = DB::select("
@@ -161,7 +164,7 @@ class DatabaseIntegrityAuditCommand extends Command
             $details[] = "{$malformedWindows} malformed subscription windows (ends_at <= starts_at).";
         }
         if (count($overlapping) > 0) {
-            $details[] = count($overlapping) . " users with overlapping active subscription windows.";
+            $details[] = count($overlapping).' users with overlapping active subscription windows.';
         }
 
         return [
@@ -174,7 +177,7 @@ class DatabaseIntegrityAuditCommand extends Command
     {
         $materials = Material::where('source_type', 'upload')->get(['material_id', 'file_path']);
         $missingFiles = 0;
-        
+
         foreach ($materials as $material) {
             if ($material->file_path && ! Storage::disk('materials')->exists($material->file_path)) {
                 $missingFiles++;
@@ -213,7 +216,7 @@ class DatabaseIntegrityAuditCommand extends Command
             ->whereNull('ai_generation_runs.generation_run_id')
             ->where(function ($q) {
                 $q->whereNotNull('ai_usage_logs.generation_id')
-                  ->orWhereNotNull('ai_usage_logs.generation_run_id');
+                    ->orWhereNotNull('ai_usage_logs.generation_run_id');
             })
             ->count();
 
@@ -229,14 +232,14 @@ class DatabaseIntegrityAuditCommand extends Command
             $ran = DB::table('migrations')->pluck('migration')->toArray();
             $files = \File::files(database_path('migrations'));
             $pending = 0;
-            
+
             foreach ($files as $file) {
                 $name = str_replace('.php', '', $file->getFilename());
                 if (! in_array($name, $ran)) {
                     $pending++;
                 }
             }
-            
+
             return [
                 'status' => $pending > 0 ? 'WARN' : 'PASS',
                 'details' => $pending > 0 ? "{$pending} pending migrations found." : 'No pending migrations.',
@@ -244,7 +247,7 @@ class DatabaseIntegrityAuditCommand extends Command
         } catch (\Throwable $e) {
             return [
                 'status' => 'FAIL',
-                'details' => 'Could not determine migration status: ' . $e->getMessage(),
+                'details' => 'Could not determine migration status: '.$e->getMessage(),
             ];
         }
     }
@@ -265,7 +268,7 @@ class DatabaseIntegrityAuditCommand extends Command
             'ai_generation_runs',
             'ai_usage_logs',
             'question_sets',
-            'questions'
+            'questions',
         ];
 
         $fingerprint = [];
@@ -276,37 +279,38 @@ class DatabaseIntegrityAuditCommand extends Command
                 $fingerprint[$table] = 'ERROR';
             }
         }
+
         return $fingerprint;
     }
 
     private function displayReport(array $report): void
     {
-        $this->info("--- DATABASE INTEGRITY AUDIT ---");
-        $this->line("Timestamp:   " . $report['timestamp']);
-        $this->line("Environment: " . $report['environment']);
-        $this->line("Driver:      " . $report['driver']);
-        $this->line("Database:    " . $report['database']);
+        $this->info('--- DATABASE INTEGRITY AUDIT ---');
+        $this->line('Timestamp:   '.$report['timestamp']);
+        $this->line('Environment: '.$report['environment']);
+        $this->line('Driver:      '.$report['driver']);
+        $this->line('Database:    '.$report['database']);
         if ($report['mysql_version']) {
-            $this->line("MySQL Ver:   " . $report['mysql_version']);
+            $this->line('MySQL Ver:   '.$report['mysql_version']);
         }
-        $this->line("");
+        $this->line('');
 
-        $this->info("--- CHECKS ---");
+        $this->info('--- CHECKS ---');
         foreach ($report['checks'] as $key => $check) {
             $status = $check['status'];
-            $color = match($status) {
+            $color = match ($status) {
                 'PASS' => 'green',
                 'WARN' => 'yellow',
                 'FAIL' => 'red',
                 default => 'default',
             };
-            $this->line("<fg={$color}>[{$status}]</> " . str_pad($key, 18) . " : " . $check['details']);
+            $this->line("<fg={$color}>[{$status}]</> ".str_pad($key, 18).' : '.$check['details']);
         }
 
-        $this->line("");
-        $this->info("--- FINGERPRINT ---");
+        $this->line('');
+        $this->info('--- FINGERPRINT ---');
         foreach ($report['fingerprint'] as $table => $count) {
-            $this->line(str_pad($table, 30) . ": " . $count);
+            $this->line(str_pad($table, 30).': '.$count);
         }
     }
 }

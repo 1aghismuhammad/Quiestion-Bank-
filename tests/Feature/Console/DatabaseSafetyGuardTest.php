@@ -6,13 +6,13 @@ namespace Tests\Feature\Console;
 
 use App\Support\DatabaseSafetyGuard;
 use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
 use Tests\TestCase;
-use Illuminate\Support\Facades\App;
-use PHPUnit\Framework\Attributes\DataProvider;
 
 class DatabaseSafetyGuardTest extends TestCase
 {
@@ -26,8 +26,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput));
     }
 
     #[DataProvider('destructiveCommandsProvider')]
@@ -40,8 +40,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'local');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput));
     }
 
     #[DataProvider('destructiveCommandsProvider')]
@@ -54,8 +54,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput));
     }
 
     #[DataProvider('destructiveCommandsProvider')]
@@ -67,8 +67,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => '']);
         Config::set('database.default', 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput));
     }
 
     #[DataProvider('destructiveCommandsProvider')]
@@ -80,13 +80,13 @@ class DatabaseSafetyGuardTest extends TestCase
         // Default looks safe
         Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank_h3_test']);
         Config::set('database.default', 'testing');
-        
+
         // Target looks dangerous
         Config::set('database.connections.mysql', ['driver' => 'mysql', 'database' => 'ai_question_bank']);
         App::detectEnvironment(fn () => 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'mysql']), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'mysql']), new NullOutput));
     }
 
     #[DataProvider('destructiveCommandsProvider')]
@@ -95,14 +95,14 @@ class DatabaseSafetyGuardTest extends TestCase
         // Default looks dangerous
         Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank']);
         Config::set('database.default', 'testing');
-        
+
         // Target looks safe
         Config::set('database.connections.safe_test', ['driver' => 'mysql', 'database' => 'ai_question_bank_safe_test']);
         App::detectEnvironment(fn () => 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'safe_test']), new NullOutput()));
-        
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'safe_test']), new NullOutput));
+
         // If we reach here, it passed the guard
         $this->assertTrue(true);
     }
@@ -117,8 +117,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'nonexistent_connection']), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput(['--database' => 'nonexistent_connection']), new NullOutput));
     }
 
     #[DataProvider('destructiveCommandsProvider')]
@@ -128,8 +128,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput));
 
         $this->assertTrue(true); // Should not throw exception
     }
@@ -141,8 +141,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'testing');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting($command, new ArrayInput([]), new NullOutput));
 
         $this->assertTrue(true); // Should not throw exception
     }
@@ -153,8 +153,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'local');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting('migrate', new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting('migrate', new ArrayInput([]), new NullOutput));
 
         $this->assertTrue(true);
     }
@@ -165,8 +165,8 @@ class DatabaseSafetyGuardTest extends TestCase
         Config::set('database.default', 'testing');
         App::detectEnvironment(fn () => 'local');
 
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting('db:seed', new ArrayInput([]), new NullOutput()));
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting('db:seed', new ArrayInput([]), new NullOutput));
 
         $this->assertTrue(true);
     }
@@ -175,10 +175,10 @@ class DatabaseSafetyGuardTest extends TestCase
     {
         Config::set('database.connections.testing', ['driver' => 'mysql', 'database' => 'ai_question_bank']);
         Config::set('database.default', 'testing');
-        
-        $guard = new DatabaseSafetyGuard();
-        $guard->handle(new CommandStarting('route:list', new ArrayInput([]), new NullOutput()));
-        
+
+        $guard = new DatabaseSafetyGuard;
+        $guard->handle(new CommandStarting('route:list', new ArrayInput([]), new NullOutput));
+
         $this->assertTrue(true);
     }
 

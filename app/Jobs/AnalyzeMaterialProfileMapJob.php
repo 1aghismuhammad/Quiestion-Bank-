@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Actions\MaterialProfiles\FailMaterialProfileWorkflowForStep;
 use App\Actions\MaterialProfiles\RunMaterialProfileMapStep;
 use App\Enums\MaterialProfileErrorCode;
+use App\Exceptions\MaterialProfiles\MaterialProfileCandidateValidationException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -87,6 +88,10 @@ class AnalyzeMaterialProfileMapJob implements ShouldBeUnique, ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
+        $errorCode = $exception instanceof MaterialProfileCandidateValidationException
+            ? MaterialProfileErrorCode::ValidationFailed
+            : MaterialProfileErrorCode::ProviderFailed;
+
         // The token guards make this a no-op for an obsolete delivery, so a late
         // failure cannot fail a newer or already terminal workflow.
         app(FailMaterialProfileWorkflowForStep::class)->handle(
@@ -94,7 +99,7 @@ class AnalyzeMaterialProfileMapJob implements ShouldBeUnique, ShouldQueue
             $this->profileStepId,
             $this->workflowToken,
             $this->stepExecutionToken,
-            MaterialProfileErrorCode::ProviderFailed,
+            $errorCode,
         );
     }
 }

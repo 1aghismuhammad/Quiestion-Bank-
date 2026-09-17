@@ -8,11 +8,9 @@ use App\Models\Material;
 use App\Models\Plan;
 use App\Models\PlanOffer;
 use App\Models\Role;
-use App\Models\Subscription;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -40,10 +38,10 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
         $this->seedHealthyDatabase();
 
         $exitCode = Artisan::call('db:integrity-audit');
-        
+
         $this->assertEquals(0, $exitCode);
         $output = Artisan::output();
-        
+
         $this->assertStringContainsString('[PASS] roles', $output);
         $this->assertStringContainsString('USER and ADMIN canonical roles exist', $output);
         $this->assertStringNotContainsString('FAIL', $output);
@@ -55,10 +53,10 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
         Role::where('role_name', 'ADMIN')->delete();
 
         $exitCode = Artisan::call('db:integrity-audit');
-        
+
         $this->assertEquals(1, $exitCode);
         $output = Artisan::output();
-        
+
         $this->assertStringContainsString('[FAIL] roles', $output);
         $this->assertStringContainsString('Missing canonical roles: ADMIN', $output);
     }
@@ -72,7 +70,7 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
         $user->roles()->attach(Role::where('role_name', 'ADMIN')->first()->id);
 
         $exitCode = Artisan::call('db:integrity-audit');
-        
+
         $this->assertEquals(0, $exitCode);
         $output = Artisan::output();
         $this->assertStringContainsString('[PASS] user_roles', $output);
@@ -82,7 +80,7 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
     {
         $this->seedHealthyDatabase();
         Storage::disk('materials')->put('test.pdf', 'fake content');
-        
+
         Material::create([
             'user_id' => User::factory()->create()->id,
             'title' => 'Test Material',
@@ -92,7 +90,7 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
         ]);
 
         $exitCode = Artisan::call('db:integrity-audit');
-        
+
         $this->assertEquals(0, $exitCode);
         $output = Artisan::output();
         $this->assertStringContainsString('[PASS] materials', $output);
@@ -101,7 +99,7 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
     public function test_missing_material_file_produces_fail(): void
     {
         $this->seedHealthyDatabase();
-        
+
         Material::create([
             'user_id' => User::factory()->create()->id,
             'title' => 'Missing Material',
@@ -111,7 +109,7 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
         ]);
 
         $exitCode = Artisan::call('db:integrity-audit');
-        
+
         $this->assertEquals(1, $exitCode);
         $output = Artisan::output();
         $this->assertStringContainsString('[FAIL] materials', $output);
@@ -131,7 +129,7 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
         ]);
 
         $exitCode = Artisan::call('db:integrity-audit');
-        
+
         $this->assertEquals(0, $exitCode);
         $output = Artisan::output();
         $this->assertStringContainsString('[PASS] plan_offers', $output);
@@ -144,7 +142,7 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
 
         $exitCode = Artisan::call('db:integrity-audit');
         $output = Artisan::output();
-        
+
         $this->assertStringNotContainsString('secret@example.com', $output);
         $this->assertStringNotContainsString('password', $output);
     }
@@ -154,10 +152,10 @@ class DatabaseIntegrityAuditCommandTest extends TestCase
         $this->seedHealthyDatabase();
 
         $exitCode = Artisan::call('db:integrity-audit', ['--json' => true]);
-        
+
         $this->assertEquals(0, $exitCode);
         $output = Artisan::output();
-        
+
         $json = json_decode($output, true);
         $this->assertIsArray($json);
         $this->assertArrayHasKey('checks', $json);

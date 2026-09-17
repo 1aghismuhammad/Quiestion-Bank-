@@ -12,8 +12,10 @@ use App\Enums\MaterialProfileAttemptErrorCode;
  */
 class MaterialProfileCandidateValidationException extends MaterialProfileProviderException
 {
-    public function __construct(string $message = 'The material profile provider result failed validation.')
-    {
+    public function __construct(
+        string $message = 'The material profile provider result failed validation.',
+        public readonly ?string $internalReason = null,
+    ) {
         parent::__construct(MaterialProfileAttemptErrorCode::ValidationFailed, $message);
     }
 

@@ -14,6 +14,7 @@ use App\Enums\MaterialProfileElementOrigin;
 use App\Enums\MaterialProfileErrorCode;
 use App\Enums\MaterialProfileStatus;
 use App\Enums\MaterialProfileStepStatus;
+use App\Exceptions\MaterialProfiles\MaterialProfileCandidateValidationException;
 use App\Jobs\AnalyzeMaterialProfileMapJob;
 use App\Models\Material;
 use App\Models\MaterialProfileAttempt;
@@ -597,5 +598,64 @@ class MaterialProfileMapEvidenceTest extends TestCase
         $this->assertSame(config('material_profile.queue'), $job->queue);
         $this->assertSame(config('material_profile.queue_connection'), $job->connection);
         $this->assertSame([5, 15], $job->backoff());
+    }
+
+    public function test_queue_failed_path_does_not_overwrite_validation_failed_with_provider_failed(): void
+    {
+        $material = Material::factory()->text()->for($this->user)->create([
+            'content' => 'Materi ajar tentang siklus air.',
+        ]);
+        $version = $this->startProfileAnalysis($this->user, $material)->version;
+
+        $job = $this->pushedMapJobs()[0];
+
+        // Simulate the queue worker calling failed() because of a validation exception
+        $job->failed(new MaterialProfileCandidateValidationException(
+            'Test validation failure',
+            'evidence_too_long'
+        ));
+
+        $version = $version->fresh();
+        $this->assertSame(MaterialProfileStatus::FAILED, $version->status);
+        $this->assertSame(MaterialProfileErrorCode::ValidationFailed->value, (string) $version->error_code);
+    }
+
+    public function test_attempt_budget_exhausted_path_preserves_the_final_failure_category(): void
+    {
+        $material = Material::factory()->text()->for($this->user)->create([
+            'content' => 'Materi ajar tentang ekosistem.',
+        ]);
+        $version = $this->startProfileAnalysis($this->user, $material)->version;
+
+        $job = $this->pushedMapJobs()[0];
+
+        $this->provider->mapUsing = fn (ProfileMapRequest $request) => FakeMaterialProfileAnalysisProvider::mapResult($request, [
+            $this->candidate($request, MaterialProfileElementKind::TOPIC, 'Ekosistem yang sangat panjang', 0, 8),
+            new ExtractedProfileCandidate(
+                MaterialProfileElementKind::TOPIC->value,
+                'Oversized',
+                str_repeat('a', 5000),
+                0,
+                8,
+            ),
+        ]);
+
+        // Exhaust the budget normally
+        $this->runProfileJobExpectingRetry($job);
+        $this->runProfileJobExpectingRetry($job);
+        $this->runProfileJobExpectingRetry($job);
+
+        $version = $version->fresh();
+        $this->assertSame(MaterialProfileStatus::FAILED, $version->status);
+        $this->assertSame(MaterialProfileErrorCode::ValidationFailed->value, (string) $version->error_code);
+
+        // If another attempt runs, it should throw BudgetExhausted, which we catch
+        // But the workflow is already failed, so it should remain validation_failed.
+        // Actually, if we just call the Job handle directly, it will hit BudgetExhausted.
+        $this->runProfileJob($job);
+
+        $version = $version->fresh();
+        $this->assertSame(MaterialProfileStatus::FAILED, $version->status);
+        $this->assertSame(MaterialProfileErrorCode::ValidationFailed->value, (string) $version->error_code);
     }
 }

@@ -33,23 +33,23 @@ $repoRoot = trim($topLevelOut[0]);
 chdir($repoRoot);
 
 if ($output === null) {
-    $output = 'phase-qa-archive-' . date('YmdHis') . '.zip';
+    $output = 'phase-qa-archive-'.date('YmdHis').'.zip';
 }
 
-if (!$force && file_exists($output)) {
+if (! $force && file_exists($output)) {
     echo "Error: Output file '$output' already exists. Use --force to overwrite.\n";
     exit(1);
 }
 
 // Verify git revision
-exec("git rev-parse --verify " . escapeshellarg($revision) . " 2>&1", $verifyOutput, $verifyCode);
+exec('git rev-parse --verify '.escapeshellarg($revision).' 2>&1', $verifyOutput, $verifyCode);
 if ($verifyCode !== 0) {
     echo "Error: Invalid Git revision '$revision'.\n";
     exit(1);
 }
 
 // Reject archive if revision contains forbidden tracked files
-exec("git ls-tree -r --name-only " . escapeshellarg($revision), $treeOutput, $treeCode);
+exec('git ls-tree -r --name-only '.escapeshellarg($revision), $treeOutput, $treeCode);
 if ($treeCode !== 0) {
     echo "Error: Failed to read tree for revision '$revision'.\n";
     exit(1);
@@ -100,11 +100,11 @@ foreach ($treeOutput as $path) {
 }
 
 echo "Generating SAFE QA archive from revision: $revision\n";
-$cmd = "git archive --format=zip --output=" . escapeshellarg($output) . " " . escapeshellarg($revision) . " 2>&1";
+$cmd = 'git archive --format=zip --output='.escapeshellarg($output).' '.escapeshellarg($revision).' 2>&1';
 exec($cmd, $cmdOutput, $returnCode);
 
 if ($returnCode !== 0) {
-    echo "Error: Failed to create archive.\n" . implode("\n", $cmdOutput) . "\n";
+    echo "Error: Failed to create archive.\n".implode("\n", $cmdOutput)."\n";
     if (file_exists($output)) {
         unlink($output);
     }

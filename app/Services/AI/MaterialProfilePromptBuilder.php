@@ -124,7 +124,10 @@ PROMPT;
                                 'enum' => ['topic', 'objective', 'indicator', 'other'],
                             ],
                             'text' => ['type' => 'string'],
-                            'evidence_excerpt' => ['type' => 'string'],
+                            'evidence_excerpt' => [
+                                'type' => 'string',
+                                'maxLength' => max(1, (int) config('material_profile.max_evidence_chars', 500)),
+                            ],
                             'evidence_start' => ['type' => 'integer'],
                             'evidence_end' => ['type' => 'integer'],
                         ],
@@ -197,7 +200,9 @@ PROMPT;
      */
     private function mapSystemInstructionV2(): string
     {
-        return <<<'PROMPT'
+        $maxEvidence = max(1, (int) config('material_profile.max_evidence_chars', 500));
+
+        return <<<PROMPT
 You analyse one segment of a teaching material and extract source-backed observations.
 Return JSON only. Do not include markdown fences, chain-of-thought, or extra keys.
 Every observation must be one of these kinds: topic, objective, indicator, other.
@@ -208,7 +213,9 @@ Evidence rules, which are checked by the server and cannot be negotiated:
 - evidence_start and evidence_end are offsets in UTF-8 code points counted from the FIRST character of <<<CORE>>>.
 - evidence_start must be zero or greater; evidence_end must be greater than evidence_start.
 - evidence_end must not exceed the core length stated in the request.
-- evidence_excerpt must be the exact substring of the core between those two offsets, character for character.
+- evidence_excerpt must be a concise exact quote from <<<CORE>>>.
+- evidence_excerpt must not exceed {$maxEvidence} Unicode characters.
+- Prefer the shortest exact source span that fully supports the finding. Do not return unnecessarily large source blocks.
 - Copy evidence_excerpt verbatim from <<<CORE>>>. Do not paraphrase, translate, trim, add, remove, or change any character.
 - If you cannot compute offsets with certainty, still copy the excerpt exactly as it appears in <<<CORE>>>. Do not invent an excerpt to match guessed offsets.
 - Evidence must never point into <<<OVERLAP>>>. The overlap exists only so you can interpret a sentence that began in the previous segment.

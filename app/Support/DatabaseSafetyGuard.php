@@ -34,8 +34,8 @@ class DatabaseSafetyGuard
             return;
         }
 
-        $connectionName = $event->input->hasParameterOption('--database') 
-            ? $event->input->getParameterOption('--database') 
+        $connectionName = $event->input->hasParameterOption('--database')
+            ? $event->input->getParameterOption('--database')
             : null;
 
         try {
@@ -43,31 +43,31 @@ class DatabaseSafetyGuard
             $databaseName = $connection->getDatabaseName();
         } catch (\Throwable $e) {
             throw new RuntimeException(
-                "REFUSED:\n" .
-                "Could not resolve the target database connection.\n" .
-                "Ambiguous or missing connection fails closed for destructive commands.\n" .
-                "Error: " . $e->getMessage()
+                "REFUSED:\n".
+                "Could not resolve the target database connection.\n".
+                "Ambiguous or missing connection fails closed for destructive commands.\n".
+                'Error: '.$e->getMessage()
             );
         }
 
         if ($databaseName === null || $databaseName === '') {
             throw new RuntimeException(
-                "REFUSED:\n" .
-                "Could not resolve the runtime database identity.\n" .
-                "Ambiguous database identity fails closed for destructive commands."
+                "REFUSED:\n".
+                "Could not resolve the runtime database identity.\n".
+                'Ambiguous database identity fails closed for destructive commands.'
             );
         }
 
         $environment = app()->environment();
 
         // FAIL-CLOSED ALLOWLIST MODEL
-        
+
         // 1. Must be testing environment
         if ($environment !== 'testing') {
             throw new RuntimeException(
-                "REFUSED:\n" .
-                "Destructive command blocked. Environment is not 'testing'.\n\n" .
-                "database: {$databaseName}\n" .
+                "REFUSED:\n".
+                "Destructive command blocked. Environment is not 'testing'.\n\n".
+                "database: {$databaseName}\n".
                 "environment: {$environment}"
             );
         }
@@ -75,15 +75,15 @@ class DatabaseSafetyGuard
         // 2. Must not be the normal development database or any production/staging variant
         if ($databaseName === 'ai_question_bank' || ! str_ends_with($databaseName, '_test') && $databaseName !== ':memory:') {
             throw new RuntimeException(
-                "REFUSED:\n" .
-                "Destructive command blocked. Database is not explicitly disposable.\n" .
-                "Must be :memory: or follow the *_test naming convention.\n\n" .
-                "database: {$databaseName}\n" .
+                "REFUSED:\n".
+                "Destructive command blocked. Database is not explicitly disposable.\n".
+                "Must be :memory: or follow the *_test naming convention.\n\n".
+                "database: {$databaseName}\n".
                 "environment: {$environment}"
             );
         }
 
         // Passed all disposable-test conditions
-        return;
+
     }
 }

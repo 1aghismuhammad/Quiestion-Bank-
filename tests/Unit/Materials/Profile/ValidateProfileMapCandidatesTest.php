@@ -250,16 +250,57 @@ class ValidateProfileMapCandidatesTest extends TestCase
         );
     }
 
-
     public function test_oversized_evidence_is_rejected_even_when_unique(): void
     {
         config(['material_profile.max_evidence_chars' => 8]);
         $core = 'Fotosintesis adalah proses tumbuhan.';
 
         $this->expectException(MaterialProfileCandidateValidationException::class);
+        $this->expectExceptionMessage('Evidence exceeds the safe length limit.');
+
+        try {
+            $this->validator()->handle(
+                [$this->candidate('Fotosintesis', 0, 12)],
+                $core,
+                0,
+                0,
+                1,
+            );
+        } catch (MaterialProfileCandidateValidationException $e) {
+            $this->assertSame('evidence_too_long', $e->internalReason);
+            throw $e;
+        }
+    }
+
+    public function test_evidence_exactly_configured_max_length_is_accepted_with_utf8(): void
+    {
+        config(['material_profile.max_evidence_chars' => 4]);
+        // "A😊C" length is 3 characters (A, 😊, C)
+        // "A😊CD" length is 4 characters
+        $core = 'A😊CD';
+
+        $elements = $this->validator()->handle(
+            [$this->candidate('A😊CD', 0, 4)],
+            $core,
+            0,
+            0,
+            1,
+        );
+
+        $this->assertCount(1, $elements);
+        $this->assertSame('A😊CD', $elements[0]->evidenceExcerpt);
+    }
+
+    public function test_evidence_max_plus_one_character_is_rejected_with_utf8(): void
+    {
+        config(['material_profile.max_evidence_chars' => 4]);
+        // "A😊CDE" length is 5 characters
+        $core = 'A😊CDE';
+
+        $this->expectException(MaterialProfileCandidateValidationException::class);
 
         $this->validator()->handle(
-            [$this->candidate('Fotosintesis', 0, 12)],
+            [$this->candidate('A😊CDE', 0, 5)],
             $core,
             0,
             0,

@@ -88,7 +88,18 @@ class BeginMaterialProfileAttempt
             $attemptNumber = $lastAttemptNumber + 1;
 
             if ($attemptNumber > $maxAttempts) {
-                throw new MaterialProfileAttemptBudgetExhaustedException((int) $step->profile_step_id);
+                $lastAttempt = $attempts
+                    ->filter(fn (MaterialProfileAttempt $attempt): bool => (int) $attempt->profile_step_id === (int) $step->profile_step_id)
+                    ->sortByDesc('attempt_number')
+                    ->first();
+                $lastErrorCode = $lastAttempt?->error_code instanceof MaterialProfileErrorCode
+                    ? $lastAttempt->error_code
+                    : null;
+
+                throw new MaterialProfileAttemptBudgetExhaustedException(
+                    (int) $step->profile_step_id,
+                    $lastErrorCode
+                );
             }
 
             $attempt = MaterialProfileAttempt::query()->create([

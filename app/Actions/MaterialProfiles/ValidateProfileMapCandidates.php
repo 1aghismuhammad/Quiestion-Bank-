@@ -65,7 +65,10 @@ class ValidateProfileMapCandidates
             }
 
             if ($excerptLength > $maxEvidence) {
-                throw new MaterialProfileCandidateValidationException('Evidence exceeds the safe length limit.');
+                throw new MaterialProfileCandidateValidationException(
+                    'Evidence exceeds the safe length limit.',
+                    'evidence_too_long',
+                );
             }
 
             [$relativeStart, $relativeEnd] = $this->relativeCoreOffsets(

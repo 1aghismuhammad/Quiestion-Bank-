@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Actions\MaterialProfiles\FailMaterialProfileWorkflowForStep;
 use App\Actions\MaterialProfiles\RunMaterialProfileReduceStep;
 use App\Enums\MaterialProfileErrorCode;
+use App\Exceptions\MaterialProfiles\MaterialProfileCandidateValidationException;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -84,12 +85,16 @@ class ReduceMaterialProfileJob implements ShouldBeUnique, ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
+        $errorCode = $exception instanceof MaterialProfileCandidateValidationException
+            ? MaterialProfileErrorCode::ValidationFailed
+            : MaterialProfileErrorCode::ProviderFailed;
+
         app(FailMaterialProfileWorkflowForStep::class)->handle(
             $this->profileVersionId,
             $this->profileStepId,
             $this->workflowToken,
             $this->stepExecutionToken,
-            MaterialProfileErrorCode::ProviderFailed,
+            $errorCode,
         );
     }
 }

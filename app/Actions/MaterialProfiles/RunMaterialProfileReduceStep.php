@@ -85,13 +85,15 @@ class RunMaterialProfileReduceStep
                 $request->model,
                 $request->promptVersion,
             );
-        } catch (MaterialProfileAttemptBudgetExhaustedException) {
+        } catch (MaterialProfileAttemptBudgetExhaustedException $exception) {
+            $errorCode = $exception->lastAttemptErrorCode ?? MaterialProfileErrorCode::ProviderFailed;
+
             $this->failWorkflow->handle(
                 $profileVersionId,
                 $profileStepId,
                 $workflowToken,
                 $stepExecutionToken,
-                MaterialProfileErrorCode::ProviderFailed,
+                $errorCode,
             );
 
             return;

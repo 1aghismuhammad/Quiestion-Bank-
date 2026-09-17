@@ -26,7 +26,7 @@ class MaterialProfilePromptBuilderTest extends TestCase
 
         $this->assertNotSame($this->normalizePrompt($this->v1Contract()), $this->normalizePrompt($instruction));
         $this->assertStringContainsString(
-            'evidence_excerpt must be the exact substring of the core between those two offsets, character for character.',
+            'evidence_excerpt must be a concise exact quote from <<<CORE>>>.',
             $instruction,
         );
         $this->assertStringContainsString('Copy evidence_excerpt verbatim from <<<CORE>>>', $instruction);
@@ -43,6 +43,25 @@ class MaterialProfilePromptBuilderTest extends TestCase
             $this->builder()->mapSystemInstruction(MaterialProfilePromptBuilder::MAP_V2),
             $this->builder()->mapSystemInstruction(),
         );
+    }
+
+    public function test_changing_configured_max_in_test_changes_generated_prompt_rule(): void
+    {
+        config(['material_profile.max_evidence_chars' => 888]);
+
+        $instruction = $this->builder()->mapSystemInstruction(MaterialProfilePromptBuilder::MAP_V2);
+
+        $this->assertStringContainsString('evidence_excerpt must not exceed 888 Unicode characters.', $instruction);
+    }
+
+    public function test_provider_schema_uses_configured_maximum(): void
+    {
+        config(['material_profile.max_evidence_chars' => 888]);
+
+        $schema = $this->builder()->mapResponseSchema();
+        $properties = $schema['properties']['observations']['items']['properties'];
+
+        $this->assertSame(888, $properties['evidence_excerpt']['maxLength']);
     }
 
     public function test_configured_v1_identity_is_not_relabelled_as_v2(): void
