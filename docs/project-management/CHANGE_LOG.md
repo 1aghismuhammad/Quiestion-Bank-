@@ -26,6 +26,38 @@ Notes:
 -
 ```
 
+## v0.15.18 Material Profile Evidence Reliability Corrective — Round 3
+
+- Date: 17 September 2026
+- Version: 0.15.18
+- Phase: Material Profile Evidence Corrective Round 3
+- Type: Bugfix
+
+Added:
+
+- `config('material_profile.max_evidence_chars')` is the single authoritative source for the evidence length limit. Both the server-side validator (`ValidateProfileMapCandidates`) and the prompt builder (`MaterialProfilePromptBuilder`) read directly from this config key. No hardcoded 500 remains in production code.
+- Evidence length limit is now injected into the Gemini structured-output schema via `maxLength` on the `evidence_excerpt` property, giving the provider an explicit schema-level hint on every request.
+- Evidence length limit is also injected into the system prompt text (`- evidence_excerpt must not exceed N Unicode characters.`) so the model sees it as an explicit rule before generating the response.
+- Oversized evidence is rejected by the server and never truncated. The provider is given a bounded retry budget to supply a conforming response.
+- Validation failures (`validation_failed`) are correctly classified and preserved through all failure paths: direct validation exception, Laravel queue worker `failed()` hook, and attempt-budget exhaustion (`MaterialProfileAttemptBudgetExhaustedException`). Validation failure is never silently overwritten with `provider_failed`.
+- Regression tests added: exact maximum length accepted (UTF-8 aware), maximum+1 rejected, queue-worker `failed()` path preserves validation code, budget exhaustion with validation error preserves validation code, prompt builder schema test asserts configured `maxLength` is dynamic.
+
+Changed:
+
+- `MaterialProfileCandidateValidationException` carries an optional `internalReason` string (e.g. `evidence_too_long`) for internal diagnostics.
+- `MaterialProfileAttemptBudgetExhaustedException` now carries the final attempt's `error_code` to allow callers to preserve the terminal failure category.
+- `AnalyzeMaterialProfileMapJob::failed()` and `ReduceMaterialProfileJob::failed()` inspect the exception type before choosing `ValidationFailed` or `ProviderFailed`.
+- `RunMaterialProfileMapStep` and `RunMaterialProfileReduceStep` propagate `lastAttemptErrorCode` from `MaterialProfileAttemptBudgetExhaustedException` instead of hardcoding `ProviderFailed`.
+
+Database Impact:
+
+- None. `ai_question_bank` was not touched.
+
+Notes:
+
+- No live Material Profile was retried. Manual QA (QA-06) remains the integration proof for Round 3.
+- The upcoming manual QA will confirm end-to-end provider compliance with the `maxLength` schema hint and the system prompt rule.
+
 ## v0.15.17 Material Profile Evidence Reliability Corrective
 
 - Date: 17 September 2026
