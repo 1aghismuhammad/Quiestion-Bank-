@@ -26,6 +26,22 @@ Notes:
 -
 ```
 
+## v0.15.19 QA-08 Blueprint Runtime Routing Corrective
+
+- Date: 17 September 2026
+- Version: 0.15.19
+- Phase: QA-08 Blueprint Runtime Routing Corrective
+- Type: Bugfix
+
+Added:
+
+- Corrective entry: QA hardening superseded earlier behavior for NEW Blueprint Generation Runs.
+- Exact Blueprint row-context spans are enforced: no contextual padding and no gap expansion.
+- Strict prompt versions are routed automatically for Blueprint Generation Runs: `mcq-v4`, `true-false-v2`, and `essay-v2`.
+- Historical expanded spans remain compatible and reconstructable.
+- Blueprint typed fill hardening uses `blueprint-fill-v4` for Simple and `blueprint-fill-v5` for Advanced.
+- No global generation defaults were changed (`config/generation.php` remains unchanged with legacy defaults).
+
 ## v0.15.18 Material Profile Evidence Reliability Corrective — Round 3
 
 - Date: 17 September 2026

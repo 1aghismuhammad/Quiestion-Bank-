@@ -31,7 +31,7 @@ return [
     'backoff_seconds' => [5, 15],
     'status_poll_interval_ms' => 5_000,
     'run_item_span_max_chars' => 16_000,
-    'run_item_span_context_chars' => 2_000,
+
     'max_profile_elements' => 40,
     'max_chunk_refs' => 12,
     'max_chars_per_context' => 400,
