@@ -34,6 +34,7 @@ class ValidateBlueprintFillCandidates
         BlueprintMode $mode = BlueprintMode::Simple,
         ?int $expectedTotal = null,
         ?array $expectedTypeCounts = null,
+        ?string $promptVersion = null,
     ): array {
         $content = (string) $material->content;
         $rows = [];
@@ -53,15 +54,15 @@ class ValidateBlueprintFillCandidates
             $type = $this->resolveQuestionType($candidate->questionType, $expectedTypeCounts);
 
             if ($cognitive === null || $difficulty === null) {
-                throw new BlueprintCandidateValidationException('A candidate uses an unsupported enumeration.');
+                throw new BlueprintCandidateValidationException('A candidate uses an unsupported enumeration.', BlueprintCandidateValidationException::REASON_UNSUPPORTED_ENUM);
             }
 
             if ($candidate->contexts === []) {
-                throw new BlueprintCandidateValidationException('A candidate is missing context references.');
+                throw new BlueprintCandidateValidationException('A candidate is missing context references.', BlueprintCandidateValidationException::REASON_MISSING_CONTEXT);
             }
 
             if (count($candidate->contexts) > $maxContexts) {
-                throw new BlueprintCandidateValidationException('A candidate exceeds the context mapping budget.');
+                throw new BlueprintCandidateValidationException('A candidate exceeds the context mapping budget.', BlueprintCandidateValidationException::REASON_SHAPE_INVALID);
             }
 
             $contexts = [];
@@ -69,7 +70,7 @@ class ValidateBlueprintFillCandidates
 
             foreach ($candidate->contexts as $index => $context) {
                 if (! is_array($context)) {
-                    throw new BlueprintCandidateValidationException('A candidate context is not an object.');
+                    throw new BlueprintCandidateValidationException('A candidate context is not an object.', BlueprintCandidateValidationException::REASON_SHAPE_INVALID);
                 }
 
                 $this->rejectProviderOwnedFields($context);
@@ -77,11 +78,11 @@ class ValidateBlueprintFillCandidates
                 $ref = is_string($context['context_ref'] ?? null) ? $context['context_ref'] : null;
 
                 if ($ref === null || $ref === '') {
-                    throw new BlueprintCandidateValidationException('A candidate is missing context references.');
+                    throw new BlueprintCandidateValidationException('A candidate is missing context references.', BlueprintCandidateValidationException::REASON_MISSING_CONTEXT);
                 }
 
                 if (isset($seenRefs[$ref])) {
-                    throw new BlueprintCandidateValidationException('A candidate duplicated a context reference.');
+                    throw new BlueprintCandidateValidationException('A candidate duplicated a context reference.', BlueprintCandidateValidationException::REASON_DUPLICATE_CONTEXT_REF);
                 }
 
                 $seenRefs[$ref] = true;
@@ -89,17 +90,17 @@ class ValidateBlueprintFillCandidates
                 $entry = $catalog[$ref] ?? null;
 
                 if (! $entry instanceof BlueprintFillContextCatalogEntry) {
-                    throw new BlueprintCandidateValidationException('A candidate referenced an unknown context.');
+                    throw new BlueprintCandidateValidationException('A candidate referenced an unknown context.', BlueprintCandidateValidationException::REASON_UNKNOWN_CONTEXT);
                 }
 
                 if ($entry->element !== null
                     && (int) $entry->element->profile_version_id !== (int) $profile->profile_version_id) {
-                    throw new BlueprintCandidateValidationException('A candidate referenced a foreign profile element.');
+                    throw new BlueprintCandidateValidationException('A candidate referenced a foreign profile element.', BlueprintCandidateValidationException::REASON_FOREIGN_PROFILE_ELEMENT);
                 }
 
                 if ($entry->chunk !== null
                     && (int) $entry->chunk->profile_version_id !== (int) $profile->profile_version_id) {
-                    throw new BlueprintCandidateValidationException('A candidate referenced a foreign profile chunk.');
+                    throw new BlueprintCandidateValidationException('A candidate referenced a foreign profile chunk.', BlueprintCandidateValidationException::REASON_FOREIGN_PROFILE_CHUNK);
                 }
 
                 if ($entry->element !== null && $entry->chunk !== null) {
@@ -108,42 +109,66 @@ class ValidateBlueprintFillCandidates
                         : (int) $entry->element->source_chunk_id;
 
                     if ($elementChunkId !== (int) $entry->chunk->profile_chunk_id) {
-                        throw new BlueprintCandidateValidationException('A candidate mixed disagreeing profile references.');
+                        throw new BlueprintCandidateValidationException('A candidate mixed disagreeing profile references.', BlueprintCandidateValidationException::REASON_MIXED_PROFILE_REFERENCES);
                     }
                 }
 
-                $excerptLength = mb_strlen($entry->excerpt, 'UTF-8');
-                $relativeStart = isset($context['excerpt_start']) && is_numeric($context['excerpt_start'])
-                    ? (int) $context['excerpt_start']
-                    : null;
-                $relativeEnd = isset($context['excerpt_end']) && is_numeric($context['excerpt_end'])
-                    ? (int) $context['excerpt_end']
-                    : null;
+                if ($promptVersion === \App\Services\AI\BlueprintFillPromptBuilder::V4 || $promptVersion === \App\Services\AI\BlueprintFillPromptBuilder::V5) {
+                    $evidenceText = is_string($context['evidence_text'] ?? null) ? $context['evidence_text'] : '';
 
-                if ($relativeStart === null
-                    || $relativeEnd === null
-                    || $relativeStart < 0
-                    || $relativeEnd > $excerptLength
-                    || $relativeEnd <= $relativeStart) {
-                    throw new BlueprintCandidateValidationException('A candidate context uses offsets outside the referenced excerpt.');
-                }
+                    if ($evidenceText === '') {
+                        throw new BlueprintCandidateValidationException('A candidate evidence text is missing or empty.', BlueprintCandidateValidationException::REASON_EVIDENCE_NOT_FOUND);
+                    }
 
-                $evidence = mb_substr($entry->excerpt, $relativeStart, $relativeEnd - $relativeStart, 'UTF-8');
+                    $offset = mb_strpos($entry->excerpt, $evidenceText, 0, 'UTF-8');
 
-                if ($evidence === '') {
-                    throw new BlueprintCandidateValidationException('A candidate context uses offsets outside the referenced excerpt.');
-                }
+                    if ($offset === false) {
+                        throw new BlueprintCandidateValidationException('A candidate evidence quote was not found in the referenced excerpt.', BlueprintCandidateValidationException::REASON_EVIDENCE_NOT_FOUND);
+                    }
 
-                if (array_key_exists('evidence_text', $context)
-                    && (! is_string($context['evidence_text']) || $context['evidence_text'] !== $evidence)) {
-                    throw new BlueprintCandidateValidationException('A candidate evidence text does not match the referenced excerpt.');
+                    $lastOffset = mb_strrpos($entry->excerpt, $evidenceText, 0, 'UTF-8');
+
+                    if ($offset !== $lastOffset) {
+                        throw new BlueprintCandidateValidationException('A candidate evidence quote is ambiguous within the referenced excerpt.', BlueprintCandidateValidationException::REASON_EVIDENCE_AMBIGUOUS);
+                    }
+
+                    $relativeStart = $offset;
+                    $relativeEnd = $offset + mb_strlen($evidenceText, 'UTF-8');
+                    $evidence = $evidenceText;
+                } else {
+                    $excerptLength = mb_strlen($entry->excerpt, 'UTF-8');
+                    $relativeStart = isset($context['excerpt_start']) && is_numeric($context['excerpt_start'])
+                        ? (int) $context['excerpt_start']
+                        : null;
+                    $relativeEnd = isset($context['excerpt_end']) && is_numeric($context['excerpt_end'])
+                        ? (int) $context['excerpt_end']
+                        : null;
+
+                    if ($relativeStart === null
+                        || $relativeEnd === null
+                        || $relativeStart < 0
+                        || $relativeEnd > $excerptLength
+                        || $relativeEnd <= $relativeStart) {
+                        throw new BlueprintCandidateValidationException('A candidate context uses offsets outside the referenced excerpt.', BlueprintCandidateValidationException::REASON_CONTEXT_BOUNDARY_CROSSED);
+                    }
+
+                    $evidence = mb_substr($entry->excerpt, $relativeStart, $relativeEnd - $relativeStart, 'UTF-8');
+
+                    if ($evidence === '') {
+                        throw new BlueprintCandidateValidationException('A candidate context uses offsets outside the referenced excerpt.', BlueprintCandidateValidationException::REASON_CONTEXT_BOUNDARY_CROSSED);
+                    }
+
+                    if (array_key_exists('evidence_text', $context)
+                        && (! is_string($context['evidence_text']) || $context['evidence_text'] !== $evidence)) {
+                        throw new BlueprintCandidateValidationException('A candidate evidence text does not match the referenced excerpt.', BlueprintCandidateValidationException::REASON_EVIDENCE_NOT_FOUND);
+                    }
                 }
 
                 $evidenceHash = hash('sha256', $evidence);
 
                 if (array_key_exists('evidence_hash', $context)
                     && (! is_string($context['evidence_hash']) || $context['evidence_hash'] !== $evidenceHash)) {
-                    throw new BlueprintCandidateValidationException('A candidate evidence hash does not match the referenced excerpt.');
+                    throw new BlueprintCandidateValidationException('A candidate evidence hash does not match the referenced excerpt.', BlueprintCandidateValidationException::REASON_EVIDENCE_NOT_FOUND);
                 }
 
                 $canonicalStart = $entry->canonicalStart + $relativeStart;
@@ -151,21 +176,21 @@ class ValidateBlueprintFillCandidates
                 $materialSlice = mb_substr($content, $canonicalStart, $canonicalEnd - $canonicalStart, 'UTF-8');
 
                 if ($materialSlice !== $evidence) {
-                    throw new BlueprintCandidateValidationException('A candidate evidence text does not match the referenced excerpt.');
+                    throw new BlueprintCandidateValidationException('A candidate evidence text does not match the referenced excerpt.', BlueprintCandidateValidationException::REASON_EVIDENCE_NOT_FOUND);
                 }
 
                 if ($entry->chunk !== null
                     && ($canonicalStart < (int) $entry->chunk->char_start || $canonicalEnd > (int) $entry->chunk->char_end)) {
-                    throw new BlueprintCandidateValidationException('A candidate evidence crossed a context boundary.');
+                    throw new BlueprintCandidateValidationException('A candidate evidence crossed a context boundary.', BlueprintCandidateValidationException::REASON_CONTEXT_BOUNDARY_CROSSED);
                 }
 
                 if ($entry->element !== null
                     && ($canonicalStart < (int) $entry->element->char_start || $canonicalEnd > (int) $entry->element->char_end)) {
-                    throw new BlueprintCandidateValidationException('A candidate evidence crossed a context boundary.');
+                    throw new BlueprintCandidateValidationException('A candidate evidence crossed a context boundary.', BlueprintCandidateValidationException::REASON_CONTEXT_BOUNDARY_CROSSED);
                 }
 
                 if ($entry->element === null || $entry->chunk === null) {
-                    throw new BlueprintCandidateValidationException('A candidate context is missing a required profile reference.');
+                    throw new BlueprintCandidateValidationException('A candidate context is missing a required profile reference.', BlueprintCandidateValidationException::REASON_MISSING_PROFILE_REFERENCE);
                 }
 
                 $contexts[] = [
@@ -194,7 +219,7 @@ class ValidateBlueprintFillCandidates
         try {
             $this->assertShape->handle($rows, $mode);
         } catch (BlueprintRejectedException) {
-            throw new BlueprintCandidateValidationException('The candidate set is not a valid blueprint.');
+            throw new BlueprintCandidateValidationException('The candidate set is not a valid blueprint.', BlueprintCandidateValidationException::REASON_SHAPE_INVALID);
         }
 
         if ($mode === BlueprintMode::Advanced) {
@@ -202,7 +227,7 @@ class ValidateBlueprintFillCandidates
             $actual = (int) array_sum(array_map(fn (array $row): int => (int) $row['requested_count'], $rows));
 
             if ($expectedTotal === null || $expectedTotal < 1 || $expectedTotal > $maxAdvanced || $actual !== $expectedTotal) {
-                throw new BlueprintCandidateValidationException('The candidate total does not match the requested target.');
+                throw new BlueprintCandidateValidationException('The candidate total does not match the requested target.', BlueprintCandidateValidationException::REASON_TOTAL_MISMATCH);
             }
         }
 
@@ -210,11 +235,11 @@ class ValidateBlueprintFillCandidates
             try {
                 $counts = BlueprintFillTypeCounts::parse($expectedTypeCounts);
             } catch (BlueprintRejectedException) {
-                throw new BlueprintCandidateValidationException('The candidate type composition is not valid.');
+                throw new BlueprintCandidateValidationException('The candidate type composition is not valid.', BlueprintCandidateValidationException::REASON_TYPE_COMPOSITION_MISMATCH);
             }
 
             if (! $counts->matchesRows($rows)) {
-                throw new BlueprintCandidateValidationException('The candidate type composition does not match the requested counts.');
+                throw new BlueprintCandidateValidationException('The candidate type composition does not match the requested counts.', BlueprintCandidateValidationException::REASON_TYPE_COMPOSITION_MISMATCH);
             }
         }
 
@@ -241,28 +266,25 @@ class ValidateBlueprintFillCandidates
             'chunk_ref',
         ] as $forbidden) {
             if (array_key_exists($forbidden, $context)) {
-                throw new BlueprintCandidateValidationException('A candidate attempted to control a server-owned field.');
+                throw new BlueprintCandidateValidationException('A candidate attempted to control a server-owned field.', BlueprintCandidateValidationException::REASON_SERVER_OWNED_FIELD);
             }
         }
 
-        $elementRef = $context['element_ref'] ?? null;
-        $chunkRef = $context['chunk_ref'] ?? null;
-
-        if ($elementRef === null && $chunkRef === null && ! array_key_exists('context_ref', $context)) {
-            throw new BlueprintCandidateValidationException('A candidate is missing context references.');
+        if (! array_key_exists('context_ref', $context)) {
+            throw new BlueprintCandidateValidationException('A candidate is missing context references.', BlueprintCandidateValidationException::REASON_MISSING_CONTEXT);
         }
     }
 
     private function requiredText(mixed $value): string
     {
         if (! is_string($value)) {
-            throw new BlueprintCandidateValidationException('A candidate text field is not a string.');
+            throw new BlueprintCandidateValidationException('A candidate text field is not a string.', BlueprintCandidateValidationException::REASON_TEXT_INVALID);
         }
 
         $text = trim($value);
 
         if ($text === '') {
-            throw new BlueprintCandidateValidationException('A candidate text field is empty.');
+            throw new BlueprintCandidateValidationException('A candidate text field is empty.', BlueprintCandidateValidationException::REASON_TEXT_INVALID);
         }
 
         return $text;
@@ -278,7 +300,7 @@ class ValidateBlueprintFillCandidates
             $type = $raw instanceof QuestionType ? $raw : QuestionType::tryFrom((string) $raw);
 
             if ($type !== QuestionType::MULTIPLE_CHOICE) {
-                throw new BlueprintCandidateValidationException('A candidate uses an unsupported question type.');
+                throw new BlueprintCandidateValidationException('A candidate uses an unsupported question type.', BlueprintCandidateValidationException::REASON_QUESTION_TYPE_INVALID);
             }
 
             return $type;
@@ -289,7 +311,7 @@ class ValidateBlueprintFillCandidates
             : (is_string($raw) ? QuestionType::tryFrom($raw) : null);
 
         if ($type === null) {
-            throw new BlueprintCandidateValidationException('A candidate is missing a question type.');
+            throw new BlueprintCandidateValidationException('A candidate is missing a question type.', BlueprintCandidateValidationException::REASON_QUESTION_TYPE_INVALID);
         }
 
         return $type;

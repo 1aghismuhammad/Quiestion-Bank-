@@ -207,7 +207,24 @@ trait CreatesQuestionBlueprints
 
             /** @var FillQuestionBlueprintJob $job */
             $job = $jobs[$ran];
-            $job->handle($this->app->make(RunBlueprintAiFill::class));
+
+            $attempts = 0;
+            while ($attempts < 3) {
+                try {
+                    $job->handle($this->app->make(RunBlueprintAiFill::class));
+                    break;
+                } catch (\App\Exceptions\QuestionBlueprints\BlueprintProviderTransientException $e) {
+                    $attempts++;
+                    if ($attempts >= 3) {
+                        $job->failed($e);
+                        break;
+                    }
+                } catch (\Throwable $e) {
+                    $job->failed($e);
+                    break;
+                }
+            }
+
             $ran++;
         }
 

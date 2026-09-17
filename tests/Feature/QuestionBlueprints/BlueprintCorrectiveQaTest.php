@@ -214,6 +214,137 @@ class BlueprintCorrectiveQaTest extends TestCase
         }
     }
 
+    public function test_validation_exception_on_non_final_attempt_retries_and_succeeds(): void
+    {
+        $user = User::factory()->create();
+        $material = Material::factory()->text()->for($user)->create([
+            'content' => 'ABCDE FGHIJ',
+        ]);
+        $this->readyProfile($user, $material);
+
+        $fake = $this->fakeBlueprintProvider();
+
+        $attempts = 0;
+        $fake->using = function ($request) use ($fake, &$attempts) {
+            $attempts++;
+            $context = $request->contexts[0];
+            $length = mb_strlen($context->excerpt, 'UTF-8');
+
+            if ($attempts === 1) {
+                // Return invalid candidate
+                return new BlueprintFillResult(
+                    [
+                        new BlueprintFillCandidate(
+                            'Tujuan tepi', 'Topik tepi', 'Indikator tepi', 'understand', 'medium', 1,
+                            [['context_ref' => 'missing', 'excerpt_start' => 0, 'excerpt_end' => 1]]
+                        ),
+                    ],
+                    new BlueprintProviderAttemptMetadata($fake::PROVIDER_NAME, 'fake-model', 'blueprint-fill-v1', 1, 1, 2, 3),
+                );
+            }
+
+            // Return valid candidate
+            return new BlueprintFillResult(
+                [
+                    new BlueprintFillCandidate(
+                        'Tujuan tepi', 'Topik tepi', 'Indikator tepi', 'understand', 'medium', 1,
+                        [['context_ref' => $context->ref, 'excerpt_start' => 0, 'excerpt_end' => $length]]
+                    ),
+                ],
+                new BlueprintProviderAttemptMetadata($fake::PROVIDER_NAME, 'fake-model', 'blueprint-fill-v1', 1, 1, 2, 3),
+            );
+        };
+
+        $blueprint = $this->app->make(QueueBlueprintAiFill::class)->handle($user, $material);
+        $this->drainBlueprintJobs();
+
+        $blueprint->refresh();
+        $this->assertSame(BlueprintAiFillStatus::Succeeded, $blueprint->ai_fill_status);
+        $this->assertSame(2, QuestionBlueprintAttempt::query()->count());
+        $this->assertSame(BlueprintAttemptStatus::Failed, QuestionBlueprintAttempt::query()->orderBy('attempt_number')->first()->status);
+        $this->assertSame(BlueprintAttemptErrorCode::ValidationFailed->value, QuestionBlueprintAttempt::query()->orderBy('attempt_number')->first()->error_code);
+        $this->assertSame(BlueprintAttemptStatus::Succeeded, QuestionBlueprintAttempt::query()->orderBy('attempt_number', 'desc')->first()->status);
+
+        $this->assertSame(1, $blueprint->rows()->count());
+        $this->assertSame(1, QuestionBlueprintRowContext::query()->count());
+    }
+
+    public function test_three_validation_failures_exhaust_budget_and_preserve_validation_failed(): void
+    {
+        $user = User::factory()->create();
+        $material = Material::factory()->text()->for($user)->create([
+            'content' => 'ABCDE FGHIJ',
+        ]);
+        $this->readyProfile($user, $material);
+        $fake = $this->fakeBlueprintProvider();
+
+        $fake->using = function ($request) use ($fake) {
+            // Return invalid candidate
+            return new BlueprintFillResult(
+                [
+                    new BlueprintFillCandidate(
+                        'Tujuan tepi', 'Topik tepi', 'Indikator tepi', 'understand', 'medium', 1,
+                        [['context_ref' => 'missing', 'excerpt_start' => 0, 'excerpt_end' => 1]]
+                    ),
+                ],
+                new BlueprintProviderAttemptMetadata($fake::PROVIDER_NAME, 'fake-model', 'blueprint-fill-v1', 1, 1, 2, 3),
+            );
+        };
+
+        $blueprint = $this->app->make(QueueBlueprintAiFill::class)->handle($user, $material);
+        $this->drainBlueprintJobs();
+
+        $blueprint->refresh();
+        $this->assertSame(BlueprintAiFillStatus::Failed, $blueprint->ai_fill_status);
+        $this->assertSame(BlueprintErrorCode::ValidationFailed->value, $blueprint->error_code);
+        $errorCodeEnum = BlueprintErrorCode::from($blueprint->error_code);
+        $this->assertSame('provider_failed', $errorCodeEnum->publicCode());
+        $this->assertStringContainsString('Kisi-kisi tidak dapat diproses', $errorCodeEnum->userMessage());
+
+        $this->assertSame(BlueprintLifecycleStatus::Draft, $blueprint->lifecycle_status);
+        $this->assertSame(3, QuestionBlueprintAttempt::query()->count());
+        $this->assertSame(0, $blueprint->rows()->count());
+        $this->assertSame(0, QuestionBlueprintRowContext::query()->count());
+    }
+
+    public function test_begin_attempt_throws_budget_exhausted_with_last_error_code(): void
+    {
+        $user = User::factory()->create();
+        $material = Material::factory()->text()->for($user)->create();
+        $profile = $this->readyProfile($user, $material);
+        $blueprint = QuestionBlueprint::factory()->for($user)->create([
+            'material_id' => $material->material_id,
+            'profile_version_id' => $profile->profile_version_id,
+            'workflow_token' => 'w1',
+            'step_execution_token' => 's1',
+            'ai_fill_status' => BlueprintAiFillStatus::Processing,
+            'lease_expires_at' => now()->addMinutes(1),
+        ]);
+
+        foreach ([1, 2, 3] as $attemptNumber) {
+            QuestionBlueprintAttempt::factory()->create([
+                'blueprint_id' => $blueprint->blueprint_id,
+                'attempt_number' => $attemptNumber,
+                'status' => BlueprintAttemptStatus::Failed,
+                'error_code' => BlueprintAttemptErrorCode::ValidationFailed->value,
+            ]);
+        }
+
+        try {
+            $this->app->make(BeginBlueprintAttempt::class)->handle(
+                $blueprint->blueprint_id,
+                'w1',
+                's1',
+                'fake-provider',
+                'fake-model',
+                'blueprint-fill-v4'
+            );
+            $this->fail('Expected budget exhaustion');
+        } catch (\App\Exceptions\QuestionBlueprints\BlueprintAttemptBudgetExhaustedException $e) {
+            $this->assertSame(BlueprintAttemptErrorCode::ValidationFailed, $e->lastAttemptErrorCode);
+        }
+    }
+
     public function test_offsets_valid_for_the_book_but_outside_the_excerpt_are_rejected(): void
     {
         $user = User::factory()->create();

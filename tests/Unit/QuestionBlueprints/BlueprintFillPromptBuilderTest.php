@@ -148,7 +148,7 @@ PROMPT),
         $this->assertStringContainsString('ctx_1 [element] Topik utama', $user);
     }
 
-    public function test_type_counts_select_v3_for_both_modes(): void
+    public function test_type_counts_select_v4_and_v5(): void
     {
         $builder = new BlueprintFillPromptBuilder;
         $counts = [
@@ -158,36 +158,39 @@ PROMPT),
         ];
 
         $this->assertSame(
-            BlueprintFillPromptBuilder::V3,
+            BlueprintFillPromptBuilder::V4,
             $builder->versionFor(BlueprintMode::Simple, ['multiple_choice' => 10, 'true_false' => 0, 'essay' => 0]),
         );
-        $this->assertSame(BlueprintFillPromptBuilder::V3, $builder->versionFor(BlueprintMode::Advanced, $counts));
+        $this->assertSame(BlueprintFillPromptBuilder::V5, $builder->versionFor(BlueprintMode::Advanced, $counts));
     }
 
-    public function test_blank_or_unsupported_v3_identity_fails_closed(): void
+    public function test_blank_or_unsupported_multitype_identity_fails_closed(): void
     {
         $builder = new BlueprintFillPromptBuilder;
         $counts = ['multiple_choice' => 10, 'true_false' => 0, 'essay' => 0];
 
-        config(['question_blueprint.multitype_prompt_version' => '']);
+        config(['question_blueprint.multitype_simple_prompt_version' => '']);
 
         try {
             $builder->versionFor(BlueprintMode::Simple, $counts);
-            $this->fail('Blank v3 identity must be rejected.');
+            $this->fail('Blank simple multitype identity must be rejected.');
         } catch (BlueprintRejectedException $exception) {
             $this->assertSame(BlueprintErrorCode::ValidationFailed, $exception->errorCode);
         }
 
-        config(['question_blueprint.multitype_prompt_version' => BlueprintFillPromptBuilder::V1]);
+        config(['question_blueprint.multitype_advanced_prompt_version' => BlueprintFillPromptBuilder::V1]);
 
         try {
             $builder->versionFor(BlueprintMode::Advanced, $counts);
-            $this->fail('v1 must not be used for typed composition fills.');
+            $this->fail('v1 must not be used for advanced typed composition fills.');
         } catch (BlueprintRejectedException $exception) {
             $this->assertSame(BlueprintErrorCode::ValidationFailed, $exception->errorCode);
         }
 
-        config(['question_blueprint.multitype_prompt_version' => BlueprintFillPromptBuilder::V3]);
+        config([
+            'question_blueprint.multitype_simple_prompt_version' => BlueprintFillPromptBuilder::V4,
+            'question_blueprint.multitype_advanced_prompt_version' => BlueprintFillPromptBuilder::V5,
+        ]);
         $this->assertSame(BlueprintFillPromptBuilder::V1, $builder->versionFor(BlueprintMode::Simple));
         $this->assertSame(BlueprintFillPromptBuilder::V2, $builder->versionFor(BlueprintMode::Advanced));
     }

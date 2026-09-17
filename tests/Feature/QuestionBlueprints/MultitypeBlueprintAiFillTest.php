@@ -84,7 +84,7 @@ class MultitypeBlueprintAiFillTest extends TestCase
         $this->assertTrue($blueprint->rows->every(
             fn (QuestionBlueprintRow $row): bool => $row->question_type === QuestionType::TRUE_FALSE,
         ));
-        $this->assertSame('blueprint-fill-v3', QuestionBlueprintAttempt::query()->first()?->prompt_version);
+        $this->assertSame('blueprint-fill-v4', QuestionBlueprintAttempt::query()->first()?->prompt_version);
         $this->assertSame(0, AiUsageLog::query()->count());
     }
 
@@ -116,7 +116,7 @@ class MultitypeBlueprintAiFillTest extends TestCase
         $this->assertSame(4, (int) $blueprint->rows->where('question_type', QuestionType::MULTIPLE_CHOICE)->sum('requested_count'));
         $this->assertSame(4, (int) $blueprint->rows->where('question_type', QuestionType::TRUE_FALSE)->sum('requested_count'));
         $this->assertSame(4, (int) $blueprint->rows->where('question_type', QuestionType::ESSAY)->sum('requested_count'));
-        $this->assertSame('blueprint-fill-v3', QuestionBlueprintAttempt::query()->first()?->prompt_version);
+        $this->assertSame('blueprint-fill-v5', QuestionBlueprintAttempt::query()->first()?->prompt_version);
         $this->assertSame(BlueprintAttemptStatus::Succeeded, QuestionBlueprintAttempt::query()->first()?->status);
     }
 
@@ -226,7 +226,7 @@ class MultitypeBlueprintAiFillTest extends TestCase
             ['multiple_choice' => 5, 'true_false' => 0, 'essay' => 0],
         );
 
-        config(['question_blueprint.multitype_prompt_version' => 'blueprint-fill-v9']);
+        config(['question_blueprint.multitype_simple_prompt_version' => 'blueprint-fill-v9']);
         $this->drainBlueprintJobs();
 
         $blueprint->refresh();

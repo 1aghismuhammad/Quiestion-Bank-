@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Exceptions\QuestionBlueprints;
 
+use App\Enums\BlueprintAttemptErrorCode;
 use RuntimeException;
 
 class BlueprintAttemptBudgetExhaustedException extends RuntimeException
 {
-    public function __construct(public readonly int $blueprintId)
-    {
+    public function __construct(
+        public readonly int $blueprintId,
+        public readonly ?BlueprintAttemptErrorCode $lastAttemptErrorCode = null,
+    ) {
         parent::__construct('The blueprint provider attempt budget is exhausted.');
     }
 }

@@ -53,6 +53,19 @@ class FakeQuestionBlueprintAnalysisProvider implements QuestionBlueprintAnalysis
         $context = $request->contexts[0] ?? null;
         $excerptLength = $context === null ? 0 : mb_strlen($context->excerpt, 'UTF-8');
         $end = min(8, $excerptLength);
+        $contextData = [];
+
+        if ($context !== null && $end >= 1) {
+            $contextData = [
+                'context_ref' => $context->ref,
+                'excerpt_start' => 0,
+                'excerpt_end' => $end,
+            ];
+
+            if ($request->promptVersion === \App\Services\AI\BlueprintFillPromptBuilder::V4 || $request->promptVersion === \App\Services\AI\BlueprintFillPromptBuilder::V5) {
+                $contextData['evidence_text'] = mb_substr($context->excerpt, 0, $end, 'UTF-8');
+            }
+        }
 
         return new BlueprintFillResult(
             [
@@ -63,13 +76,7 @@ class FakeQuestionBlueprintAnalysisProvider implements QuestionBlueprintAnalysis
                     'understand',
                     'medium',
                     5,
-                    $context === null || $end < 1 ? [] : [
-                        [
-                            'context_ref' => $context->ref,
-                            'excerpt_start' => 0,
-                            'excerpt_end' => $end,
-                        ],
-                    ],
+                    empty($contextData) ? [] : [$contextData],
                 ),
             ],
             new BlueprintProviderAttemptMetadata(
@@ -89,13 +96,20 @@ class FakeQuestionBlueprintAnalysisProvider implements QuestionBlueprintAnalysis
         $context = $request->contexts[0] ?? null;
         $excerptLength = $context === null ? 0 : mb_strlen($context->excerpt, 'UTF-8');
         $end = min(8, $excerptLength);
-        $contexts = $context === null || $end < 1 ? [] : [
-            [
+
+        $contextData = [];
+        if ($context !== null && $end >= 1) {
+            $contextData = [
                 'context_ref' => $context->ref,
                 'excerpt_start' => 0,
                 'excerpt_end' => $end,
-            ],
-        ];
+            ];
+            if ($request->promptVersion === \App\Services\AI\BlueprintFillPromptBuilder::V4 || $request->promptVersion === \App\Services\AI\BlueprintFillPromptBuilder::V5) {
+                $contextData['evidence_text'] = mb_substr($context->excerpt, 0, $end, 'UTF-8');
+            }
+        }
+
+        $contexts = empty($contextData) ? [] : [$contextData];
         $candidates = [];
         $difficulties = ['easy', 'medium', 'hots'];
         $index = 0;

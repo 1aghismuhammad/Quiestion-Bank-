@@ -260,7 +260,7 @@ class HttpBlueprintAiFillContractTest extends TestCase
 
         $this->drainBlueprintJobs();
 
-        $this->assertSame('blueprint-fill-v3', QuestionBlueprintAttempt::query()->first()?->prompt_version);
+        $this->assertSame('blueprint-fill-v5', QuestionBlueprintAttempt::query()->first()?->prompt_version);
         $this->assertSame(0, AiUsageLog::query()->count());
     }
 
@@ -376,7 +376,7 @@ class HttpBlueprintAiFillContractTest extends TestCase
 
         $this->drainBlueprintJobs();
 
-        $this->assertSame('blueprint-fill-v3', QuestionBlueprintAttempt::query()->first()?->prompt_version);
+        $this->assertSame('blueprint-fill-v4', QuestionBlueprintAttempt::query()->first()?->prompt_version);
         $this->assertSame(0, AiUsageLog::query()->count());
     }
 

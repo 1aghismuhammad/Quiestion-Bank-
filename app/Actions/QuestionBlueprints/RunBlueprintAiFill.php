@@ -95,13 +95,19 @@ class RunBlueprintAiFill
                 $model,
                 $promptVersion,
             );
-        } catch (BlueprintAttemptBudgetExhaustedException) {
+        } catch (BlueprintAttemptBudgetExhaustedException $exhaustedException) {
+            $errorCode = BlueprintErrorCode::ProviderFailed;
+            if ($exhaustedException->lastAttemptErrorCode === BlueprintAttemptErrorCode::ValidationFailed) {
+                $errorCode = BlueprintErrorCode::ValidationFailed;
+            }
+
             $this->fail->handle(
                 $blueprintId,
                 $workflowToken,
                 $stepExecutionToken,
                 null,
-                BlueprintErrorCode::ProviderFailed,
+                $errorCode,
+                $exhaustedException->lastAttemptErrorCode,
             );
 
             return;
@@ -126,6 +132,7 @@ class RunBlueprintAiFill
                 $built['request']->mode,
                 $built['request']->requestedTotal,
                 $built['request']->requestedTypeCounts,
+                $promptVersion,
             );
             $this->persistSuccess->handle(
                 $blueprintId,
@@ -135,13 +142,28 @@ class RunBlueprintAiFill
                 $rows,
                 $result->metadata,
             );
-        } catch (BlueprintCandidateValidationException) {
+        } catch (BlueprintCandidateValidationException $exception) {
+            $this->failAttempt->handle(
+                $blueprintId,
+                $workflowToken,
+                $stepExecutionToken,
+                $attemptId,
+                BlueprintAttemptErrorCode::ValidationFailed,
+            );
+
+            if (! $this->isFinalAttempt((int) $attempt->attempt_number)) {
+                throw new \App\Exceptions\QuestionBlueprints\BlueprintProviderTransientException(
+                    BlueprintAttemptErrorCode::ValidationFailed,
+                    $exception->getMessage(),
+                );
+            }
+
             $this->fail->handle(
                 $blueprintId,
                 $workflowToken,
                 $stepExecutionToken,
                 $attemptId,
-                BlueprintErrorCode::ProviderFailed,
+                BlueprintErrorCode::ValidationFailed,
                 BlueprintAttemptErrorCode::ValidationFailed,
             );
         } catch (Throwable $exception) {

@@ -76,7 +76,22 @@ class BeginBlueprintAttempt
                 ->count();
 
             if ($thisWorkflow >= $maxAttempts) {
-                throw new BlueprintAttemptBudgetExhaustedException((int) $locked->blueprint_id);
+                $lastAttempt = QuestionBlueprintAttempt::query()
+                    ->where('blueprint_id', $locked->blueprint_id)
+                    ->when(
+                        $locked->queued_at !== null,
+                        fn ($query) => $query->where('started_at', '>=', $locked->queued_at),
+                    )
+                    ->orderByDesc('attempt_number')
+                    ->first();
+
+                $lastErrorCode = null;
+
+                if ($lastAttempt !== null && is_string($lastAttempt->error_code)) {
+                    $lastErrorCode = \App\Enums\BlueprintAttemptErrorCode::tryFrom($lastAttempt->error_code);
+                }
+
+                throw new BlueprintAttemptBudgetExhaustedException((int) $locked->blueprint_id, $lastErrorCode);
             }
 
             $lastNumber = (int) QuestionBlueprintAttempt::query()

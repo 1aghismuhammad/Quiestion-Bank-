@@ -78,12 +78,24 @@ class FillQuestionBlueprintJob implements ShouldBeUnique, ShouldQueue
             return;
         }
 
+        $errorCode = BlueprintErrorCode::ProviderFailed;
+
+        if ($exception instanceof \App\Exceptions\QuestionBlueprints\BlueprintProviderException
+            && $exception->attemptErrorCode === \App\Enums\BlueprintAttemptErrorCode::ValidationFailed) {
+            $errorCode = BlueprintErrorCode::ValidationFailed;
+        }
+
+        if ($exception instanceof \App\Exceptions\QuestionBlueprints\BlueprintAttemptBudgetExhaustedException
+            && $exception->lastAttemptErrorCode === \App\Enums\BlueprintAttemptErrorCode::ValidationFailed) {
+            $errorCode = BlueprintErrorCode::ValidationFailed;
+        }
+
         app(FailBlueprintAttemptAndWorkflow::class)->handle(
             $this->blueprintId,
             $this->workflowToken,
             $this->stepExecutionToken,
             null,
-            BlueprintErrorCode::ProviderFailed,
+            $errorCode,
         );
     }
 }
