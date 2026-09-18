@@ -124,18 +124,43 @@ class MultitypeBlueprintDomainTest extends TestCase
     public function test_confirmed_types_are_immutable_and_labels_render(): void
     {
         $owner = $this->createCompleteUser();
+        $this->grantActivePro($owner);
         $material = Material::factory()->text()->for($owner)->create();
         $this->readyProfile($owner, $material);
         $draft = $this->createDraft($owner, $material, [
-            $this->sampleRow(4, DifficultyLevel::MEDIUM, QuestionType::TRUE_FALSE),
-        ]);
+            $this->sampleRow(3, DifficultyLevel::MEDIUM, QuestionType::MULTIPLE_CHOICE),
+            $this->sampleRow(2, DifficultyLevel::HARD, QuestionType::TRUE_FALSE),
+            $this->sampleRow(1, DifficultyLevel::EASY, QuestionType::ESSAY),
+        ], BlueprintMode::Advanced);
         $confirmed = $this->confirmDraft($owner, $draft);
 
-        $this->actingAs($owner)
+        $response = $this->actingAs($owner)
             ->get(route('materials.blueprints.show', [$material, $confirmed]))
-            ->assertOk()
-            ->assertSee('Benar/Salah', false);
+            ->assertOk();
 
-        $this->assertSame(QuestionType::TRUE_FALSE, $confirmed->fresh()->rows->first()?->question_type);
+        $response->assertSee('<th>No.</th>', false);
+        $response->assertSee('<th>Kompetensi / Tujuan Pembelajaran</th>', false);
+        $response->assertSee('<th>Materi</th>', false);
+        $response->assertSee('<th>Indikator Soal</th>', false);
+        $response->assertSee('<th>Level Kognitif</th>', false);
+        $response->assertSee('<th>Bentuk Soal</th>', false);
+        $response->assertSee('<th>No. Soal</th>', false);
+
+        $response->assertDontSee('<th>Tujuan</th>', false);
+        $response->assertDontSee('<th>Topik</th>', false);
+        $response->assertDontSee('<th>Kesulitan</th>', false);
+        $response->assertDontSee('<th>Jumlah</th>', false);
+
+        $response->assertSee('Pilihan Ganda');
+        $response->assertSee('Benar/Salah');
+        $response->assertSee('Esai');
+
+        $response->assertSee('1–3');
+        $response->assertSee('4–5');
+        $response->assertSee('6');
+
+        $response->assertDontSee('multiple_choice');
+
+        $this->assertSame(QuestionType::MULTIPLE_CHOICE, $confirmed->fresh()->rows->first()?->question_type);
     }
 }

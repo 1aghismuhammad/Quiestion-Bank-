@@ -96,8 +96,8 @@ class BlueprintDocxWriter
         $phpWord = new PhpWord;
         $phpWord->setDefaultFontName('Calibri');
         $phpWord->setDefaultFontSize(11);
-        $phpWord->addTitleStyle(1, ['name' => 'Calibri', 'size' => 18, 'bold' => true, 'color' => '1F4E79']);
-        $phpWord->addTitleStyle(2, ['name' => 'Calibri', 'size' => 13, 'bold' => true, 'color' => '1F4E79']);
+        $phpWord->addTitleStyle(1, ['name' => 'Calibri', 'size' => 16, 'bold' => true, 'color' => '1F4E79'], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        $phpWord->addTitleStyle(2, ['name' => 'Calibri', 'size' => 12, 'bold' => true, 'color' => '344054'], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
 
         $info = $phpWord->getDocInfo();
         $info->setCreator('AI Question Bank');
@@ -117,8 +117,8 @@ class BlueprintDocxWriter
         $style->setMarginLeft(self::MARGIN);
         $style->setMarginRight(self::MARGIN);
 
-        $section->addTitle((string) $blueprint->title, 1);
-        $section->addText('Kisi-kisi penilaian', ['italic' => true, 'size' => 12, 'color' => '344054']);
+        $section->addTitle('KISI-KISI PENULISAN SOAL', 1);
+        $section->addTitle((string) $blueprint->title, 2);
         $section->addTextBreak(1);
 
         $this->addMeta($section, 'Materi', (string) ($blueprint->material?->title ?? ''));
@@ -142,10 +142,43 @@ class BlueprintDocxWriter
             );
         }
 
+        $section->addTextBreak(1);
+
+        $table = $section->addTable([
+            'borderSize' => 4,
+            'borderColor' => 'BAC5D6',
+            'cellMargin' => 80,
+            'width' => 100 * 50,
+            'unit' => TblWidth::PERCENT,
+            'layout' => Table::LAYOUT_FIXED,
+        ]);
+
+        $table->addRow(null, ['tblHeader' => true, 'cantSplit' => true]);
+        $this->addHeaderCell($table, 500, 'No.');
+        $this->addHeaderCell($table, 2500, 'Kompetensi / Tujuan Pembelajaran');
+        $this->addHeaderCell($table, 1500, 'Materi');
+        $this->addHeaderCell($table, 3000, 'Indikator Soal');
+        $this->addHeaderCell($table, 1200, 'Level Kognitif');
+        $this->addHeaderCell($table, 1200, 'Bentuk Soal');
+        $this->addHeaderCell($table, 800, 'No. Soal');
+
+        $questionCursor = 1;
+        $rowNumber = 1;
+
         foreach ($blueprint->rows as $row) {
-            $section->addTextBreak(1);
-            $section->addTitle('Baris '.(string) $row->sort_order, 2);
-            $this->addRowTable($section, $row);
+            $start = $questionCursor;
+            $end = $start + $row->requested_count - 1;
+            $questionRange = $start === $end ? (string) $start : "{$start}–{$end}";
+            $questionCursor = $end + 1;
+
+            $table->addRow(null, ['cantSplit' => true]);
+            $table->addCell(500, ['valign' => 'top'])->addText((string) $rowNumber++, ['size' => 11, 'name' => 'Calibri']);
+            $table->addCell(2500, ['valign' => 'top'])->addText((string) $row->objective, ['size' => 11, 'name' => 'Calibri']);
+            $table->addCell(1500, ['valign' => 'top'])->addText((string) $row->topic, ['size' => 11, 'name' => 'Calibri']);
+            $table->addCell(3000, ['valign' => 'top'])->addText((string) $row->indicator, ['size' => 11, 'name' => 'Calibri']);
+            $table->addCell(1200, ['valign' => 'top'])->addText($row->cognitive_level->label(), ['size' => 11, 'name' => 'Calibri']);
+            $table->addCell(1200, ['valign' => 'top'])->addText($row->question_type->label(), ['size' => 11, 'name' => 'Calibri']);
+            $table->addCell(800, ['valign' => 'top'])->addText($questionRange, ['size' => 11, 'name' => 'Calibri']);
         }
 
         return $phpWord;
@@ -158,79 +191,9 @@ class BlueprintDocxWriter
         $run->addText($value, ['size' => 11]);
     }
 
-    private function addRowTable(\PhpOffice\PhpWord\Element\Section $section, QuestionBlueprintRow $row): void
-    {
-        $valueWidth = self::PAGE_WIDTH - (2 * self::MARGIN) - self::LABEL_WIDTH;
-        $table = $section->addTable([
-            'borderSize' => 4,
-            'borderColor' => 'BAC5D6',
-            'cellMargin' => 80,
-            'width' => 100 * 50,
-            'unit' => TblWidth::PERCENT,
-            'layout' => Table::LAYOUT_FIXED,
-        ]);
-
-        $table->addRow(360, ['tblHeader' => true, 'cantSplit' => true]);
-        $this->addHeaderCell($table, self::LABEL_WIDTH, 'Uraian');
-        $this->addHeaderCell($table, $valueWidth, 'Isi');
-
-        foreach ($this->rowFields($row) as $label => $value) {
-            $table->addRow(null, ['cantSplit' => true]);
-            $table->addCell(self::LABEL_WIDTH, ['bgColor' => 'E9EEF8', 'valign' => 'top'])
-                ->addText($label, ['bold' => true, 'size' => 11, 'name' => 'Calibri']);
-            $table->addCell($valueWidth, ['valign' => 'top'])
-                ->addText($value, ['size' => 11, 'name' => 'Calibri']);
-        }
-    }
-
     private function addHeaderCell(\PhpOffice\PhpWord\Element\Table $table, int $width, string $text): void
     {
         $table->addCell($width, ['bgColor' => '1F4E79', 'valign' => 'center'])
             ->addText($text, ['bold' => true, 'color' => 'FFFFFF', 'size' => 11, 'name' => 'Calibri']);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function rowFields(QuestionBlueprintRow $row): array
-    {
-        return [
-            'Tujuan' => (string) $row->objective,
-            'Topik' => (string) $row->topic,
-            'Indikator' => (string) $row->indicator,
-            'Level kognitif' => $row->cognitive_level->label(),
-            'Kesulitan' => $row->difficulty->label(),
-            'Tipe soal' => $row->question_type->label(),
-            'Jumlah soal' => (string) $row->requested_count,
-            'Sumber' => $this->sourceLabel($row),
-        ];
-    }
-
-    private function sourceLabel(QuestionBlueprintRow $row): string
-    {
-        $parts = [];
-
-        foreach ($row->contexts as $context) {
-            $element = $context->profileElement;
-
-            if ($element !== null && trim((string) $element->text) !== '') {
-                $text = trim(preg_replace('/\s+/u', ' ', mb_substr((string) $element->text, 0, 120, 'UTF-8')) ?? '');
-                $parts[] = $element->kind->label().': '.$text;
-
-                continue;
-            }
-
-            $chunk = $context->profileChunk;
-
-            if ($chunk !== null) {
-                $parts[] = 'Cuplikan profil '.((int) $chunk->chunk_index + 1);
-
-                continue;
-            }
-
-            $parts[] = 'Cuplikan profil';
-        }
-
-        return $parts === [] ? 'Profil materi' : implode('; ', $parts);
     }
 }

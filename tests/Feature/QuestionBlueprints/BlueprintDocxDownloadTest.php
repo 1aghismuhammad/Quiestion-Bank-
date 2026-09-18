@@ -27,12 +27,18 @@ class BlueprintDocxDownloadTest extends TestCase
     public function test_confirmed_docx_download_omits_tokens_and_secrets(): void
     {
         $owner = $this->createCompleteUser();
+        $this->grantActivePro($owner);
         $material = Material::factory()->text()->for($owner)->create([
             'content' => 'Materi fotosintesis untuk unduhan kisi-kisi.',
             'title' => 'Fotosintesis',
         ]);
         $this->readyProfile($owner, $material);
-        $blueprint = $this->confirmDraft($owner, $this->createDraft($owner, $material));
+        $draft = $this->createDraft($owner, $material, [
+            $this->sampleRow(3, \App\Enums\DifficultyLevel::MEDIUM, \App\Enums\QuestionType::MULTIPLE_CHOICE),
+            $this->sampleRow(2, \App\Enums\DifficultyLevel::HARD, \App\Enums\QuestionType::TRUE_FALSE),
+            $this->sampleRow(1, \App\Enums\DifficultyLevel::EASY, \App\Enums\QuestionType::ESSAY),
+        ], \App\Enums\BlueprintMode::Advanced);
+        $blueprint = $this->confirmDraft($owner, $draft);
         $blueprint->update([
             'workflow_token' => '11111111-1111-1111-1111-111111111111',
             'step_execution_token' => '22222222-2222-2222-2222-222222222222',
@@ -57,16 +63,36 @@ class BlueprintDocxDownloadTest extends TestCase
         $blob = $this->docxBlob($binary);
         $xml = $this->docxDocumentXml($binary);
 
-        $this->assertStringContainsString('Kisi-kisi formatif', $blob);
-        $this->assertStringContainsString('Fotosintesis', $blob);
-        $this->assertStringContainsString('w:orient="landscape"', $xml);
+        // Required explicitly by problem spec
+        $this->assertStringContainsString('KISI-KISI PENULISAN SOAL', $blob);
+        $this->assertStringContainsString('Kompetensi / Tujuan Pembelajaran', $blob);
+        $this->assertStringContainsString('Materi', $blob);
+        $this->assertStringContainsString('Indikator Soal', $blob);
+        $this->assertStringContainsString('Level Kognitif', $blob);
+        $this->assertStringContainsString('Bentuk Soal', $blob);
+        $this->assertStringContainsString('No. Soal', $blob);
+
+        $this->assertStringContainsString('1–3', $blob);
+        $this->assertStringContainsString('4–5', $blob);
+        $this->assertStringContainsString('6', $blob);
+
+        $this->assertStringNotContainsString('Uraian', $blob);
+        $this->assertStringNotContainsString('Isi', $blob);
+        $this->assertStringNotContainsString('Sedang', $blob);
+        $this->assertStringNotContainsString('Sulit', $blob);
+        $this->assertStringNotContainsString('Mudah', $blob);
+
+        // Prove other meta is rendered
         $this->assertStringContainsString('Total soal', $blob);
-        $this->assertStringContainsString('Formatif', $blob);
+        $this->assertStringContainsString('Fotosintesis', $blob);
         $this->assertStringContainsString('Pilihan Ganda', $blob);
-        $this->assertStringContainsString('Sedang', $blob);
-        $this->assertStringContainsString('Memahami', $blob);
-        $this->assertStringContainsString('Topik: Konsep utama', $blob);
+        $this->assertStringContainsString('Benar/Salah', $blob);
+        $this->assertStringContainsString('Esai', $blob);
+        $this->assertStringContainsString('w:orient="landscape"', $xml);
+
         $this->assertStringNotContainsString('multiple_choice', $xml);
+        $this->assertStringNotContainsString('true_false', $xml);
+        $this->assertStringNotContainsString('essay', $xml);
         $this->assertStringNotContainsString('Konteks 1', $blob);
         $this->assertStringNotContainsString('11111111-1111-1111-1111-111111111111', $blob);
         $this->assertStringNotContainsString('22222222-2222-2222-2222-222222222222', $blob);

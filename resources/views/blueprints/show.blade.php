@@ -84,25 +84,32 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Tujuan</th>
-                        <th>Topik</th>
-                        <th>Indikator</th>
-                        <th>Level</th>
-                        <th>Kesulitan</th>
-                        <th>Tipe</th>
-                        <th>Jumlah</th>
+                        <th>No.</th>
+                        <th>Kompetensi / Tujuan Pembelajaran</th>
+                        <th>Materi</th>
+                        <th>Indikator Soal</th>
+                        <th>Level Kognitif</th>
+                        <th>Bentuk Soal</th>
+                        <th>No. Soal</th>
                     </tr>
                 </thead>
                 <tbody>
+                    @php $questionCursor = 1; @endphp
                     @foreach ($blueprint->rows as $row)
+                        @php
+                            $start = $questionCursor;
+                            $end = $start + $row->requested_count - 1;
+                            $questionRange = $start === $end ? (string) $start : "{$start}–{$end}";
+                            $questionCursor = $end + 1;
+                        @endphp
                         <tr>
+                            <td>{{ $loop->iteration }}</td>
                             <td>{{ $row->objective }}</td>
                             <td>{{ $row->topic }}</td>
                             <td>{{ $row->indicator }}</td>
                             <td>{{ $row->cognitive_level->label() }}</td>
-                            <td>{{ $row->difficulty->value }}</td>
                             <td>{{ $row->question_type->label() }}</td>
-                            <td>{{ $row->requested_count }}</td>
+                            <td>{{ $questionRange }}</td>
                         </tr>
                     @endforeach
                 </tbody>
