@@ -47,7 +47,7 @@ class CreateQuestionBlueprintImport
         try {
             $import = DB::transaction(function () use ($actor, $material, $file, $metadata, &$stored): QuestionBlueprintImport {
                 $locked = $this->lockUserAndMaterial((int) $actor->id, (int) $material->material_id);
-                
+
                 try {
                     $this->assertEligible->handle($locked);
                 } catch (MaterialProfileRejectedException) {
@@ -55,7 +55,7 @@ class CreateQuestionBlueprintImport
                         'material' => 'Materi tidak memenuhi syarat.',
                     ]);
                 }
-                
+
                 $profile = $this->assertProfile->requireMatchingReady($locked);
                 $this->lockProfileVersion((int) $profile->profile_version_id);
 

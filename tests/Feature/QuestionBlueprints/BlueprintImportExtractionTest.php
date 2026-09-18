@@ -100,13 +100,13 @@ class BlueprintImportExtractionTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $import = $this->createImport($owner, $material, $this->createValidDocxBytes());
-        
+
         $processor = $this->app->make(ProcessQuestionBlueprintImportExtraction::class);
-        
+
         // Mock to throw standard exception
         $mockStorage = \Mockery::mock(\App\Services\QuestionBlueprints\BlueprintImportStorageService::class);
         $mockStorage->shouldReceive('get')->andThrow(new \RuntimeException('Connection failed'));
-        
+
         $this->app->instance(\App\Services\QuestionBlueprints\BlueprintImportStorageService::class, $mockStorage);
 
         $processor = $this->app->make(ProcessQuestionBlueprintImportExtraction::class);

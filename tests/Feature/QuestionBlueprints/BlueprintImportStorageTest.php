@@ -39,7 +39,7 @@ class BlueprintImportStorageTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $file = UploadedFile::fake()->create('kisi-kisi.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
         $import = $action->handle($owner, $material, $file);
 
@@ -57,7 +57,7 @@ class BlueprintImportStorageTest extends TestCase
         $this->assertNotNull($import->extractor_implementation);
 
         Storage::disk('blueprint-imports')->assertExists($import->storage_path);
-        
+
         Queue::assertPushed(\App\Jobs\ExtractQuestionBlueprintImport::class, function ($job) use ($import) {
             return $job->importId === $import->import_id;
         });
@@ -66,7 +66,7 @@ class BlueprintImportStorageTest extends TestCase
         $this->assertDatabaseCount('question_blueprints', 0);
         $this->assertDatabaseCount('question_blueprint_rows', 0);
         $this->assertDatabaseCount('ai_usage_logs', 0);
-        
+
         // Prove material storage quota is NOT consumed by import
         // The import file is on 'blueprint-imports' not 'materials' disk.
     }
@@ -78,7 +78,7 @@ class BlueprintImportStorageTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $file = UploadedFile::fake()->create('kisi.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        
+
         Queue::fake();
 
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
@@ -98,9 +98,9 @@ class BlueprintImportStorageTest extends TestCase
         $foreignUser = $this->createCompleteUser();
 
         $file = UploadedFile::fake()->create('kisi.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $this->expectException(\App\Exceptions\QuestionBlueprints\BlueprintRejectedException::class);
         $action->handle($foreignUser, $material, $file);
     }
@@ -115,9 +115,9 @@ class BlueprintImportStorageTest extends TestCase
         $admin->roles()->attach(\App\Models\Role::where('name', 'ADMIN')->first());
 
         $file = UploadedFile::fake()->create('kisi.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $this->expectException(\App\Exceptions\QuestionBlueprints\BlueprintRejectedException::class);
         $action->handle($admin, $material, $file);
     }
@@ -134,9 +134,9 @@ class BlueprintImportStorageTest extends TestCase
 
         $file1 = UploadedFile::fake()->create('kisi.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
         $file2 = UploadedFile::fake()->create('kisi.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $import1 = $action->handle($owner1, $material1, $file1);
         $import2 = $action->handle($owner2, $material2, $file2);
 
@@ -148,14 +148,14 @@ class BlueprintImportStorageTest extends TestCase
         $owner = $this->createCompleteUser();
         $material = Material::factory()->text()->for($owner)->create();
         $this->readyProfile($owner, $material);
-        
+
         // Make profile stale by changing content
         $material->update(['content' => 'Changed content', 'content_hash' => 'newhash']);
 
         $file = UploadedFile::fake()->create('kisi.docx', 100, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $this->expectException(\App\Exceptions\QuestionBlueprints\BlueprintRejectedException::class);
         $action->handle($owner, $material, $file);
     }
@@ -167,9 +167,9 @@ class BlueprintImportStorageTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $file = UploadedFile::fake()->create('kisi.docx', 0);
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $this->expectException(ValidationException::class);
         $action->handle($owner, $material, $file);
     }
@@ -182,9 +182,9 @@ class BlueprintImportStorageTest extends TestCase
 
         // 11 MB
         $file = UploadedFile::fake()->create('kisi.docx', 11 * 1024);
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $this->expectException(ValidationException::class);
         $action->handle($owner, $material, $file);
     }
@@ -196,9 +196,9 @@ class BlueprintImportStorageTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $file = UploadedFile::fake()->create('kisi.pdf', 100);
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $this->expectException(ValidationException::class);
         $action->handle($owner, $material, $file);
     }
@@ -210,9 +210,9 @@ class BlueprintImportStorageTest extends TestCase
         // Do not ready profile
 
         $file = UploadedFile::fake()->create('kisi.docx', 100);
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
-        
+
         $this->expectException(\App\Exceptions\QuestionBlueprints\BlueprintRejectedException::class);
         $action->handle($owner, $material, $file);
     }
@@ -226,10 +226,10 @@ class BlueprintImportStorageTest extends TestCase
         $this->readyProfile($owner, $material2);
 
         $file = UploadedFile::fake()->create('kisi.docx', 100);
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
         $import1 = $action->handle($owner, $material1, $file);
-        
+
         $file2 = UploadedFile::fake()->create('kisi.docx', 100); // same size/content => same hash
         $import2 = $action->handle($owner, $material2, $file2);
 
@@ -243,12 +243,12 @@ class BlueprintImportStorageTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $file = UploadedFile::fake()->create('kisi.docx', 100);
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
         $import1 = $action->handle($owner, $material, $file);
-        
+
         $file2 = UploadedFile::fake()->create('kisi.docx', 100); // same hash
-        
+
         $this->expectException(ValidationException::class);
         $action->handle($owner, $material, $file2);
     }
@@ -260,11 +260,11 @@ class BlueprintImportStorageTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $file = UploadedFile::fake()->create('kisi.docx', 100);
-        
+
         $action = $this->app->make(CreateQuestionBlueprintImport::class);
         $import1 = $action->handle($owner, $material, $file);
         $import1->update(['status' => BlueprintImportStatus::FAILED]);
-        
+
         $file2 = UploadedFile::fake()->create('kisi.docx', 100); // same hash
         $import2 = $action->handle($owner, $material, $file2);
 
