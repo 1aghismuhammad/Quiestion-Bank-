@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `COMPLETE`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `COMPLETE`. K2A (Question Blueprint DOCX Import Foundation) is `IMPLEMENTED — QA PENDING`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. At original Phase 5 closure, True/False and Essay Question Bank were deferred. They were subsequently delivered through Phase 5.7F/G.
 
-Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G is `COMPLETE`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`COMPLETE`) and K2A (`IMPLEMENTED — QA PENDING`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G is `COMPLETE`. K2A is `IMPLEMENTED — QA PENDING`. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
-## Phase 5.7 - Pre-Phase-6 enhancements
+## Phase 5.7 & K2A - Pre-Phase-6 enhancements
 
-Status: `COMPLETE` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D `COMPLETE` (completed and committed before the Phase 5.7E baseline); Phase 5.7E `COMPLETE`; Phase 5.7F `COMPLETE`; Phase 5.7G `COMPLETE`)
+Status: `COMPLETE` (Phase 5.7A `COMPLETE`; Phase 5.7B1 `COMPLETE`; Phase 5.7B2 `COMPLETE`; Phase 5.7B3 `COMPLETE`; v0.15.4, v0.15.5, and v0.15.10 B2+B3 corrective hardening; Phase 5.7C+D `COMPLETE` (completed and committed before the Phase 5.7E baseline); Phase 5.7E `COMPLETE`; Phase 5.7F `COMPLETE`; Phase 5.7G `COMPLETE`; K2A `IMPLEMENTED — QA PENDING`)
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -347,6 +347,15 @@ Phase 5.7G — Run-to-Question-Bank import, typed edit/publish, question DOCX, a
 - Published student (`Soal-[title].docx`) and teacher/key (`Soal-Kunci-[title].docx`) DOCX via PhpWord with try/finally cleanup.
 - Automated QA: 1210 tests, 6976 assertions (1 skipped: MySQL CHECK on SQLite). Source-review corrective applied for strict Run import validation, MariaDB rollback dialect, and DOCX leakage/cleanup hardening. Manual QA deferred with Phase 5.7F into integrated owner QA. QA archive: `phase-5.7g-v0.15.14-qa.zip`.
 - Out of scope: Run cancellation, parallel children, add/delete/reorder, unpublish, archive, public visibility, admin review.
+
+K2A — Question Blueprint DOCX Import Foundation (`IMPLEMENTED — QA PENDING`):
+
+- Backend foundation only for importing Question Blueprints from DOCX files (`question_blueprint_imports` table).
+- Has NO public UI, NO Gemini calls, NO Draft Blueprint import, and NO generation.
+- Enforces duplicate protection via active (PENDING, PROCESSING, EXTRACTED) unique lock `(user_id, material_id, file_hash)`.
+- Reuses existing `DocxExtractor` inside a dedicated `ExtractQuestionBlueprintImport` job.
+- Captures authoritative Profile Version provenance (`material_content_hash`, `material_file_hash`, and `extractor_implementation`) at creation time for future K2B/K2C stale validation.
+- Operational exceptions propagate for queue retry; terminal unrecoverable exceptions transition the import to FAILED and immediately clean up the temporary source file.
 
 
 ## Pre-Phase-6 Hardening Gate

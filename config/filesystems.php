@@ -55,6 +55,14 @@ return [
             'throw' => true,
         ],
 
+        'blueprint-imports' => [
+            'driver' => 'local',
+            'root' => storage_path('app/blueprint-imports'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

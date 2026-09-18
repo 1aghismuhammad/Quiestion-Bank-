@@ -225,6 +225,13 @@ Enum generation_run_mode {
   advanced
 }
 
+Enum blueprint_import_status {
+  pending
+  processing
+  extracted
+  failed
+}
+
 //////////////////////////////////////////////////////
 // USER MANAGEMENT
 //////////////////////////////////////////////////////
@@ -670,6 +677,37 @@ Table question_blueprint_fill_events {
   }
 
   Note: 'Durable AI-fill throttle events. Each accepted queue request, including retry of the same draft, consumes one rolling-hour slot. Not generation credits and not ai_usage_logs.'
+}
+
+Table question_blueprint_imports {
+  import_id bigint [pk, increment]
+  user_id bigint [not null]
+  material_id bigint [not null]
+  profile_version_id bigint [not null]
+  status blueprint_import_status [not null, default: 'pending']
+  original_file_name varchar(255) [not null]
+  storage_path varchar(2048)
+  file_size bigint [not null]
+  file_hash char(64) [not null]
+  mime_type varchar(127) [not null]
+  extracted_text longtext
+  material_content_hash varchar(64) [not null]
+  material_file_hash varchar(64)
+  extractor_implementation varchar(100) [not null]
+  error_code varchar(64)
+  error_message text
+  queued_at timestamp
+  claimed_at timestamp
+  completed_at timestamp
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (user_id, material_id, status) [name: 'qbp_import_user_mat_status_idx']
+    (user_id, material_id, file_hash) [name: 'qbp_import_user_mat_hash_idx']
+  }
+
+  Note: 'Backend foundation for K2A. No public UI, no Draft Blueprint creation, no Gemini. Enforces active duplicate lock per Material.'
 }
 
 //////////////////////////////////////////////////////

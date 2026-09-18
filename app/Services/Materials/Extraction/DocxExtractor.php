@@ -234,6 +234,10 @@ class DocxExtractor implements MaterialContentExtractor
                 }
             }
 
+            if (trim($text) === '') {
+                throw new UnrecoverableMaterialExtractionException('DOCX document.xml contains no visible text.');
+            }
+
             return $text;
         } catch (UnrecoverableMaterialExtractionException $exception) {
             throw $exception;

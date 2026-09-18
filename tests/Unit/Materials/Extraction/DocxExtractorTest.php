@@ -25,6 +25,14 @@ class DocxExtractorTest extends TestCase
         $this->assertSame("Hello\nOne\tTwo\nLine\nBreak\n  spaced  \n", $text);
     }
 
+    public function test_it_rejects_empty_extracted_content(): void
+    {
+        $this->expectException(UnrecoverableMaterialExtractionException::class);
+        $this->expectExceptionMessage('DOCX document.xml contains no visible text.');
+
+        (new DocxExtractor)->extract(MaterialExtractionFixtures::simpleParagraphDocx('   '));
+    }
+
     public function test_it_rejects_missing_document_xml(): void
     {
         $this->expectException(UnrecoverableMaterialExtractionException::class);

@@ -25,6 +25,36 @@ Database Impact:
 Notes:
 -
 ```
+## v0.16.0 K2A Question Blueprint DOCX Import Foundation
+
+- Date: 18 September 2026
+- Version: 0.16.0
+- Phase: K2A Question Blueprint DOCX Import Foundation
+- Type: Feature
+
+Added:
+
+- Backend foundation for importing Question Blueprints from DOCX files (`question_blueprint_imports` table).
+- Safe private storage via `blueprint-imports` disk with a 10MB limit and UUID naming.
+- Active duplicate protection using `(user_id, material_id, file_hash)` unique index lock (PENDING, PROCESSING, EXTRACTED).
+- Authoritative provenance persistence: requires a matching READY Profile Version and captures its `material_content_hash`, `material_file_hash`, and `extractor_implementation`.
+- Dedicated `material-extraction` queue job (`ExtractQuestionBlueprintImport`) to parse DOCX using the existing `DocxExtractor`.
+- Idempotent and safe processing: operational failures are retryable (throwable propagates to queue); terminal/unrecoverable failures (e.g. corrupt DOCX, empty content) transition to FAILED and immediately clean up the source file.
+- Strict cleanup guarantees: temporary storage is deleted upon success (EXTRACTED) or unrecoverable failure.
+
+Changed:
+
+- Explicit K2A boundary: this is purely a backend import foundation. It has no public UI, no Gemini calls, no Draft Blueprint import, and no generation.
+
+Database Impact:
+
+- Additive migration `2026_09_18_030837_create_question_blueprint_imports_table.php`.
+- No existing K1 migrations were modified. No destructive DB operations.
+
+Notes:
+
+- Automated QA covers duplicate handling, schema integrity, job idempotency, retry capability, and terminal cleanup.
+- Used `blueprint-imports` isolated disk to prevent cross-contamination with the Material source disk.
 
 ## v0.15.19 QA-08 Blueprint Runtime Routing Corrective
 

@@ -8,8 +8,8 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.14
-- Domain entities: 30 domain runtime (33 canonical) entities documented in the canonical DBML
+- Version: 0.15.15
+- Domain entities: 31 domain runtime (34 canonical) entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, `option_id`, `blueprint_series_id`, `blueprint_id`, `blueprint_row_id`, `generation_run_id`, dan PK custom Profile mengikuti custom PK
 - Timestamp style: `created_at`, `updated_at`, dan `deleted_at` jika diperlukan
@@ -233,6 +233,10 @@ Audit HTTP fill. Unique `(blueprint_id, attempt_number)`. Tidak ada raw prompt/b
 Akuntansi throttle durable. Unique `queue_request_key` (`sha256` dari `workflow_token`). Setiap accepted AI-fill queue, termasuk retry draf yang sama, menulis satu event. Bukan credit generation dan bukan `ai_usage_logs`.
 
 Confirmed DOCX: PhpWord 1.4.0, try/finally temp file, `deleteFileAfterSend`, filename `Kisi-Kisi-[safe-title].docx`. Stale confirmed tetap dapat diunduh dan dilabeli historis.
+
+#### `question_blueprint_imports`
+
+Pondasi backend (K2A) untuk import kisi-kisi DOCX. Unique lock dicapai dengan menolak duplikat `(user_id, material_id, file_hash)` yang aktif (PENDING, PROCESSING, EXTRACTED). Ekstraksi dilakukan via job di antrean `material-extraction`. Menyimpan cuplikan otoritatif Material Profile Version saat draf dibuat (provenance). Fitur ini murni backend: tidak memiliki UI publik, tidak memanggil Gemini, tidak membuat Draft Blueprint, dan tidak mengonsumsi kredit generasi. Operational error dapat di-retry; terminal error akan membuang storage.
 
 ### AI Engine
 
@@ -486,6 +490,7 @@ Phase 5.7C+D (additive; do not edit committed migrations):
 9. ai_generation_run_item_spans
 10. alter `ai_generations` (nullable run/item/child_index)
 11. alter `ai_usage_logs` (`credits` default 1, nullable `generation_id`, unique nullable `generation_run_id`, MySQL XOR CHECK)
+12. question_blueprint_imports
 
 Forward deploy in that order after Phase 5.1. Rollback of step 11 is **not** safe after Run usage or `credits>1` exists.
 
@@ -526,12 +531,13 @@ Urutan target schema lengkap:
 25. question_blueprint_row_contexts
 26. question_blueprint_attempts
 27. question_blueprint_fill_events
-28. ai_generation_runs
-29. ai_generation_run_items
-30. ai_generation_run_item_spans
-31. whatsapp_contacts
-32. broadcast_campaigns
-33. broadcast_logs
+28. question_blueprint_imports
+29. ai_generation_runs
+30. ai_generation_run_items
+31. ai_generation_run_item_spans
+32. whatsapp_contacts
+33. broadcast_campaigns
+34. broadcast_logs
 
 Self-reference `ai_generations.parent_generation_id` dapat ditambahkan setelah tabel dibuat jika database membutuhkan langkah terpisah.
 
