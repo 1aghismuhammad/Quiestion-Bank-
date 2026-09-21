@@ -3,9 +3,9 @@
 ## Document Status
 
 - Product: AI Question Bank SaaS
-- Version: 0.16.0
-- Updated: 18 September 2026
-- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5.7G is `COMPLETE` (Run-to-Question-Bank import, typed edit/publish, question DOCX). K2A (Question Blueprint DOCX Import Foundation) is `COMPLETE`. Phase 6 Admin Dashboard remains `PLANNED`.
+- Version: 0.16.1
+- Updated: 21 September 2026
+- Status: Phase 0 through Phase 5 are `COMPLETE`. Phase 5.7G is `COMPLETE` (Run-to-Question-Bank import, typed edit/publish, question DOCX). K2A (Question Blueprint DOCX Import Foundation) is `COMPLETE`. K2A.1 (Blueprint Import Runtime Hardening) is `IMPLEMENTED — QA PENDING`. Phase 6 Admin Dashboard remains `PLANNED`.
 - MVP boundary: Phase 0-6 dengan subscription manual dan admin minimum
 
 ## Product Vision
@@ -120,7 +120,7 @@ Flow Phase 2 berdiri sendiri dan tidak memerlukan `question_sets`. Question Bank
 - FR-BP-03: AI fill memakai provider Blueprint tersendiri. Historical composition `null` tetap Simple `blueprint-fill-v1` atau Advanced `blueprint-fill-v2` plus `ai_fill_requested_total`. Fill baru dengan komposisi tipe memakai `blueprint-fill-v3` dan `ai_fill_requested_type_counts` (kunci kanonis `multiple_choice`/`true_false`/`essay`) bersama token workflow baru; Simple satu tipe 1–10; Advanced satu atau lebih tipe 1–30 yang harus sama dengan `ai_fill_requested_total` jika keduanya ada; jumlah per tipe harus tepat. Paling banyak tiga **accepted queue events** per user per jam bergulir, termasuk retry draf yang sama. Satu fill in-flight per Material, tetap `draft`, tidak auto-confirm, dan tidak menulis `ai_usage_logs`. Offset provider bersifat relatif terhadap excerpt `context_ref`; server yang mengonversi ke offset kanonis.
 - FR-BP-04: DOCX kisi-kisi hanya untuk Blueprint confirmed milik owner (PhpWord 1.4.0). Temp file dibersihkan lewat try/finally. Versi confirmed yang stale tetap dapat diunduh dan dilabeli historis. Tidak ada token, secret, prompt, atau metadata provider. Expired-Pro owner tetap dapat melihat Blueprint Advanced existing dan mengunduh DOCX confirmed.
 - FR-BP-05: Mode Advanced dan mutasinya (create/save/update/AI fill/AI retry/confirm/clone) mensyaratkan `ResolveUserEntitlement::handle($user)->isPro()` melalui `ResolveActivePro`. Free, expired-Pro, dan Admin tanpa Pro ditolak sebelum write. Tidak ada Admin bypass.
-- FR-BP-06: K2A menambahkan pondasi backend untuk import Blueprint dari DOCX (tanpa UI publik, tanpa pemanggilan Gemini). Duplikat file yang aktif ditolak. Menyimpan provenance dari versi Profil (content hash, file hash, extractor). Operasi ekstraksi bersifat idempotent dan membersihkan temporary storage saat success/terminal failure.
+- FR-BP-06: K2A menambahkan pondasi backend untuk import Blueprint dari DOCX (tanpa UI publik, tanpa pemanggilan Gemini, tanpa Draft Blueprint, tanpa kredit generasi). Duplikat file yang aktif ditolak di application level. Menyimpan provenance dari versi Profil saat import dibuat. K2A.1 mengeraskan job (`ShouldBeUnique` + `WithoutOverlapping` per import, `timeout=60`, `failOnTimeout`, backoff `[10,30,60]`), mengisi `queued_at` pada enqueue attempt, men-terminalisasi kegagalan dispatch menjadi FAILED yang disanitasi, dan membersihkan source secara best-effort. Operasi ekstraksi tetap idempotent pada EXTRACTED/FAILED; PROCESSING tetap reclaimable untuk retry operasional.
 
 - FR-RUN-01: Owner dapat memulai Simple Generation Run dari Blueprint confirmed yang masih current plus Profil ready yang cocok. Total 1–10, satu tipe, satu difficulty, tanpa shuffle. Advanced Run mensyaratkan Pro aktif, 1–30 soal, mixed type/difficulty diizinkan, dan kualifikasi: total 11–30 lolos karena skala; total 1–10 membutuhkan mixed difficulty, mixed type, atau shuffle soal/opsi. `shuffle_options` ditolak jika tidak ada baris MCQ. Mode Run di-snapshot dari Blueprint persisted. Posted mode/shuffle untuk Simple `true` ditolak sebelum side effect.
 - FR-RUN-02: Satu reservasi per Run pada `generation_run_id` dengan `credits = GenerationCredits::required()` = `ceil(n/10)` (1–10=1, 11–20=2, 21–30=3). Child Generation tidak punya baris usage. Sukses menagih sekali; gagal me-release sekali. Run Advanced yang sudah reserved boleh menyelesaikan child sekuensial setelah Pro kedaluwarsa; retry manual atau Run baru tetap butuh Pro aktif.

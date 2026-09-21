@@ -5,23 +5,48 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Actions\QuestionBlueprints\ProcessQuestionBlueprintImportExtraction;
-use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Throwable;
 
-class ExtractQuestionBlueprintImport implements ShouldQueue
+class ExtractQuestionBlueprintImport implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
-    public $tries = 3;
+    public int $tries = 3;
 
-    public $timeout = 180;
+    public int $timeout = 60;
+
+    public bool $failOnTimeout = true;
+
+    /** @var list<int> */
+    public array $backoff = [10, 30, 60];
+
+    public int $uniqueFor = 900;
+
     public function __construct(public int $importId)
     {
         $this->onQueue('material-extraction');
-        $this->afterCommit = true;
+        $this->afterCommit();
+    }
+
+    public function uniqueId(): string
+    {
+        return (string) $this->importId;
+    }
+
+    /**
+     * @return list<WithoutOverlapping>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping('blueprint-import-extraction:'.$this->importId))
+                ->releaseAfter(120)
+                ->expireAfter(180),
+        ];
     }
 
     public function handle(ProcessQuestionBlueprintImportExtraction $processor): void
@@ -29,7 +54,7 @@ class ExtractQuestionBlueprintImport implements ShouldQueue
         $processor->handle($this->importId);
     }
 
-    public function failed(?\Throwable $exception): void
+    public function failed(?Throwable $exception): void
     {
         app(ProcessQuestionBlueprintImportExtraction::class)->markFailedIfProcessing($this->importId);
     }

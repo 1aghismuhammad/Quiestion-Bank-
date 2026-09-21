@@ -686,15 +686,15 @@ Table question_blueprint_imports {
   profile_version_id bigint [not null]
   status blueprint_import_status [not null, default: 'pending']
   original_file_name varchar(255) [not null]
-  storage_path varchar(2048)
+  storage_path varchar(255)
   file_size bigint [not null]
-  file_hash char(64) [not null]
-  mime_type varchar(127) [not null]
+  file_hash varchar(64) [not null]
+  mime_type varchar(255) [not null]
   extracted_text longtext
   material_content_hash varchar(64) [not null]
   material_file_hash varchar(64)
-  extractor_implementation varchar(100) [not null]
-  error_code varchar(64)
+  extractor_implementation varchar(255)
+  error_code varchar(255)
   error_message text
   queued_at timestamp
   claimed_at timestamp
@@ -707,7 +707,7 @@ Table question_blueprint_imports {
     (user_id, material_id, file_hash) [name: 'qbp_import_user_mat_hash_idx']
   }
 
-  Note: 'Backend foundation for K2A. No public UI, no Draft Blueprint creation, no Gemini. Enforces active duplicate lock per Material.'
+  Note: 'Backend foundation for K2A/K2A.1. No public UI, no Draft Blueprint, no Gemini, no generation credit. Duplicate protection is application-level (PENDING/PROCESSING/EXTRACTED) using owner/material locks plus active-status lookup; indexes are ordinary and non-unique. queued_at records the enqueue attempt. Queue dispatch is unique/overlap-protected per import. Failed dispatch terminalizes PENDING to FAILED. Source cleanup is best-effort: successful delete nulls storage_path; failed delete retains storage_path.'
 }
 
 //////////////////////////////////////////////////////

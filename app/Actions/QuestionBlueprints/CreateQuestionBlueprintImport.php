@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\QuestionBlueprints;
 
 use App\Actions\MaterialProfiles\AssertMaterialEligibleForProfileAnalysis;
+use App\Data\QuestionBlueprints\BlueprintImportFileMetadata;
 use App\Enums\BlueprintImportStatus;
 use App\Exceptions\MaterialProfiles\MaterialProfileRejectedException;
+use App\Jobs\ExtractQuestionBlueprintImport;
 use App\Models\Material;
 use App\Models\QuestionBlueprintImport;
 use App\Models\User;
@@ -22,6 +24,7 @@ class CreateQuestionBlueprintImport
     use LocksQuestionBlueprintWorkflow;
 
     public const MAX_FILE_SIZE_KILOBYTES = 10 * 1024;
+
     public const ALLOWED_EXTENSIONS = ['docx'];
 
     public function __construct(
@@ -68,6 +71,7 @@ class CreateQuestionBlueprintImport
                 $fingerprint = $this->assertProfile->fingerprint($locked);
 
                 $stored = $this->storageService->store($actor, $file, $metadata);
+                $queuedAt = now();
 
                 return QuestionBlueprintImport::query()->create([
                     'user_id' => $locked->user_id,
@@ -82,6 +86,7 @@ class CreateQuestionBlueprintImport
                     'material_content_hash' => $fingerprint['material_content_hash'],
                     'material_file_hash' => $fingerprint['material_file_hash'],
                     'extractor_implementation' => $fingerprint['extractor_implementation'],
+                    'queued_at' => $queuedAt,
                 ]);
             });
         } catch (Throwable $exception) {
@@ -89,14 +94,15 @@ class CreateQuestionBlueprintImport
             throw $exception;
         }
 
-        // We dispatch outside transaction block to avoid DB lock issues or queueing before commit
         try {
-            \App\Jobs\ExtractQuestionBlueprintImport::dispatch($import->import_id);
+            ExtractQuestionBlueprintImport::dispatch($import->import_id);
         } catch (Throwable $exception) {
             Log::warning('Blueprint import extraction job dispatch failed.', [
                 'import_id' => $import->import_id,
                 'exception' => $exception::class,
             ]);
+
+            return $this->failUnstartedImport($import);
         }
 
         return $import;
@@ -113,7 +119,7 @@ class CreateQuestionBlueprintImport
         }
 
         $extension = strtolower($file->getClientOriginalExtension());
-        if (!in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
+        if (! in_array($extension, self::ALLOWED_EXTENSIONS, true)) {
             throw ValidationException::withMessages(['file' => 'File harus berupa DOCX.']);
         }
     }
@@ -132,7 +138,54 @@ class CreateQuestionBlueprintImport
             ->exists();
     }
 
-    private function compensate(?\App\Data\QuestionBlueprints\BlueprintImportFileMetadata $stored): void
+    private function failUnstartedImport(QuestionBlueprintImport $import): QuestionBlueprintImport
+    {
+        $updated = QuestionBlueprintImport::query()
+            ->where('import_id', $import->import_id)
+            ->where('status', BlueprintImportStatus::PENDING)
+            ->update([
+                'status' => BlueprintImportStatus::FAILED,
+                'error_code' => 'queue_dispatch_failed',
+                'error_message' => 'Gagal mengantrekan proses file kisi-kisi.',
+                'completed_at' => now(),
+            ]);
+
+        $import->refresh();
+
+        if ($updated === 1) {
+            $this->cleanupDispatchFailureSource($import);
+        }
+
+        return $import;
+    }
+
+    private function cleanupDispatchFailureSource(QuestionBlueprintImport $import): void
+    {
+        if ($import->storage_path === null || $import->storage_path === '') {
+            return;
+        }
+
+        try {
+            $deleted = $this->storageService->delete($import->storage_path);
+            if ($deleted) {
+                $import->update(['storage_path' => null]);
+
+                return;
+            }
+
+            Log::warning('Blueprint import dispatch-failure source cleanup failed.', [
+                'import_id' => $import->import_id,
+                'reason' => 'delete_returned_false',
+            ]);
+        } catch (Throwable $cleanupException) {
+            Log::warning('Blueprint import dispatch-failure source cleanup failed.', [
+                'import_id' => $import->import_id,
+                'exception' => $cleanupException::class,
+            ]);
+        }
+    }
+
+    private function compensate(?BlueprintImportFileMetadata $stored): void
     {
         if ($stored === null || $stored->path === null || $stored->path === '') {
             return;

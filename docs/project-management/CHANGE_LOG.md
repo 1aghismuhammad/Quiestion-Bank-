@@ -25,6 +25,43 @@ Database Impact:
 Notes:
 -
 ```
+## v0.16.1 K2A.1 Blueprint Import Runtime Hardening
+
+- Date: 21 September 2026
+- Version: 0.16.1
+- Phase: K2A.1 Blueprint Import Runtime Hardening
+- Type: Corrective Hardening
+- Status: IMPLEMENTED — QA PENDING
+
+Added:
+
+- Queue uniqueness and overlap protection on `ExtractQuestionBlueprintImport` (`ShouldBeUnique` keyed by `import_id`, `uniqueFor=900`, `WithoutOverlapping` `blueprint-import-extraction:{import_id}` with `releaseAfter=120` / `expireAfter=180`).
+- Meaningful `queued_at` at import creation (enqueue attempt accepted by the workflow).
+- Dispatch-failure lifecycle: if job dispatch throws after commit, a still-PENDING import is terminalized to FAILED with sanitized `error_code=queue_dispatch_failed`.
+
+Changed:
+
+- K2A.1 supersedes v0.16.0 runtime assumptions on queue concurrency protection, dispatch-failure lifecycle, cleanup wording, and active duplicate implementation description.
+- Job contract aligned to the existing `ExtractMaterialContent` pattern: `tries=3`, `timeout=60` (strictly less than database `retry_after=90`), `failOnTimeout=true`, `backoff=[10,30,60]`, `material-extraction`, `afterCommit`.
+- Active duplicate rejection is documented as application-level (owner/material locks plus PENDING/PROCESSING/EXTRACTED lookup). `(user_id, material_id, file_hash)` remains an ordinary non-unique index; no DB unique/partial constraint was added.
+- Cleanup is best-effort: successful source delete nulls `storage_path`; delete failure retains `storage_path` and the correct terminal business state.
+- Material storage quota is proven unchanged by `MaterialUsageCalculator` (import files live on `blueprint-imports`).
+
+Fixed:
+
+- Stranded PENDING after queue dispatch failure.
+- Database-queue delivery overlap risk from `timeout=180` vs `retry_after=90`.
+
+Database Impact:
+
+- None. No migration. Existing `queued_at` / `claimed_at` / `completed_at` / `error_*` / `storage_path` columns are reused.
+
+Notes:
+
+- PROCESSING remains reclaimable for legitimate queue retries. EXTRACTED and FAILED remain no-ops on later delivery.
+- Failed dispatch does not store raw exception text. Same file is re-uploadable after FAILED.
+- Implementation status is IMPLEMENTED — QA PENDING until Council review. Do not treat this entry as Council QA PASS.
+
 ## v0.16.0 K2A Question Blueprint DOCX Import Foundation
 
 - Date: 18 September 2026

@@ -10,9 +10,18 @@ use App\Jobs\ExtractQuestionBlueprintImport;
 use App\Models\Material;
 use App\Models\QuestionBlueprintImport;
 use App\Models\User;
+use App\Services\QuestionBlueprints\BlueprintImportStorageService;
 use Database\Seeders\PlanSeeder;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
+use RuntimeException;
 use Tests\Support\QuestionBlueprints\CreatesQuestionBlueprints;
 use Tests\TestCase;
 use ZipArchive;
@@ -27,6 +36,84 @@ class BlueprintImportExtractionTest extends TestCase
         parent::setUp();
         $this->seed(PlanSeeder::class);
         Storage::fake('blueprint-imports');
+    }
+
+    public function test_job_implements_queue_and_unique_contracts(): void
+    {
+        $job = new ExtractQuestionBlueprintImport(15);
+
+        $this->assertInstanceOf(ShouldQueue::class, $job);
+        $this->assertInstanceOf(ShouldBeUnique::class, $job);
+        $this->assertSame('15', $job->uniqueId());
+        $this->assertSame(900, $job->uniqueFor);
+        $this->assertSame(3, $job->tries);
+        $this->assertSame(60, $job->timeout);
+        $this->assertTrue($job->failOnTimeout);
+        $this->assertSame([10, 30, 60], $job->backoff);
+        $this->assertSame('material-extraction', $job->queue);
+        $this->assertTrue($job->afterCommit);
+        $this->assertLessThan(
+            (int) config('queue.connections.database.retry_after'),
+            $job->timeout,
+        );
+        $this->assertSame(90, (int) config('queue.connections.database.retry_after'));
+    }
+
+    public function test_without_overlapping_middleware_is_keyed_per_import(): void
+    {
+        $job = new ExtractQuestionBlueprintImport(22);
+        $other = new ExtractQuestionBlueprintImport(23);
+        $middleware = $job->middleware();
+
+        $this->assertCount(1, $middleware);
+        $this->assertInstanceOf(WithoutOverlapping::class, $middleware[0]);
+        $this->assertSame('blueprint-import-extraction:22', $middleware[0]->key);
+        $this->assertSame(120, $middleware[0]->releaseAfter);
+        $this->assertSame(180, $middleware[0]->expiresAfter);
+        $this->assertNotSame($middleware[0]->key, $other->middleware()[0]->key);
+        $this->assertNotSame($middleware[0]->getLockKey($job), $other->middleware()[0]->getLockKey($other));
+        $this->assertStringContainsString((string) $job->importId, $middleware[0]->getLockKey($job));
+    }
+
+    public function test_overlap_lock_releases_the_job_without_executing_the_processor(): void
+    {
+        $job = (new ExtractQuestionBlueprintImport(31))->withFakeQueueInteractions();
+        $middleware = $job->middleware()[0];
+
+        $this->assertTrue(Cache::lock($middleware->getLockKey($job), 180)->get());
+
+        $processor = Mockery::mock(ProcessQuestionBlueprintImportExtraction::class);
+        $processor->shouldNotReceive('handle');
+        $processor->shouldNotReceive('markFailedIfProcessing');
+
+        $invoked = false;
+        $middleware->handle($job, function () use (&$invoked, $processor): void {
+            $invoked = true;
+            $processor->handle(31);
+        });
+
+        $this->assertFalse($invoked);
+        $job->assertReleased(120);
+        $job->assertNotFailed();
+    }
+
+    public function test_duplicate_dispatch_for_the_same_import_is_suppressed(): void
+    {
+        Queue::fake();
+
+        ExtractQuestionBlueprintImport::dispatch(44);
+        ExtractQuestionBlueprintImport::dispatch(44);
+        ExtractQuestionBlueprintImport::dispatch(45);
+
+        Queue::assertPushed(ExtractQuestionBlueprintImport::class, 2);
+        $this->assertCount(
+            1,
+            Queue::pushed(ExtractQuestionBlueprintImport::class, fn (ExtractQuestionBlueprintImport $job): bool => $job->importId === 44),
+        );
+        $this->assertCount(
+            1,
+            Queue::pushed(ExtractQuestionBlueprintImport::class, fn (ExtractQuestionBlueprintImport $job): bool => $job->importId === 45),
+        );
     }
 
     public function test_valid_docx_extraction_persists_text_and_cleans_up(): void
@@ -70,12 +157,13 @@ class BlueprintImportExtractionTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $import = $this->createImport($owner, $material, $this->createValidDocxBytes());
-        $import->update(['status' => BlueprintImportStatus::EXTRACTED]);
+        $import->update(['status' => BlueprintImportStatus::EXTRACTED, 'extracted_text' => 'already extracted']);
 
         $this->app->make(ProcessQuestionBlueprintImportExtraction::class)->handle($import->import_id);
 
         $import->refresh();
         $this->assertSame(BlueprintImportStatus::EXTRACTED, $import->status);
+        $this->assertSame('already extracted', $import->extracted_text);
     }
 
     public function test_failed_processing_no_ops(): void
@@ -100,19 +188,27 @@ class BlueprintImportExtractionTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $import = $this->createImport($owner, $material, $this->createValidDocxBytes());
+        $path = $import->storage_path;
 
-        $processor = $this->app->make(ProcessQuestionBlueprintImportExtraction::class);
+        $mockStorage = Mockery::mock(BlueprintImportStorageService::class);
+        $mockStorage->shouldReceive('get')->andThrow(new RuntimeException('Connection failed'));
+        $mockStorage->shouldNotReceive('delete');
+        $this->app->instance(BlueprintImportStorageService::class, $mockStorage);
 
-        // Mock to throw standard exception
-        $mockStorage = \Mockery::mock(\App\Services\QuestionBlueprints\BlueprintImportStorageService::class);
-        $mockStorage->shouldReceive('get')->andThrow(new \RuntimeException('Connection failed'));
+        try {
+            $this->app->make(ProcessQuestionBlueprintImportExtraction::class)->handle($import->import_id);
+            $this->fail('Operational extraction failure must propagate for queue retry.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Connection failed', $exception->getMessage());
+        }
 
-        $this->app->instance(\App\Services\QuestionBlueprints\BlueprintImportStorageService::class, $mockStorage);
-
-        $processor = $this->app->make(ProcessQuestionBlueprintImportExtraction::class);
-
-        $this->expectException(\RuntimeException::class);
-        $processor->handle($import->import_id);
+        $import->refresh();
+        $this->assertSame(BlueprintImportStatus::PROCESSING, $import->status);
+        $this->assertSame($path, $import->storage_path);
+        $this->assertNull($import->extracted_text);
+        $this->assertNull($import->error_code);
+        $this->assertNull($import->completed_at);
+        Storage::disk('blueprint-imports')->assertExists($path);
     }
 
     public function test_job_failed_cleans_up_and_marks_failed(): void
@@ -125,8 +221,8 @@ class BlueprintImportExtractionTest extends TestCase
         // Set status to processing as it would be if it failed mid-flight
         $import->update(['status' => BlueprintImportStatus::PROCESSING]);
 
-        $job = new \App\Jobs\ExtractQuestionBlueprintImport($import->import_id);
-        $job->failed(new \RuntimeException('All retries exhausted'));
+        $job = new ExtractQuestionBlueprintImport($import->import_id);
+        $job->failed(new RuntimeException('All retries exhausted'));
 
         $import->refresh();
         $this->assertSame(BlueprintImportStatus::FAILED, $import->status);
@@ -135,13 +231,13 @@ class BlueprintImportExtractionTest extends TestCase
 
     private function createImport(User $owner, Material $material, string $content): QuestionBlueprintImport
     {
-        $path = $owner->id . '/test.docx';
+        $path = $owner->id.'/test.docx';
         Storage::disk('blueprint-imports')->put($path, $content);
 
         return QuestionBlueprintImport::query()->create([
             'user_id' => $owner->id,
             'material_id' => $material->material_id,
-            'profile_version_id' => \Illuminate\Support\Facades\DB::table('material_profile_versions')->where('material_id', $material->material_id)->first()->profile_version_id,
+            'profile_version_id' => DB::table('material_profile_versions')->where('material_id', $material->material_id)->first()->profile_version_id,
             'status' => BlueprintImportStatus::PENDING,
             'original_file_name' => 'test.docx',
             'storage_path' => $path,
@@ -156,8 +252,8 @@ class BlueprintImportExtractionTest extends TestCase
 
     private function createValidDocxBytes(): string
     {
-        $path = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'test-' . uniqid() . '.docx';
-        $zip = new ZipArchive();
+        $path = sys_get_temp_dir().DIRECTORY_SEPARATOR.'test-'.uniqid().'.docx';
+        $zip = new ZipArchive;
         $zip->open($path, ZipArchive::CREATE);
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Expected Extraction Text</w:t></w:r></w:p></w:body></w:document>';
         $zip->addFromString('word/document.xml', $xml);
