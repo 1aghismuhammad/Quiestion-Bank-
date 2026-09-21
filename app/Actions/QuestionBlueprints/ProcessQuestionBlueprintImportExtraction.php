@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Actions\QuestionBlueprints;
 
+use App\Data\QuestionBlueprints\ImportStructuredDocument;
 use App\Enums\BlueprintImportStatus;
 use App\Exceptions\Materials\UnrecoverableMaterialExtractionException;
 use App\Models\QuestionBlueprintImport;
 use App\Services\Materials\Extraction\DocxExtractor;
+use App\Services\QuestionBlueprints\BlueprintImportDocxStructureExtractor;
 use App\Services\QuestionBlueprints\BlueprintImportStorageService;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -16,6 +18,7 @@ class ProcessQuestionBlueprintImportExtraction
 {
     public function __construct(
         private BlueprintImportStorageService $storageService,
+        private BlueprintImportDocxStructureExtractor $structureExtractor,
         private DocxExtractor $extractor,
     ) {}
 
@@ -46,6 +49,7 @@ class ProcessQuestionBlueprintImportExtraction
                 throw new UnrecoverableMaterialExtractionException('Source file is empty.');
             }
 
+            $structure = $this->structureExtractor->extract($contents);
             $extractedText = $this->extractor->extract($contents);
 
             if (trim($extractedText) === '') {
@@ -55,6 +59,11 @@ class ProcessQuestionBlueprintImportExtraction
             $import->update([
                 'status' => BlueprintImportStatus::EXTRACTED,
                 'extracted_text' => $extractedText,
+                'structured_document' => $structure->toArray(),
+                'structure_schema_version' => (string) config(
+                    'question_blueprint.import_structure_schema_version',
+                    ImportStructuredDocument::SCHEMA_VERSION,
+                ),
                 'completed_at' => now(),
             ]);
 

@@ -38,4 +38,12 @@ return [
     'max_total_context_chars' => 3_200,
     'max_serialized_request_chars' => 16_000,
     'max_contexts_per_row' => 4,
+
+    'import_structure_schema_version' => 'blueprint-import-structure-v1',
+    'import_structure_max_blocks' => 500,
+    'import_structure_max_tables' => 50,
+    'import_structure_max_rows' => 500,
+    'import_structure_max_cells' => 5000,
+    'import_structure_max_paragraphs_per_cell' => 50,
+    'import_structure_max_cell_chars' => 8000,
 ];

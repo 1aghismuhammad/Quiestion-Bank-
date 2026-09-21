@@ -25,6 +25,42 @@ Database Impact:
 Notes:
 -
 ```
+## v0.16.2 K2B.1 Structured DOCX Persistence
+
+- Date: 21 September 2026
+- Version: 0.16.2
+- Phase: K2B.1 Structured DOCX Persistence
+- Type: Feature
+- Status: IMPLEMENTED — QA PASS
+
+Added:
+
+- Decision B structural persistence for Blueprint Import DOCX: import-specific table-aware `structured_document` with `structure_schema_version=blueprint-import-structure-v1`.
+- Additive columns on `question_blueprint_imports`: `structured_document` LONGTEXT NULL, `structure_schema_version` VARCHAR(64) NULL (migration `2026_09_21_130001_add_structure_columns_to_question_blueprint_imports_table`). No index, FK, backfill, or interpretation columns.
+- `BlueprintImportDocxStructureExtractor` (XMLReader, ZIP/XML bounds reused from public `DocxExtractor` constants, fail-closed nested tables / invalid `gridSpan` / invalid `tblHeader` / truncated XML / structure overflow).
+- Dual extraction before source cleanup: structure then unchanged Material `DocxExtractor` text; EXTRACTED only if both succeed.
+
+Changed:
+
+- New successful extraction persists both representations in one EXTRACTED write, then existing best-effort `cleanupSource()`.
+- Legacy EXTRACTED rows may keep null structural columns. Application-level duplicate protection is unchanged (no same-hash re-upload exception).
+
+Fixed:
+
+- None relative to K2A.1 queue/lifecycle. Shared Material `DocxExtractor` is unchanged; K2B-0 `extracted_text` collision behavior remains historically valid.
+
+Database Impact:
+
+- Additive nullable columns only. Real MySQL 8.0.30 migration QA PASS. `db:integrity-audit` PASS (no pending migrations).
+
+Notes:
+
+- Automated QA: 1370 passed, 7 skipped, 7412 assertions.
+- K2B.1 is not the full K2B milestone. K2B.2 (AI interpretation), K2B.3 (owner review), K2C (grounding), and K2D (Draft + public upload) are not included.
+- K2A.1 remains `IMPLEMENTED — QA PENDING` (real queue/shared-cache QA deferred to final Phase K).
+- Structure parser bounds (`max_blocks=500`, `max_rows=500`, …) are import-structure limits, not Draft Blueprint `max_rows=5`.
+- `structured_document` is LONGTEXT JSON text, not a native MySQL JSON column.
+
 ## v0.16.1 K2A.1 Blueprint Import Runtime Hardening
 
 - Date: 21 September 2026

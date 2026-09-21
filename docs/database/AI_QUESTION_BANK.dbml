@@ -691,6 +691,8 @@ Table question_blueprint_imports {
   file_hash varchar(64) [not null]
   mime_type varchar(255) [not null]
   extracted_text longtext
+  structured_document longtext [note: 'MySQL LONGTEXT, nullable. JSON document for schema blueprint-import-structure-v1. Not a native JSON column. Legacy EXTRACTED rows may be NULL.']
+  structure_schema_version varchar(64) [note: 'Nullable. blueprint-import-structure-v1 after successful post-K2B.1 extraction. Legacy EXTRACTED rows may be NULL.']
   material_content_hash varchar(64) [not null]
   material_file_hash varchar(64)
   extractor_implementation varchar(255)
@@ -707,7 +709,7 @@ Table question_blueprint_imports {
     (user_id, material_id, file_hash) [name: 'qbp_import_user_mat_hash_idx']
   }
 
-  Note: 'Backend foundation for K2A/K2A.1. No public UI, no Draft Blueprint, no Gemini, no generation credit. Duplicate protection is application-level (PENDING/PROCESSING/EXTRACTED) using owner/material locks plus active-status lookup; indexes are ordinary and non-unique. queued_at records the enqueue attempt. Queue dispatch is unique/overlap-protected per import. Failed dispatch terminalizes PENDING to FAILED. Source cleanup is best-effort: successful delete nulls storage_path; failed delete retains storage_path.'
+  Note: 'Backend foundation for K2A/K2A.1 plus K2B.1 structural persistence. No public UI, no Draft Blueprint, no Gemini interpretation, no generation credit. Duplicate protection is application-level (PENDING/PROCESSING/EXTRACTED) using owner/material locks plus active-status lookup; indexes are ordinary and non-unique. New EXTRACTED rows persist extracted_text plus structured_document (structure_schema_version=blueprint-import-structure-v1) before source cleanup. Legacy EXTRACTED may have null structural columns (no backfill). queued_at records the enqueue attempt. Queue dispatch is unique/overlap-protected per import. Failed dispatch terminalizes PENDING to FAILED. Source cleanup is best-effort: successful delete nulls storage_path; failed delete retains storage_path.'
 }
 
 //////////////////////////////////////////////////////

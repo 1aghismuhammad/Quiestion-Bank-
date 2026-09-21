@@ -8,7 +8,7 @@ Schema domain canonical tersedia dalam format DBML:
 
 DBML tersebut dapat dibuka di dbdiagram.io atau dikompilasi menjadi SQL. Dokumen ini menjelaskan aturan bisnis yang tidak dapat dijamin hanya oleh diagram.
 
-- Version: 0.15.15
+- Version: 0.16.2
 - Domain entities: 31 domain runtime (34 canonical) entities documented in the canonical DBML
 - Target implementation: Laravel 13 / MySQL 8+
 - Primary key style: Laravel `id` untuk entitas Phase 1; `plan_id`, `subscription_id`, `offer_id`, `upgrade_request_id`, `material_id`, `topic_id`, `generation_id`, `usage_id`, `question_set_id`, `question_id`, `option_id`, `blueprint_series_id`, `blueprint_id`, `blueprint_row_id`, `generation_run_id`, dan PK custom Profile mengikuti custom PK
@@ -236,7 +236,14 @@ Confirmed DOCX: PhpWord 1.4.0, try/finally temp file, `deleteFileAfterSend`, fil
 
 #### `question_blueprint_imports`
 
-Pondasi backend (K2A, dikoreksi runtime oleh K2A.1) untuk import kisi-kisi DOCX. Penolakan duplikat aktif adalah application-level: lock workflow owner/material plus lookup status aktif (PENDING, PROCESSING, EXTRACTED). Index `(user_id, material_id, file_hash)` dan `(user_id, material_id, status)` adalah index biasa, bukan unique constraint parsial/kondisional. Job `ExtractQuestionBlueprintImport` (antrean `material-extraction`) unique per `import_id` (`ShouldBeUnique`, `uniqueFor=900`) dan overlap-protected (`WithoutOverlapping`, `releaseAfter=120`, `expireAfter=180`). `timeout=60` < database `retry_after=90`. `queued_at` diisi saat enqueue attempt diterima workflow. Dispatch gagal setelah commit men-terminalisasi PENDING menjadi FAILED (`error_code=queue_dispatch_failed`) jika baris masih PENDING; pesan DB disanitasi. Operational error tetap retryable (PROCESSING reclaimable). Cleanup source bersifat best-effort: delete sukses men-null-kan `storage_path`; delete gagal mempertahankan `storage_path` dan status bisnis terminal. Provenance (`material_content_hash`, `material_file_hash`, `extractor_implementation`) ditangkap saat IMPORT dibuat, bukan saat Draft Blueprint. K2A/K2A.1 tidak membuat Draft Blueprint, tidak memanggil Gemini, tidak menulis `ai_usage_logs`, dan tidak mengonsumsi kredit generasi. Tidak ada UI publik.
+Pondasi backend (K2A, dikoreksi runtime oleh K2A.1, persistensi struktural K2B.1) untuk import kisi-kisi DOCX. Penolakan duplikat aktif adalah application-level: lock workflow owner/material plus lookup status aktif (PENDING, PROCESSING, EXTRACTED). Index `(user_id, material_id, file_hash)` dan `(user_id, material_id, status)` adalah index biasa, bukan unique constraint parsial/kondisional. Job `ExtractQuestionBlueprintImport` (antrean `material-extraction`) unique per `import_id` (`ShouldBeUnique`, `uniqueFor=900`) dan overlap-protected (`WithoutOverlapping`, `releaseAfter=120`, `expireAfter=180`). `timeout=60` < database `retry_after=90`. `queued_at` diisi saat enqueue attempt diterima workflow. Dispatch gagal setelah commit men-terminalisasi PENDING menjadi FAILED (`error_code=queue_dispatch_failed`) jika baris masih PENDING; pesan DB disanitasi. Operational error tetap retryable (PROCESSING reclaimable). Cleanup source bersifat best-effort: delete sukses men-null-kan `storage_path`; delete gagal mempertahankan `storage_path` dan status bisnis terminal. Provenance (`material_content_hash`, `material_file_hash`, `extractor_implementation`) ditangkap saat IMPORT dibuat, bukan saat Draft Blueprint.
+
+K2B.1 (Decision B) menambahkan dua kolom nullable tanpa index/FK/backfill (migrasi `2026_09_21_130001_add_structure_columns_to_question_blueprint_imports_table`; MySQL 8.0.30 QA PASS):
+
+- `structured_document` LONGTEXT NULL — dokumen JSON teks (bukan tipe JSON native MySQL) untuk schema `blueprint-import-structure-v1`: blok paragraf vs tabel berurutan, indeks 0-based, paragraf-dalam-sel, sel kosong, `gridSpan`, `vMerge`, `tblHeader`.
+- `structure_schema_version` VARCHAR(64) NULL — `blueprint-import-structure-v1` pada ekstraksi sukses pasca-K2B.1.
+
+`extracted_text` tetap LONGTEXT NULL dari Material `DocxExtractor` yang tidak diubah. EXTRACTED baru mensyaratkan struktur dan teks keduanya sukses, dipersist sebelum cleanup. EXTRACTED pra-K2B.1 boleh kedua kolom struktur NULL; tidak ada backfill; kebijakan duplikat same-hash tidak dilemahkan. Batas parser struktur (`import_structure_max_blocks=500`, `max_tables=50`, `max_rows=500`, `max_cells=5000`, `max_paragraphs_per_cell=50`, `max_cell_chars=8000`) terpisah dari Draft Blueprint `max_rows=5`. K2A/K2A.1/K2B.1 tidak membuat Draft Blueprint, tidak memanggil Gemini interpretasi, tidak menulis `ai_usage_logs`, dan tidak mengonsumsi kredit generasi. Tidak ada UI publik.
 
 ### AI Engine
 

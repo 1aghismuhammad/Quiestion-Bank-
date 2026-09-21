@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Mockery;
 use RuntimeException;
+use Tests\Support\Materials\MaterialExtractionFixtures;
+use Tests\Support\QuestionBlueprints\BlueprintImportDocxFixtures;
 use Tests\Support\QuestionBlueprints\CreatesQuestionBlueprints;
 use Tests\TestCase;
 use ZipArchive;
@@ -130,6 +132,9 @@ class BlueprintImportExtractionTest extends TestCase
 
         $this->assertSame(BlueprintImportStatus::EXTRACTED, $import->status);
         $this->assertStringContainsString('Expected Extraction Text', $import->extracted_text);
+        $this->assertSame('blueprint-import-structure-v1', $import->structure_schema_version);
+        $this->assertSame('paragraph', $import->structured_document['blocks'][0]['type']);
+        $this->assertSame('Expected Extraction Text', $import->structured_document['blocks'][0]['text']);
         $this->assertNull($import->storage_path);
     }
 
@@ -147,6 +152,8 @@ class BlueprintImportExtractionTest extends TestCase
 
         $this->assertSame(BlueprintImportStatus::FAILED, $import->status);
         $this->assertNotNull($import->error_code);
+        $this->assertNull($import->structured_document);
+        $this->assertNull($import->structure_schema_version);
         $this->assertNull($import->storage_path);
     }
 
@@ -157,13 +164,20 @@ class BlueprintImportExtractionTest extends TestCase
         $this->readyProfile($owner, $material);
 
         $import = $this->createImport($owner, $material, $this->createValidDocxBytes());
-        $import->update(['status' => BlueprintImportStatus::EXTRACTED, 'extracted_text' => 'already extracted']);
+        $import->update([
+            'status' => BlueprintImportStatus::EXTRACTED,
+            'extracted_text' => 'already extracted',
+            'structured_document' => null,
+            'structure_schema_version' => null,
+        ]);
 
         $this->app->make(ProcessQuestionBlueprintImportExtraction::class)->handle($import->import_id);
 
         $import->refresh();
         $this->assertSame(BlueprintImportStatus::EXTRACTED, $import->status);
         $this->assertSame('already extracted', $import->extracted_text);
+        $this->assertNull($import->structured_document);
+        $this->assertNull($import->structure_schema_version);
     }
 
     public function test_failed_processing_no_ops(): void
@@ -179,6 +193,47 @@ class BlueprintImportExtractionTest extends TestCase
 
         $import->refresh();
         $this->assertSame(BlueprintImportStatus::FAILED, $import->status);
+    }
+
+    public function test_structural_failure_does_not_create_structureless_extracted_row(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $this->readyProfile($owner, $material);
+
+        $nested = MaterialExtractionFixtures::validDocx(
+            '<w:tbl><w:tr><w:tc><w:tbl><w:tr><w:tc><w:p><w:r><w:t>INNER</w:t></w:r></w:p></w:tc></w:tr></w:tbl></w:tc></w:tr></w:tbl>',
+        );
+        $import = $this->createImport($owner, $material, $nested);
+
+        $this->app->make(ProcessQuestionBlueprintImportExtraction::class)->handle($import->import_id);
+
+        $import->refresh();
+        $this->assertSame(BlueprintImportStatus::FAILED, $import->status);
+        $this->assertNull($import->extracted_text);
+        $this->assertNull($import->structured_document);
+        $this->assertNull($import->structure_schema_version);
+        $this->assertNotSame(BlueprintImportStatus::EXTRACTED, $import->status);
+    }
+
+    public function test_valid_table_docx_persists_structure_then_cleans_up(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $this->readyProfile($owner, $material);
+
+        $import = $this->createImport($owner, $material, BlueprintImportDocxFixtures::adjacentTableCells());
+
+        $this->app->make(ProcessQuestionBlueprintImportExtraction::class)->handle($import->import_id);
+
+        $import->refresh();
+        $this->assertSame(BlueprintImportStatus::EXTRACTED, $import->status);
+        $this->assertSame('table', $import->structured_document['blocks'][0]['type']);
+        $this->assertSame(['ALPHA'], $import->structured_document['blocks'][0]['rows'][0]['cells'][0]['paragraphs']);
+        $this->assertSame(['BETA'], $import->structured_document['blocks'][0]['rows'][0]['cells'][1]['paragraphs']);
+        $this->assertStringContainsString('ALPHA', $import->extracted_text);
+        $this->assertSame('blueprint-import-structure-v1', $import->structure_schema_version);
+        $this->assertNull($import->storage_path);
     }
 
     public function test_operational_failure_is_retryable_and_preserves_source(): void
@@ -206,6 +261,8 @@ class BlueprintImportExtractionTest extends TestCase
         $this->assertSame(BlueprintImportStatus::PROCESSING, $import->status);
         $this->assertSame($path, $import->storage_path);
         $this->assertNull($import->extracted_text);
+        $this->assertNull($import->structured_document);
+        $this->assertNull($import->structure_schema_version);
         $this->assertNull($import->error_code);
         $this->assertNull($import->completed_at);
         Storage::disk('blueprint-imports')->assertExists($path);
