@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `COMPLETE`. K2A (Question Blueprint DOCX Import Foundation) is `COMPLETE`. K2A.1 (Blueprint Import Runtime Hardening) is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 (Structured DOCX Persistence) is `IMPLEMENTED — QA PASS`. K2B.2 (AI Interpretation Foundation) is `COMPLETE + APPROVED`. K2B.3 is next/planned. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `COMPLETE`. K2A (Question Blueprint DOCX Import Foundation) is `COMPLETE`. K2A.1 (Blueprint Import Runtime Hardening) is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 (Structured DOCX Persistence) is `IMPLEMENTED — QA PASS`. K2B.2 (AI Interpretation Foundation) is `COMPLETE + APPROVED`. K2B.3 (Owner Review Surface) is `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2C is next/planned. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. At original Phase 5 closure, True/False and Essay Question Bank were deferred. They were subsequently delivered through Phase 5.7F/G.
 
-Current enhancement program: Phase 5.7 (`COMPLETE`) and K2A (`COMPLETE`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G is `COMPLETE`. K2A is `COMPLETE`. K2A.1 is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 is `IMPLEMENTED — QA PASS`. K2B.2 is `COMPLETE + APPROVED`. K2B.3 is next/planned. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`COMPLETE`) and K2A (`COMPLETE`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G is `COMPLETE`. K2A is `COMPLETE`. K2A.1 is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 is `IMPLEMENTED — QA PASS`. K2B.2 is `COMPLETE + APPROVED`. K2B.3 is `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2C is next/planned. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7, K2A, and K2B - Pre-Phase-6 enhancements
 
-Status: Phase 5.7A–G `COMPLETE`; K2A `COMPLETE`; K2A.1 `IMPLEMENTED — QA PENDING`; K2B-0 `PASS`; K2B.1 `IMPLEMENTED — QA PASS`; K2B.2 `COMPLETE + APPROVED`. K2B as a whole is not complete. K2B.3 is next/planned.
+Status: Phase 5.7A–G `COMPLETE`; K2A `COMPLETE`; K2A.1 `IMPLEMENTED — QA PENDING`; K2B-0 `PASS`; K2B.1 `IMPLEMENTED — QA PASS`; K2B.2 `COMPLETE + APPROVED`; K2B.3 `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2B as a whole is not complete. K2C is next/planned.
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -396,28 +396,54 @@ K2B.2 — AI Interpretation Foundation (`COMPLETE + APPROVED`):
 - Repository milestone closed (implementation, required feature QA, docs, commit, push, remote alignment). Shared-cache / multi-worker `WithoutOverlapping` proof remains deferred to Final Phase K (same residual class as K2A.1) and is **not** implied by this `COMPLETE + APPROVED` marker.
 - Out of scope: owner review UI (K2B.3), Material grounding (K2C), Draft Blueprint / public upload (K2D), production multi-worker proof.
 
-K2B.3 — Owner Review Surface (`PLANNED`, next).
+K2B.3 — Owner Review Surface (`IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`):
 
-K2C — Material grounding (`FUTURE`).
+- Read-only owner UI for Blueprint Import interpretation results. Material Detail shows latest-import summary + history link. History index lists nested-material imports newest-first (15/page). Show page presents raw candidates (20/page in-memory), warnings/unresolved, provenance location labels only (Option A).
+- Nested owner authorization: authenticated owner, Material owned, Import owned, `import.material_id === material.material_id`. Cross-material tampering → 404. No admin global bypass.
+- FAILED-only HTTP retry gate (`EXTRACTED` + `FAILED`); frozen K2B.2 Retry Action remains final CAS authority. Minimal vanilla JS polling for in-flight states; terminal → full reload.
+- Fail-closed presentation validation for malformed persisted `interpretation_result` and impossible extraction/interpretation combinations. Zero migration / zero new persistence. Zero generation side effects (no QuestionBlueprint/Row, Generation Run, QuestionSet, generation-credit `ai_usage_logs`).
+- Automated suite + Council Source Review 2 PASS. Manual/browser QA intentionally deferred to Final Phase K. Not `COMPLETE + APPROVED`.
+- Out of scope: Material grounding (K2C), canonicalization / Draft Blueprint / public upload (K2D), question generation, credit consumption.
 
-K2D — Draft Blueprint creation and public workflow integration (`FUTURE`).
+K2C — Material grounding (`PLANNED`, next after K2B.3 technical closure).
 
-Dependency sequence after K2B.2 closure (do not skip):
+K2D — Draft Blueprint creation and public workflow integration (`PLANNED`).
 
-1. K2B.3 — Owner Review Surface
-2. K2C — Material Grounding
-3. K2D — Draft Blueprint / Public Workflow
-4. Final Phase K — Runtime QA (isolated real shared-cache / multi-worker proof; **not yet passed**)
-5. Close K2A.1 to `COMPLETE` **only if** Final Phase K proof passes
-6. Reconstruct / close H4 and H5 (scopes unchanged here; still `PLANNED`)
-7. Phase 6 — Admin Dashboard
+Dependency sequence after K2B.3 technical closure (do not skip):
 
-Final Phase K covers safe isolated runtime proof for:
+1. K2C — Material Grounding
+2. K2D — Draft Blueprint / Public Workflow
+3. Final Phase K — Runtime/concurrency proof + deferred owner/browser manual QA (isolated shared-cache / multi-worker proof and K2B.3 browser acceptance; **not yet passed**)
+4. Close K2A.1 to `COMPLETE` **only if** Final Phase K runtime proof passes
+5. Reconstruct / close H4 and H5 (scopes unchanged here; still `PLANNED`)
+6. Phase 6 — Admin Dashboard
+
+Final Phase K is deferred/planned and groups:
+
+A. Runtime / concurrency proof
+B. Owner/browser manual QA
+C. Integrated K2 flow acceptance
+
+Runtime / concurrency proof covers:
 
 - K2A.1 `ExtractQuestionBlueprintImport`: `ShouldBeUnique` + `WithoutOverlapping` under shared-cache / multi-worker delivery.
 - K2B.2 `InterpretQuestionBlueprintImport`: `WithoutOverlapping` + DB cycle/claim idempotency under duplicate / multi-worker delivery.
 
-K2A.1 remains `IMPLEMENTED — QA PENDING` until that proof succeeds. Do not treat Final Phase K as already passed.
+Owner/browser manual QA (deferred; not yet performed) additionally includes K2B.3 checks:
+
+- Material Detail latest-import summary
+- read-only import history navigation
+- REVIEW_READY owner review rendering
+- candidate raw-value presentation
+- warnings / unresolved presentation
+- provenance labels
+- candidate pagination
+- polling from in-flight state to terminal reload
+- FAILED retry UX
+- responsive/mobile presentation
+- integrated K2 owner workflow after K2C/K2D
+
+K2A.1 remains `IMPLEMENTED — QA PENDING` until Final Phase K runtime proof succeeds. Do not treat Final Phase K as already passed. Do not treat K2B.3 manual QA as passed.
 
 
 ## Pre-Phase-6 Hardening Gate

@@ -90,6 +90,11 @@
         </div>
     </div>
 
+    @include('materials.blueprint-imports._summary', [
+        'material' => $material,
+        'latestBlueprintImport' => $latestBlueprintImport,
+    ])
+
     <div class="card" style="margin-bottom: 20px;">
         <h2>Konten</h2>
         @if (filled($material->content))

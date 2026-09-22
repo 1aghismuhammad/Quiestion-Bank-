@@ -15,6 +15,7 @@ use App\Enums\SourceType;
 use App\Http\Requests\Materials\StoreUploadMaterialRequest;
 use App\Http\Requests\Materials\UpdateMaterialRequest;
 use App\Models\Material;
+use App\Models\QuestionBlueprintImport;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -87,10 +88,17 @@ class MaterialController extends Controller
     ): View {
         $this->authorize('view', $material);
 
+        $latestBlueprintImport = QuestionBlueprintImport::query()
+            ->where('material_id', $material->material_id)
+            ->where('user_id', $request->user()->id)
+            ->orderByDesc('import_id')
+            ->first();
+
         return view('materials.show', [
             'material' => $material,
             'topics' => $listMaterialTopics->handle($request->user(), $material),
             'canGenerate' => $assertEligible->passes($material),
+            'latestBlueprintImport' => $latestBlueprintImport,
             'recentGenerations' => $request->user()
                 ->generations()
                 ->where('material_id', $material->material_id)

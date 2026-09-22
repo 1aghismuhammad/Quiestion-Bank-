@@ -25,6 +25,39 @@ Database Impact:
 Notes:
 -
 ```
+## v0.16.4 K2B.3 Owner Review Surface
+
+- Date: 22 September 2026
+- Version: 0.16.4
+- Phase: K2B.3 Owner Review Surface
+- Type: Feature
+- Status: IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED
+
+Added:
+
+- Owner Review Surface for Blueprint Import interpretation: Material Detail latest-import summary, read-only import history index (15/page), REVIEW_READY candidate review (raw fields, warnings/unresolved, provenance location Option A), minimal in-flight polling, and FAILED-only interpretation retry HTTP boundary.
+- Presentation resolver/DTO (`ResolveBlueprintImportOwnerReview` / `BlueprintImportOwnerReviewView`) with fail-closed validation for malformed persisted results, impossible extraction/interpretation combinations, candidate cap, document-kind zero-candidate invariants, strict source refs, and canonical-null fields.
+- Nested owner authorization on import routes (Material + Import ownership + nested `material_id` consistency → 404 on cross-material tampering).
+
+Changed:
+
+- Material show includes latest Blueprint Import summary and history link when imports exist.
+- Owner retry flash is race-neutral after invoking the frozen K2B.2 Retry Action.
+
+Fixed:
+
+- Defensive presentation gaps closed in Corrective Pass 1 (missing required persisted keys no longer fabricated; provenance/role/coordinate validation tightened).
+
+Database Impact:
+
+- None. Zero migration. No new persistence. No persistent `ai_question_bank` mutation for this milestone.
+
+Notes:
+
+- Automated QA + Council Source Review 2 PASS. Manual/browser QA intentionally deferred to Final Phase K (Material summary, history, REVIEW_READY rendering, raw/warnings/unresolved/provenance, pagination, polling, FAILED retry UX, responsive, integrated K2 flow after K2C/K2D).
+- Not `COMPLETE + APPROVED`. K2C remains next. K2A.1 remains `IMPLEMENTED — QA PENDING`. Final Phase K remains deferred with additional K2B.3 manual QA debt. H4/H5 unchanged (`PLANNED`).
+- Out of scope: Material grounding (K2C), canonicalization / Draft Blueprint / public upload (K2D), question generation, credit consumption.
+
 ## v0.16.3 K2B.2 AI Interpretation Foundation
 
 - Date: 22 September 2026

@@ -13,6 +13,7 @@ use App\Http\Controllers\MaterialProfileController;
 use App\Http\Controllers\MaterialTopicController;
 use App\Http\Controllers\ProfileSetupController;
 use App\Http\Controllers\QuestionBlueprintController;
+use App\Http\Controllers\QuestionBlueprintImportController;
 use App\Http\Controllers\QuestionSetController;
 use Illuminate\Support\Facades\Route;
 
@@ -127,6 +128,18 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('generation-runs.retry');
                 Route::post('/generation-runs/{generationRun}/question-sets', [QuestionSetController::class, 'storeFromGenerationRun'])
                     ->name('question-sets.import-run');
+            });
+
+        Route::whereNumber(['material', 'import'])
+            ->group(function (): void {
+                Route::get('/materials/{material}/blueprint-imports', [QuestionBlueprintImportController::class, 'index'])
+                    ->name('materials.blueprint-imports.index');
+                Route::get('/materials/{material}/blueprint-imports/{import}', [QuestionBlueprintImportController::class, 'show'])
+                    ->name('materials.blueprint-imports.show');
+                Route::get('/materials/{material}/blueprint-imports/{import}/status', [QuestionBlueprintImportController::class, 'status'])
+                    ->name('materials.blueprint-imports.status');
+                Route::post('/materials/{material}/blueprint-imports/{import}/retry-interpretation', [QuestionBlueprintImportController::class, 'retry'])
+                    ->name('materials.blueprint-imports.retry');
             });
 
         Route::scopeBindings()
