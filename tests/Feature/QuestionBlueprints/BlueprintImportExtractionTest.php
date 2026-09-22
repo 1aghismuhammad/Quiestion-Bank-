@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Tests\Feature\QuestionBlueprints;
 
 use App\Actions\QuestionBlueprints\ProcessQuestionBlueprintImportExtraction;
+use App\Enums\BlueprintImportInterpretationStatus;
 use App\Enums\BlueprintImportStatus;
 use App\Jobs\ExtractQuestionBlueprintImport;
+use App\Jobs\InterpretQuestionBlueprintImport;
 use App\Models\Material;
 use App\Models\QuestionBlueprintImport;
 use App\Models\User;
 use App\Services\QuestionBlueprints\BlueprintImportStorageService;
 use Database\Seeders\PlanSeeder;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,6 +41,7 @@ class BlueprintImportExtractionTest extends TestCase
         parent::setUp();
         $this->seed(PlanSeeder::class);
         Storage::fake('blueprint-imports');
+        Queue::fake([InterpretQuestionBlueprintImport::class]);
     }
 
     public function test_job_implements_queue_and_unique_contracts(): void
@@ -136,6 +140,11 @@ class BlueprintImportExtractionTest extends TestCase
         $this->assertSame('paragraph', $import->structured_document['blocks'][0]['type']);
         $this->assertSame('Expected Extraction Text', $import->structured_document['blocks'][0]['text']);
         $this->assertNull($import->storage_path);
+        $this->assertSame(BlueprintImportInterpretationStatus::QUEUED, $import->interpretation_status);
+        $this->assertSame('blueprint-import-interpret-v1', $import->interpretation_prompt_version);
+        $this->assertNotNull($import->interpretation_queued_at);
+        $this->assertNull($import->interpretation_claimed_at);
+        Queue::assertPushed(InterpretQuestionBlueprintImport::class, 1);
     }
 
     public function test_invalid_docx_fails_safely_and_cleans_up(): void
@@ -155,6 +164,8 @@ class BlueprintImportExtractionTest extends TestCase
         $this->assertNull($import->structured_document);
         $this->assertNull($import->structure_schema_version);
         $this->assertNull($import->storage_path);
+        $this->assertNull($import->interpretation_status);
+        Queue::assertNotPushed(InterpretQuestionBlueprintImport::class);
     }
 
     public function test_idempotent_processing(): void
@@ -178,6 +189,7 @@ class BlueprintImportExtractionTest extends TestCase
         $this->assertSame('already extracted', $import->extracted_text);
         $this->assertNull($import->structured_document);
         $this->assertNull($import->structure_schema_version);
+        Queue::assertNotPushed(InterpretQuestionBlueprintImport::class);
     }
 
     public function test_failed_processing_no_ops(): void
@@ -234,6 +246,8 @@ class BlueprintImportExtractionTest extends TestCase
         $this->assertStringContainsString('ALPHA', $import->extracted_text);
         $this->assertSame('blueprint-import-structure-v1', $import->structure_schema_version);
         $this->assertNull($import->storage_path);
+        $this->assertSame(BlueprintImportInterpretationStatus::QUEUED, $import->interpretation_status);
+        Queue::assertPushed(InterpretQuestionBlueprintImport::class, 1);
     }
 
     public function test_operational_failure_is_retryable_and_preserves_source(): void
@@ -283,6 +297,67 @@ class BlueprintImportExtractionTest extends TestCase
 
         $import->refresh();
         $this->assertSame(BlueprintImportStatus::FAILED, $import->status);
+        $this->assertNull($import->storage_path);
+    }
+
+    public function test_extracted_queued_unclaimed_redispatches_without_rereading_source(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $this->readyProfile($owner, $material);
+
+        $import = $this->createImport($owner, $material, $this->createValidDocxBytes());
+        $import->update([
+            'status' => BlueprintImportStatus::EXTRACTED,
+            'extracted_text' => 'frozen text',
+            'structured_document' => [
+                'blocks' => [[
+                    'type' => 'paragraph',
+                    'ordinal' => 0,
+                    'text' => 'frozen structure',
+                ]],
+            ],
+            'structure_schema_version' => 'blueprint-import-structure-v1',
+            'interpretation_status' => BlueprintImportInterpretationStatus::QUEUED,
+            'interpretation_prompt_version' => 'blueprint-import-interpret-v1',
+            'interpretation_queued_at' => now(),
+            'interpretation_claimed_at' => null,
+        ]);
+
+        $mockStorage = Mockery::mock(BlueprintImportStorageService::class);
+        $mockStorage->shouldNotReceive('get');
+        $mockStorage->shouldNotReceive('delete');
+        $this->app->instance(BlueprintImportStorageService::class, $mockStorage);
+
+        $this->app->make(ProcessQuestionBlueprintImportExtraction::class)->handle($import->import_id);
+
+        $import->refresh();
+        $this->assertSame(BlueprintImportStatus::EXTRACTED, $import->status);
+        $this->assertSame('frozen text', $import->extracted_text);
+        $this->assertSame('frozen structure', $import->structured_document['blocks'][0]['text']);
+        $this->assertSame(BlueprintImportInterpretationStatus::QUEUED, $import->interpretation_status);
+        Queue::assertPushed(InterpretQuestionBlueprintImport::class, 1);
+    }
+
+    public function test_interpretation_dispatch_failure_does_not_fail_extraction(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $this->readyProfile($owner, $material);
+        $import = $this->createImport($owner, $material, $this->createValidDocxBytes());
+
+        $dispatcher = Mockery::mock(Dispatcher::class);
+        $dispatcher->shouldReceive('dispatch')->andThrow(new RuntimeException('queue connection refused'));
+        $this->app->instance(Dispatcher::class, $dispatcher);
+
+        $this->app->make(ProcessQuestionBlueprintImportExtraction::class)->handle($import->import_id);
+
+        $import->refresh();
+        $this->assertSame(BlueprintImportStatus::EXTRACTED, $import->status);
+        $this->assertNotNull($import->extracted_text);
+        $this->assertNotNull($import->structured_document);
+        $this->assertSame(BlueprintImportInterpretationStatus::FAILED, $import->interpretation_status);
+        $this->assertSame('queue_dispatch_failed', $import->interpretation_error_code);
         $this->assertNull($import->storage_path);
     }
 

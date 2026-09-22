@@ -46,4 +46,10 @@ return [
     'import_structure_max_cells' => 5000,
     'import_structure_max_paragraphs_per_cell' => 50,
     'import_structure_max_cell_chars' => 8000,
+
+    'import_interpretation_prompt_version' => 'blueprint-import-interpret-v1',
+    'import_interpretation_max_request_bytes' => 262_144,
+    'max_import_candidates' => 100,
+    'import_interpretation_stale_seconds' => 330,
+    'import_interpretation_max_output_tokens' => 16_384,
 ];

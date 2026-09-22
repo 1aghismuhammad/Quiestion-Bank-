@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\QuestionBlueprints;
 
 use App\Data\QuestionBlueprints\ImportStructuredDocument;
+use App\Enums\BlueprintImportInterpretationStatus;
 use App\Enums\BlueprintImportStatus;
 use App\Exceptions\Materials\UnrecoverableMaterialExtractionException;
+use App\Jobs\InterpretQuestionBlueprintImport;
 use App\Models\QuestionBlueprintImport;
+use App\Services\AI\BlueprintImportInterpretationPromptBuilder;
 use App\Services\Materials\Extraction\DocxExtractor;
 use App\Services\QuestionBlueprints\BlueprintImportDocxStructureExtractor;
 use App\Services\QuestionBlueprints\BlueprintImportStorageService;
@@ -33,6 +36,8 @@ class ProcessQuestionBlueprintImportExtraction
             ]);
 
         if ($claimed === 0) {
+            $this->redispatchUnclaimedQueuedInterpretation($importId);
+
             return;
         }
 
@@ -65,9 +70,22 @@ class ProcessQuestionBlueprintImportExtraction
                     ImportStructuredDocument::SCHEMA_VERSION,
                 ),
                 'completed_at' => now(),
+                'interpretation_status' => BlueprintImportInterpretationStatus::QUEUED,
+                'interpretation_prompt_version' => (string) config(
+                    'question_blueprint.import_interpretation_prompt_version',
+                    BlueprintImportInterpretationPromptBuilder::V1,
+                ),
+                'interpretation_queued_at' => now(),
+                'interpretation_claimed_at' => null,
+                'interpretation_completed_at' => null,
+                'interpretation_result' => null,
+                'interpretation_error_code' => null,
+                'interpretation_error_message' => null,
             ]);
 
             $this->cleanupSource($import);
+            $import->refresh();
+            $this->dispatchInterpretation($import);
         } catch (UnrecoverableMaterialExtractionException $e) {
             $this->markFailed($import, 'unrecoverable_extraction', $e->getMessage());
         }
@@ -115,5 +133,52 @@ class ProcessQuestionBlueprintImportExtraction
         ]);
 
         $this->cleanupSource($import);
+    }
+
+    private function redispatchUnclaimedQueuedInterpretation(int $importId): void
+    {
+        $import = QuestionBlueprintImport::query()
+            ->where('import_id', $importId)
+            ->where('status', BlueprintImportStatus::EXTRACTED)
+            ->where('interpretation_status', BlueprintImportInterpretationStatus::QUEUED)
+            ->whereNull('interpretation_claimed_at')
+            ->first();
+
+        if ($import === null) {
+            return;
+        }
+
+        $this->dispatchInterpretation($import);
+    }
+
+    private function dispatchInterpretation(QuestionBlueprintImport $import): void
+    {
+        if ($import->interpretation_queued_at === null) {
+            return;
+        }
+
+        try {
+            InterpretQuestionBlueprintImport::dispatch(
+                $import->import_id,
+                $import->interpretation_queued_at->toIso8601String(),
+            );
+        } catch (Throwable $exception) {
+            Log::warning('Blueprint import interpretation job dispatch failed.', [
+                'import_id' => $import->import_id,
+                'exception' => $exception::class,
+            ]);
+
+            QuestionBlueprintImport::query()
+                ->where('import_id', $import->import_id)
+                ->where('interpretation_status', BlueprintImportInterpretationStatus::QUEUED)
+                ->where('interpretation_queued_at', $import->interpretation_queued_at)
+                ->update([
+                    'interpretation_status' => BlueprintImportInterpretationStatus::FAILED,
+                    'interpretation_error_code' => ProcessQuestionBlueprintImportInterpretation::ERROR_QUEUE_DISPATCH_FAILED,
+                    'interpretation_error_message' => app(ProcessQuestionBlueprintImportInterpretation::class)
+                        ->publicMessage(ProcessQuestionBlueprintImportInterpretation::ERROR_QUEUE_DISPATCH_FAILED),
+                    'interpretation_completed_at' => now(),
+                ]);
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 ## Design Status
 
-- Version: 0.16.2
+- Version: 0.16.3
 - Architecture style: Laravel modular monolith
 - Runtime: PHP 8.3+, Laravel 13
 - UI: Blade + Vanilla JS + Tailwind CSS
@@ -138,6 +138,7 @@ Repository layer hanya ditambahkan jika query kompleks atau sumber data perlu di
 - Phase 5.7G menambahkan Run-to-Question-Bank import (`generation_run_id` nullable unique FK RESTRICT; exclusive dengan `generation_id`), typed draft edit/publish MCQ/TF/Essay, dan student/teacher question DOCX dari published sets. Import idempotent tanpa credit/provider; snapshot typed memakai presenter shuffle yang sama dengan preview Run. Legacy `generation_id` import MCQ-only tetap.
 - K2A menambahkan pondasi backend untuk import kisi-kisi dari DOCX (tanpa UI publik, tanpa pemanggilan Gemini, dan tanpa konsumsi kredit). Duplikat aktif ditolak di application level (PENDING/PROCESSING/EXTRACTED) dengan index biasa non-unique `(user_id, material_id, file_hash)`, menyimpan provenance Profil secara utuh, dan menangani kegagalan operasional/terminal secara aman lewat antrean `material-extraction`.
 - K2B.1 (Decision B) menambahkan extractor struktural import-specific. Material `DocxExtractor` tetap dilindungi dan tidak table-aware. Import menyimpan dua representasi: `extracted_text` (kanonis Material) dan `structured_document` (`structure_schema_version=blueprint-import-structure-v1`). Urutan sukses: bytes DOCX → struktur → teks → persist EXTRACTED keduanya → cleanup source best-effort. EXTRACTED baru mensyaratkan kedua ekstraksi sukses. EXTRACTED pra-K2B.1 boleh `structured_document`/`structure_schema_version` NULL; tidak ada backfill otomatis. K2B.1 tidak menginterpretasi, tidak grounding, dan tidak membuat Draft.
+- K2B.2 menambahkan job interpretasi Gemini terpisah setelah EXTRACTED. Otoritas input: `structured_document` + `structure_schema_version`. Provider (`QuestionBlueprintImportInterpretationProvider` / `GeminiQuestionBlueprintImportProvider`) mengidentifikasi hubungan semantik lewat source refs saja; server memvalidasi refs dan meresolusi raw field strings dari struktur. Canonical Blueprint fields tidak ditentukan. Status interpretasi (`queued|processing|review_ready|failed`) terpisah dari status ekstraksi. Antrian `material-intelligence` memakai at-least-once delivery + CAS/`interpretation_queued_at` cycle token + `interpretation_claimed_at` lease + `WithoutOverlapping` defense-in-depth; **bukan** `ShouldBeUnique`. Exactly-once HTTP Gemini tidak dijamin; satu hasil persist otoritatif dijamin. Zero credit; no Draft/UI/grounding.
 
 ### Subscription and Quota
 
@@ -199,7 +200,7 @@ AI Engine consists of:
 - Phase 5.7G: `POST /generation-runs/{id}/question-sets` imports completed Run questions into typed draft sets (`UNIQUE(generation_run_id)`; exclusive with `generation_id`). Typed draft edit/publish for MCQ, True/False, and Essay. Published student/teacher DOCX via PhpWord with try/finally cleanup.
 - Import writes `status=draft`, `visibility=private`, `review_status=not_submitted`. Publish changes only `status` to `published`. Locked lifecycle is `draft → published`.
 - Owner-only; foreign IDs 404; Admin has no ownership bypass. Generation/Run `result_json` is unchanged. Edit/publish/import/DOCX do not charge quota and do not call Gemini. No Phase 5 Batch 2 migration.
-- K2A menyiapkan pondasi import Blueprint dari DOCX (backend-only, no UI, no Gemini, menggunakan antrian `material-extraction`). K2B.1 menambahkan persistensi struktural import-only; masih tanpa UI publik, Gemini interpretasi, atau Draft Blueprint.
+- K2A menyiapkan pondasi import Blueprint dari DOCX (backend-only, no UI, no Gemini, menggunakan antrian `material-extraction`). K2B.1 menambahkan persistensi struktural import-only. K2B.2 menambahkan interpretasi AI source-ref-only ke `interpretation_result` (`review_ready`); masih tanpa UI review publik, grounding Material, atau Draft Blueprint (K2B.3/K2C/K2D).
 - Manual create, add/delete/reorder, unpublish, archive, delete/restore, public visibility, and admin review are later.
 - Schema preserves canonical enum values (`generating`, `review`, `archived`) but Phase 5 does not transition into them.
 - Optional admin review and public visibility remain later (Phase 6).

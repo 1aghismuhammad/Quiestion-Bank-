@@ -25,6 +25,44 @@ Database Impact:
 Notes:
 -
 ```
+## v0.16.3 K2B.2 AI Interpretation Foundation
+
+- Date: 22 September 2026
+- Version: 0.16.3
+- Phase: K2B.2 AI Interpretation Foundation
+- Type: Feature
+- Status: IMPLEMENTED — QA PASS — CLOSURE PENDING
+
+Added:
+
+- Separate Gemini interpretation foundation after EXTRACTED: provider contract `QuestionBlueprintImportInterpretationProvider`, prompt builder `BlueprintImportInterpretationPromptBuilder` (`blueprint-import-interpret-v1`), serializer, ResultBuilder, Actions (process/retry), and job `InterpretQuestionBlueprintImport`.
+- Additive nullable interpretation columns on `question_blueprint_imports` (migration `2026_09_22_060001_add_interpretation_columns_to_question_blueprint_imports_table`): `interpretation_status`, `interpretation_result`, `interpretation_prompt_version`, `interpretation_error_code`, `interpretation_error_message`, `interpretation_queued_at`, `interpretation_claimed_at`, `interpretation_completed_at`. No index, FK, backfill, or candidate/attempt child table.
+- Closed `document_kind` set (`blueprint_like`, `matrix_incomplete`, `taxonomy_non_blueprint`, `ambiguous`, `empty`) with server invariants forcing zero candidates for `taxonomy_non_blueprint` and `empty`.
+- Source-ref-only provider contract with server-authoritative raw value resolution from `structured_document`. Canonical Blueprint fields remain null. Zero generation credit; no `ai_usage_logs`.
+
+Changed:
+
+- New successful EXTRACTED path initializes interpretation to `queued` and dispatches `InterpretQuestionBlueprintImport` on `database-generation` / `material-intelligence`.
+- Pass 3: interpretation job correctness no longer relies on `ShouldBeUnique` / `uniqueId` / `uniqueFor`. Authority is at-least-once delivery + DB CAS + `interpretation_queued_at` cycle token + `interpretation_claimed_at` lease + stale checks + `REVIEW_READY` terminal + import-scoped `WithoutOverlapping`.
+- Pass 4: Gemini `responseSchema` structurally distinguishes paragraph refs (`kind`+`block_ordinal`) from cell refs (`kind`+`block_ordinal`+`table_index`+`row_index`+`cell_index`). ResultBuilder remains fail-closed; no server coordinate inference.
+
+Fixed:
+
+- Pre-Pass-4 schema hole that allowed schema-valid cell refs missing `row_index`/`cell_index`.
+- Pre-Pass-3 silent unique-dispatch skip that could leave a legitimate new interpretation cycle without a queued job.
+
+Database Impact:
+
+- Additive nullable columns only. Real MySQL 8.0.30 migration/schema QA PASS. `db:integrity-audit` PASS (no pending migrations for this milestone).
+
+Notes:
+
+- Automated QA: 1421 passed, 7 skipped, 7685 assertions.
+- Real Gemini synthetic QA PASS on `gemini-3.5-flash-lite` (structured output, Pass-4 anyOf cell coordinates, blueprint_like source-ref resolution, prompt-injection-as-data, taxonomy_non_blueprint → zero candidates). Local zero-credit evidence observed no `ai_usage_logs` side-effect for the interpretation path; that exact local count is QA evidence only, not a permanent product invariant.
+- Accepted residual: exactly-once Gemini HTTP is not guaranteed (crash-after-provider-before-persist may reclaim and re-call). Deferred: shared-cache / multi-worker `WithoutOverlapping` proof to Final Phase K. K2A.1 remains `IMPLEMENTED — QA PENDING`.
+- K2B.2 is not yet `COMPLETE + APPROVED`: documentation closure precedes Council source review, staging review, Owner commit, push, and remote alignment.
+- Out of scope: K2B.3 owner review UI, K2C grounding, K2D Draft/public workflow.
+
 ## v0.16.2 K2B.1 Structured DOCX Persistence
 
 - Date: 21 September 2026
