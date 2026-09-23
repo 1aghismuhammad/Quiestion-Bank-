@@ -701,6 +701,14 @@ Table question_blueprint_imports {
   interpretation_queued_at timestamp [note: 'Nullable queue cycle token (second precision). FAILED retry gets a strictly newer token.']
   interpretation_claimed_at timestamp [note: 'Nullable processing lease identity. Cleared on transient requeue.']
   interpretation_completed_at timestamp [note: 'Nullable terminal interpretation completion time.']
+  grounding_status varchar(32) [note: 'Nullable. queued|processing|ready|failed. NULL = not started / historical. Separate from extraction and interpretation status.']
+  grounding_result longtext [note: 'MySQL LONGTEXT, nullable. JSON text for schema blueprint-import-grounding-result-v1. Not a native JSON column.']
+  grounding_prompt_version varchar(64) [note: 'Nullable. Immutable identity blueprint-import-ground-v1 when provider grounding is initialized. NULL for empty/taxonomy shortcut.']
+  grounding_error_code varchar(64) [note: 'Nullable sanitized error code for grounding failures.']
+  grounding_error_message text [note: 'Nullable sanitized public grounding error message.']
+  grounding_queued_at timestamp [note: 'Nullable queue cycle token (second precision). FAILED retry gets a strictly newer token.']
+  grounding_claimed_at timestamp [note: 'Nullable processing lease identity. Cleared on transient requeue.']
+  grounding_completed_at timestamp [note: 'Nullable terminal grounding completion time.']
   material_content_hash varchar(64) [not null]
   material_file_hash varchar(64)
   extractor_implementation varchar(255)
@@ -717,7 +725,7 @@ Table question_blueprint_imports {
     (user_id, material_id, file_hash) [name: 'qbp_import_user_mat_hash_idx']
   }
 
-  Note: 'Backend foundation for K2A/K2A.1 plus K2B.1 structural persistence and K2B.2 AI interpretation. No public review UI, no Draft Blueprint, no Material grounding, no generation credit for interpretation. Duplicate protection remains application-level (PENDING/PROCESSING/EXTRACTED) using owner/material locks plus active-status lookup; indexes are ordinary and non-unique. New EXTRACTED rows persist extracted_text plus structured_document (structure_schema_version=blueprint-import-structure-v1) before source cleanup, then queue interpretation. Legacy rows may have null structural and/or interpretation columns (no backfill). Extraction and interpretation states are separate. Interpretation uses interpretation_queued_at as cycle token and interpretation_claimed_at as processing lease; InterpretQuestionBlueprintImport is WithoutOverlapping per import and does not implement ShouldBeUnique. Extraction queue dispatch remains unique/overlap-protected per import. Source cleanup is best-effort: successful delete nulls storage_path; failed delete retains storage_path.'
+  Note: 'Backend foundation for K2A/K2A.1 plus K2B.1 structural persistence, K2B.2 AI interpretation, and K2C Material Grounding columns. No public grounding UI, no Draft Blueprint, no generation credit for interpretation/grounding. Duplicate protection remains application-level (PENDING/PROCESSING/EXTRACTED) using owner/material locks plus active-status lookup; indexes are ordinary and non-unique. New EXTRACTED rows persist extracted_text plus structured_document (structure_schema_version=blueprint-import-structure-v1) before source cleanup, then queue interpretation. Legacy rows may have null structural and/or interpretation and/or grounding columns (no backfill). Extraction, interpretation, and grounding states are separate. Interpretation uses interpretation_queued_at as cycle token; grounding uses grounding_queued_at. InterpretQuestionBlueprintImport and GroundQuestionBlueprintImport are WithoutOverlapping per import and do not implement ShouldBeUnique. Grounding is explicitly queued (not auto from interpretation success). Extraction queue dispatch remains unique/overlap-protected per import. Source cleanup is best-effort: successful delete nulls storage_path; failed delete retains storage_path.'
 }
 
 //////////////////////////////////////////////////////

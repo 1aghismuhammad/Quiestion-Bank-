@@ -52,4 +52,11 @@ return [
     'max_import_candidates' => 100,
     'import_interpretation_stale_seconds' => 330,
     'import_interpretation_max_output_tokens' => 16_384,
+
+    'import_grounding_prompt_version' => 'blueprint-import-ground-v1',
+    'import_grounding_max_catalog_elements' => 200,
+    'import_grounding_max_request_bytes' => 262_144,
+    'import_grounding_max_refs_per_claim' => 4,
+    'import_grounding_stale_seconds' => 330,
+    'import_grounding_max_output_tokens' => 16_384,
 ];

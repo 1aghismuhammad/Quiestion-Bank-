@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\BlueprintImportGroundingStatus;
 use App\Enums\BlueprintImportInterpretationStatus;
 use App\Enums\BlueprintImportStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -32,6 +33,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'interpretation_queued_at',
     'interpretation_claimed_at',
     'interpretation_completed_at',
+    'grounding_status',
+    'grounding_result',
+    'grounding_prompt_version',
+    'grounding_error_code',
+    'grounding_error_message',
+    'grounding_queued_at',
+    'grounding_claimed_at',
+    'grounding_completed_at',
     'material_content_hash',
     'material_file_hash',
     'extractor_implementation',
@@ -69,6 +78,8 @@ class QuestionBlueprintImport extends Model
             'structured_document' => 'array',
             'interpretation_status' => BlueprintImportInterpretationStatus::class,
             'interpretation_result' => 'array',
+            'grounding_status' => BlueprintImportGroundingStatus::class,
+            'grounding_result' => 'array',
             'file_size' => 'integer',
             'queued_at' => 'datetime',
             'claimed_at' => 'datetime',
@@ -76,6 +87,9 @@ class QuestionBlueprintImport extends Model
             'interpretation_queued_at' => 'datetime',
             'interpretation_claimed_at' => 'datetime',
             'interpretation_completed_at' => 'datetime',
+            'grounding_queued_at' => 'datetime',
+            'grounding_claimed_at' => 'datetime',
+            'grounding_completed_at' => 'datetime',
         ];
     }
 }

@@ -4,10 +4,12 @@ namespace App\Providers;
 
 use App\Contracts\AI\MaterialProfileAnalysisProvider;
 use App\Contracts\AI\QuestionBlueprintAnalysisProvider;
+use App\Contracts\AI\QuestionBlueprintImportGroundingProvider;
 use App\Contracts\AI\QuestionBlueprintImportInterpretationProvider;
 use App\Contracts\AI\QuestionGenerationProvider;
 use App\Contracts\Materials\MaterialFileStore;
 use App\Services\AI\GeminiMaterialProfileProvider;
+use App\Services\AI\GeminiQuestionBlueprintImportGroundingProvider;
 use App\Services\AI\GeminiQuestionBlueprintImportProvider;
 use App\Services\AI\GeminiQuestionBlueprintProvider;
 use App\Services\AI\GeminiQuestionGenerationProvider;
@@ -37,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(MaterialProfileAnalysisProvider::class, GeminiMaterialProfileProvider::class);
         $this->app->bind(QuestionBlueprintAnalysisProvider::class, GeminiQuestionBlueprintProvider::class);
         $this->app->bind(QuestionBlueprintImportInterpretationProvider::class, GeminiQuestionBlueprintImportProvider::class);
+        $this->app->bind(QuestionBlueprintImportGroundingProvider::class, GeminiQuestionBlueprintImportGroundingProvider::class);
         $this->app->bind(BlueprintDocxSaver::class, PhpWordBlueprintDocxSaver::class);
         $this->app->bind(QuestionSetDocxSaver::class, PhpWordQuestionSetDocxSaver::class);
         $this->app->bind(MaterialExtractorRouter::class, function (): MaterialExtractorRouter {

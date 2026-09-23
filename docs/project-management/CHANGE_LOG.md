@@ -25,6 +25,40 @@ Database Impact:
 Notes:
 -
 ```
+## v0.16.5 K2C Material Grounding
+
+- Date: 23 September 2026
+- Version: 0.16.5
+- Phase: K2C Material Grounding
+- Type: Feature
+- Status: IMPLEMENTED — SOURCE REVIEW PASS — MYSQL QA PASS — PROVIDER SMOKE PASS — MANUAL QA DEFERRED
+
+Added:
+
+- Material Grounding foundation for Blueprint Import after REVIEW_READY interpretation: eligibility (`AssertImportGroundingEligibility`), EXTRACTED-only catalog (`BlueprintImportGroundingCatalogBuilder`), authoritative ResultBuilder (`BlueprintImportGroundingResultBuilder`), provider contract (`QuestionBlueprintImportGroundingProvider`), prompt `blueprint-import-ground-v1`, Gemini adapter, Actions (`Queue` / `Process` / `Retry`), and job `GroundQuestionBlueprintImport`.
+- Additive nullable grounding columns on `question_blueprint_imports` (migration `2026_09_23_000001_add_grounding_columns_to_question_blueprint_imports_table`): `grounding_status`, `grounding_result`, `grounding_prompt_version`, `grounding_error_code`, `grounding_error_message`, `grounding_queued_at`, `grounding_claimed_at`, `grounding_completed_at`. No index, FK, backfill, grounding-run table, or candidate child table.
+- Authority model: DOCX = planning input; interpretation = semantic reading; pinned Material Profile = factual authority; `grounding_result` = evidence relationship. Draft Blueprint remains K2D.
+- Factual grounding scope only: `raw_objective`, `raw_topic`, `raw_material`, `raw_indicator`. Empty claims are server-assigned `not_applicable` and are not sent to the provider. Sparse provider contract preserves original candidate indexes.
+- Pinned Profile eligibility: EXTRACTED + REVIEW_READY + valid interpretation-result-v1 + exact `profile_version_id` READY with matching ownership + import/Profile/live Material fingerprint triple. Newer READY Profile with the same fingerprint does not invalidate the pin. Live fingerprint drift fails closed.
+- Provider chooses semantic refs via `profile_element_ids` only; server validates EXTRACTED membership and builds evidence excerpts/offsets/locators. Schema `blueprint-import-grounding-result-v1` stores `interpretation_result_sha256` from raw persisted interpretation bytes.
+- Explicit queue only (`QueueQuestionBlueprintImportGrounding`). No auto-enqueue from K2B.2 interpretation success. No public K2C button/route. Empty/taxonomy shortcut: no Gemini, `ready` + empty candidates + `document_rollup=not_applicable`, `grounding_prompt_version=NULL`.
+- Zero generation credit / no Draft artifacts: no QuestionBlueprint, QuestionBlueprintRow, AiGenerationRun, QuestionSet, or generation `AiUsageLog` rows. Does not mutate Material, Profile, or `interpretation_result`.
+
+Changed:
+
+- Config keys under `question_blueprint`: `import_grounding_prompt_version`, catalog/request/ref bounds, stale seconds, max output tokens. `AppServiceProvider` binds the grounding provider.
+
+Database Impact:
+
+- Migration `2026_09_23_000001_add_grounding_columns_to_question_blueprint_imports_table` applied successfully on persistent MySQL `ai_question_bank` (MySQL 8.0.30) as batch 6. Post-migration `db:integrity-audit` PASS; no pending migrations. Historical grounding columns verified NULL before K2C runtime use.
+
+Notes:
+
+- Council final source review PASS. Automated suite: 1513 passed / 8 skipped / 8097 assertions. Real Gemini provider smoke PASS (1 passed / 14 assertions): semantic `profile_element_id` → server authoritative evidence → pinned Profile element → zero generation side effects. Initial live-smoke fixture ambiguity was corrected in the smoke test only; production grounding semantics unchanged.
+- Manual/browser QA and shared-cache/multi-worker runtime proof remain deferred to Final Phase K.
+- Not `COMPLETE + APPROVED`. Technical/source/MySQL/provider gates are closed. K2D remains the next planned functional milestone after K2C Git closure and does not imply Final Phase K manual QA is complete.
+- Out of scope: Draft Blueprint / public upload (K2D), question generation, credit consumption, public grounding UI.
+
 ## v0.16.4 K2B.3 Owner Review Surface
 
 - Date: 22 September 2026

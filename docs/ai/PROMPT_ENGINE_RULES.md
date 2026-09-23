@@ -306,6 +306,18 @@ Blueprint Import interpretation has its own provider boundary and prompt contrac
 - Audit/persist: `interpretation_result` with schema `blueprint-import-interpretation-result-v1` plus metadata (`prompt_version`, `structure_schema_version`, `structure_sha256`, provider/model/token/latency when available). Do not persist full system prompt, raw provider response body, API key, credentials, source DOCX bytes, raw XML, Material content, or unrelated private data.
 - Zero generation credits. No reserve/charge/release. No `ai_usage_logs` row for this path.
 
+## Blueprint Import Grounding Prompt Contracts (K2C)
+
+Blueprint Import Material Grounding has its own provider boundary and prompt contract. It never reuses the question-generation provider, Material Profile provider, Blueprint fill provider, interpretation provider, or `ai_usage_logs`.
+
+- Provider contract: `QuestionBlueprintImportGroundingProvider`. The Gemini adapter is `GeminiQuestionBlueprintImportGroundingProvider`. Domain Actions and `GroundQuestionBlueprintImport` never import the Gemini class for HTTP construction beyond the bound provider.
+- Prompt source of truth: `BlueprintImportGroundingPromptBuilder`. Immutable identity: `blueprint-import-ground-v1` (`config('question_blueprint.import_grounding_prompt_version')`). Unsupported identities are rejected. Empty/taxonomy shortcut does **not** invoke this prompt (`grounding_prompt_version` stays NULL).
+- Primary AI input: deterministic serialized sparse request (`candidates[].index` + non-empty factual `claims` + EXTRACTED Profile `catalog`) inside `<<<IMPORT_GROUNDING_DATA>>>` … `<<<END_IMPORT_GROUNDING_DATA>>>`. Import claims and catalog text are untrusted DATA. Jailbreaks inside claims/catalog are document text only and must not be followed. No tools/network/external factual lookup. No Draft Blueprint. No question generation. Do not invent evidence text, offsets, chunk IDs, locators, or rewritten claim wording. Do not emit `not_applicable` (server assigns empty claims).
+- Provider returns only semantic relationships: per supplied claim key, `status` in `grounded|unresolved|ambiguous` plus `profile_element_ids`. Server (`BlueprintImportGroundingResultBuilder`) validates EXTRACTED membership on the pinned Profile, enforces cardinality (grounded 1..4, unresolved 0, ambiguous 2..4; >4 / duplicates / foreign / SUGGESTED reject the whole result), builds authoritative evidence, restores all interpretation candidates (including all-empty as `not_applicable`), and persists schema `blueprint-import-grounding-result-v1` with `interpretation_result_sha256` from raw persisted interpretation bytes.
+- Application bounds: catalog max 200 EXTRACTED elements; aggregate request 262144 bytes; max 4 refs/claim; candidates capped by existing `max_import_candidates=100`. No truncation, first-N, sampling, hidden summarization, or batching. Oversize → `input_too_large`.
+- Audit/persist: `grounding_result` plus metadata (prompt_version when provider-backed; provider/model/token/latency when available). Do not persist full system prompt, raw provider response body, API key, credentials, Material content, or unrelated private data.
+- Zero generation credits. No reserve/charge/release. No `ai_usage_logs` row for this path. Opt-in live smoke only (`BLUEPRINT_IMPORT_GROUNDING_PROVIDER_SMOKE=1`); default automated suite must not call Gemini.
+
 ## Run-child bounded spans (Phase 5.7D)
 
 Simple Generation Run children do not send the complete book. Confirmed Blueprint row contexts remain immutable evidence anchors and are not rewritten.

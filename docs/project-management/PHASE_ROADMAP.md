@@ -76,7 +76,7 @@ Technical slices complete:
 - Material web management (`COMPLETE`): authenticated Blade/controller Material UI with owner-scoped listing, detail, edit, topics, archive, and restore. Phase 5.7A retired HTTP/UI text creation; new create is upload-only. Legacy text rows remain.
 - Phase 2 final integration / QA / documentation closure (`COMPLETE`).
 
-Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `COMPLETE`. K2A (Question Blueprint DOCX Import Foundation) is `COMPLETE`. K2A.1 (Blueprint Import Runtime Hardening) is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 (Structured DOCX Persistence) is `IMPLEMENTED — QA PASS`. K2B.2 (AI Interpretation Foundation) is `COMPLETE + APPROVED`. K2B.3 (Owner Review Surface) is `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2C is next/planned. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
+Current enhancement program: Phase 5.7 (`COMPLETE`). Phase 5.7A (upload-only Material creation) is `COMPLETE`. Phase 5.7B1 (Material Profile foundation) is `COMPLETE`. Phase 5.7B2 (sequential map/reduce provider calls) is `COMPLETE`. Phase 5.7B3 (owner activation, progress, review, and regeneration UI) is `COMPLETE`. Post-commit B2+B3 hardening is recorded in v0.15.4 and v0.15.5. v0.15.10 records Material Profile manual-QA corrective (exact unique-core evidence reconciliation, failed-Attempt telemetry, distinct eligibility copy, single start/regenerate CTA). Phase 5.7C (Question Blueprint domain, AI fill, confirmed kisi-kisi DOCX) and Phase 5.7D (multi-credit SUM ledger and Simple Generation Runs) were completed and committed before the Phase 5.7E baseline; v0.15.11 records the content/UX corrective after manual QA (bounded context expansion, Blueprint-aware `mcq-v2`, readable DOCX/UI). Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G (Run-to-Question-Bank import, typed edit/publish, question DOCX, and final hardening) is `COMPLETE`. K2A (Question Blueprint DOCX Import Foundation) is `COMPLETE`. K2A.1 (Blueprint Import Runtime Hardening) is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 (Structured DOCX Persistence) is `IMPLEMENTED — QA PASS`. K2B.2 (AI Interpretation Foundation) is `COMPLETE + APPROVED`. K2B.3 (Owner Review Surface) is `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2C (Material Grounding) is `IMPLEMENTED — SOURCE REVIEW PASS — MYSQL QA PASS — PROVIDER SMOKE PASS — MANUAL QA DEFERRED`. K2D is the next planned functional milestone after K2C Git closure. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`). Phase 5 Question Bank is `COMPLETE`. Phase 3 and Phase 4 are `COMPLETE`.
 
 Scope:
 
@@ -239,11 +239,11 @@ Definition of Done (delivered Phase 5 MVP):
 
 The original full-Phase-5 wording that a user can save and edit all three question types is **not** the delivered MVP. At original Phase 5 closure, True/False and Essay Question Bank were deferred. They were subsequently delivered through Phase 5.7F/G.
 
-Current enhancement program: Phase 5.7 (`COMPLETE`) and K2A (`COMPLETE`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G is `COMPLETE`. K2A is `COMPLETE`. K2A.1 is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 is `IMPLEMENTED — QA PASS`. K2B.2 is `COMPLETE + APPROVED`. K2B.3 is `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2C is next/planned. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
+Current enhancement program: Phase 5.7 (`COMPLETE`) and K2A (`COMPLETE`). Phase 5.7A is `COMPLETE`. Phase 5.7B1, Phase 5.7B2, and Phase 5.7B3 are `COMPLETE` after v0.15.4, v0.15.5, and v0.15.10 corrective QA. Phase 5.7C and Phase 5.7D were completed and committed before the Phase 5.7E baseline. Phase 5.7E is `COMPLETE`. Phase 5.7F is `COMPLETE`. Phase 5.7G is `COMPLETE`. K2A is `COMPLETE`. K2A.1 is `IMPLEMENTED — QA PENDING`. K2B-0 is `PASS`. K2B.1 is `IMPLEMENTED — QA PASS`. K2B.2 is `COMPLETE + APPROVED`. K2B.3 is `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2C is `IMPLEMENTED — SOURCE REVIEW PASS — MYSQL QA PASS — PROVIDER SMOKE PASS — MANUAL QA DEFERRED`. K2D is the next planned functional milestone after K2C Git closure and does not imply Final Phase K manual QA is complete. The next numbered main phase remains Phase 6 Admin Dashboard (`PLANNED`).
 
 ## Phase 5.7, K2A, and K2B - Pre-Phase-6 enhancements
 
-Status: Phase 5.7A–G `COMPLETE`; K2A `COMPLETE`; K2A.1 `IMPLEMENTED — QA PENDING`; K2B-0 `PASS`; K2B.1 `IMPLEMENTED — QA PASS`; K2B.2 `COMPLETE + APPROVED`; K2B.3 `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2B as a whole is not complete. K2C is next/planned.
+Status: Phase 5.7A–G `COMPLETE`; K2A `COMPLETE`; K2A.1 `IMPLEMENTED — QA PENDING`; K2B-0 `PASS`; K2B.1 `IMPLEMENTED — QA PASS`; K2B.2 `COMPLETE + APPROVED`; K2B.3 `IMPLEMENTED — SOURCE REVIEW PASS — MANUAL QA DEFERRED`. K2B as a whole is not complete. K2C is `IMPLEMENTED — SOURCE REVIEW PASS — MYSQL QA PASS — PROVIDER SMOKE PASS — MANUAL QA DEFERRED`. Technical/source/MySQL/provider gates for K2C are closed; Final Phase K manual/browser/shared-cache runtime QA remains deferred. K2D is the next planned functional milestone after K2C Git closure and does not imply Final Phase K QA is complete.
 
 Phase 5.7A — Upload-only Material Transition:
 
@@ -405,15 +405,22 @@ K2B.3 — Owner Review Surface (`IMPLEMENTED — SOURCE REVIEW PASS — MANUAL Q
 - Automated suite + Council Source Review 2 PASS. Manual/browser QA intentionally deferred to Final Phase K. Not `COMPLETE + APPROVED`.
 - Out of scope: Material grounding (K2C), canonicalization / Draft Blueprint / public upload (K2D), question generation, credit consumption.
 
-K2C — Material grounding (`PLANNED`, next after K2B.3 technical closure).
+K2C — Material grounding (`IMPLEMENTED — SOURCE REVIEW PASS — MYSQL QA PASS — PROVIDER SMOKE PASS — MANUAL QA DEFERRED`).
+
+- Ground factual interpretation claims (`objective`/`topic`/`material`/`indicator`) against the **pinned** READY Material Profile via AI semantic `profile_element_ids` + strict server validation/evidence construction. Schema `blueprint-import-grounding-result-v1`. Prompt identity `blueprint-import-ground-v1`.
+- Explicit `QueueQuestionBlueprintImportGrounding` only (no K2B.2 auto-enqueue). Job `GroundQuestionBlueprintImport` on `database-generation` / `material-intelligence` (`timeout=270`, `tries=3`, `backoff=[5,15]`, `failOnTimeout=false`) with import-scoped `WithoutOverlapping` (`blueprint-import-grounding:{importId}`, `releaseAfter=60`, `expireAfter=330`) and **no** `ShouldBeUnique`. Cycle identity = `grounding_queued_at`; CAS claim/persist; transient PROCESSING→QUEUED same cycle; FAILED retry gets strictly newer token.
+- Catalog: EXTRACTED elements only, max 200 (no truncation). Aggregate request max 262144 bytes. Max 4 refs/claim. Empty/taxonomy: no Gemini; ready + empty candidates + `document_rollup=not_applicable`.
+- Zero credit / zero Draft side effects. No public K2C route/button. Migration `2026_09_23_000001_add_grounding_columns_to_question_blueprint_imports_table` applied on persistent MySQL `ai_question_bank` (batch 6); `db:integrity-audit` PASS; no pending migrations.
+- Automated suite PASS (1513 passed / 8 skipped / 8097 assertions). Council final source review PASS. Real Gemini provider smoke PASS. Technical/source/MySQL/provider gates closed. Manual/browser QA and shared-cache/multi-worker runtime proof remain Final Phase K. Not `COMPLETE + APPROVED`.
+- Out of scope: Draft Blueprint / public upload (K2D), question generation, credit consumption.
 
 K2D — Draft Blueprint creation and public workflow integration (`PLANNED`).
 
-Dependency sequence after K2B.3 technical closure (do not skip):
+Dependency sequence after K2C technical/source/MySQL/provider closure (do not skip):
 
-1. K2C — Material Grounding
-2. K2D — Draft Blueprint / Public Workflow
-3. Final Phase K — Runtime/concurrency proof + deferred owner/browser manual QA (isolated shared-cache / multi-worker proof and K2B.3 browser acceptance; **not yet passed**)
+1. K2C — Material Grounding (technical/source/MySQL/provider gates closed; Final Phase K manual/browser/shared-cache QA still deferred)
+2. K2D — Draft Blueprint / Public Workflow (next planned functional milestone after K2C Git closure; does not imply Final Phase K QA is complete)
+3. Final Phase K — Runtime/concurrency proof + deferred owner/browser manual QA (isolated shared-cache / multi-worker proof and K2B.3/K2C browser acceptance; **not yet passed**)
 4. Close K2A.1 to `COMPLETE` **only if** Final Phase K runtime proof passes
 5. Reconstruct / close H4 and H5 (scopes unchanged here; still `PLANNED`)
 6. Phase 6 — Admin Dashboard
@@ -428,6 +435,7 @@ Runtime / concurrency proof covers:
 
 - K2A.1 `ExtractQuestionBlueprintImport`: `ShouldBeUnique` + `WithoutOverlapping` under shared-cache / multi-worker delivery.
 - K2B.2 `InterpretQuestionBlueprintImport`: `WithoutOverlapping` + DB cycle/claim idempotency under duplicate / multi-worker delivery.
+- K2C `GroundQuestionBlueprintImport`: `WithoutOverlapping` + DB cycle/claim idempotency under duplicate / multi-worker delivery (SQLite automated tests do not count as MySQL concurrency proof).
 
 Owner/browser manual QA (deferred; not yet performed) additionally includes K2B.3 checks:
 
@@ -443,7 +451,7 @@ Owner/browser manual QA (deferred; not yet performed) additionally includes K2B.
 - responsive/mobile presentation
 - integrated K2 owner workflow after K2C/K2D
 
-K2A.1 remains `IMPLEMENTED — QA PENDING` until Final Phase K runtime proof succeeds. Do not treat Final Phase K as already passed. Do not treat K2B.3 manual QA as passed.
+K2A.1 remains `IMPLEMENTED — QA PENDING` until Final Phase K runtime proof succeeds. Do not treat Final Phase K as already passed. Do not treat K2B.3 or K2C manual/browser QA as passed. K2C technical/source/MySQL/provider gates are closed; only Final Phase K residual QA remains deferred.
 
 
 ## Pre-Phase-6 Hardening Gate

@@ -256,6 +256,19 @@ K2B.2 menambahkan delapan kolom interpretasi nullable tanpa index/FK/backfill/ch
 
 `extracted_text` tetap LONGTEXT NULL dari Material `DocxExtractor` yang tidak diubah dan **bukan** input otoritatif interpretasi K2B.2. EXTRACTED baru mensyaratkan struktur dan teks keduanya sukses, dipersist sebelum cleanup, lalu mengantrekan interpretasi. EXTRACTED pra-K2B.1/pra-K2B.2 boleh kolom struktur dan/atau interpretasi NULL; tidak ada backfill; kebijakan duplikat same-hash tidak dilemahkan. Batas parser struktur (`import_structure_max_blocks=500`, `max_tables=50`, `max_rows=500`, `max_cells=5000`, `max_paragraphs_per_cell=50`, `max_cell_chars=8000`) terpisah dari Draft Blueprint `max_rows=5`. Serialisasi interpretasi deterministic + SHA-256; batas aplikasi 262144 byte (`input_too_large` pada 262145); kandidat maks 100. Job `InterpretQuestionBlueprintImport` (`database-generation` / `material-intelligence`, `timeout=270`, `tries=3`, `backoff=[5,15]`, `failOnTimeout=false`) memakai `WithoutOverlapping` `blueprint-import-interpretation:{importId}` (`releaseAfter=60`, `expireAfter=330`) dan **tidak** mengimplementasikan `ShouldBeUnique`. Kebenaran: at-least-once delivery + CAS cycle/lease + `REVIEW_READY` terminal. Kegagalan ekstraksi ≠ kegagalan interpretasi otomatis; kegagalan interpretasi tidak mengubah EXTRACTED. K2B.2 tidak membuat Draft Blueprint / QuestionBlueprintRow / Generation Run / QuestionSet, tidak menulis `ai_usage_logs`, dan tidak mengonsumsi kredit generasi. Tidak ada UI review publik (K2B.3).
 
+K2C menambahkan delapan kolom grounding nullable tanpa index/FK/backfill/child table (migrasi sumber `2026_09_23_000001_add_grounding_columns_to_question_blueprint_imports_table`; **belum** dijalankan terhadap persistent `ai_question_bank` pada handover implementasi):
+
+- `grounding_status` VARCHAR(32) NULL — `queued|processing|ready|failed`. NULL = belum dimulai / historis.
+- `grounding_result` LONGTEXT NULL — JSON teks schema `blueprint-import-grounding-result-v1` (bukan tipe JSON native).
+- `grounding_prompt_version` VARCHAR(64) NULL — `blueprint-import-ground-v1` saat siklus provider; NULL pada shortcut empty/taxonomy.
+- `grounding_error_code` VARCHAR(64) NULL — kode error tersanitasi.
+- `grounding_error_message` TEXT NULL — pesan publik tersanitasi.
+- `grounding_queued_at` TIMESTAMP NULL — identitas siklus antrean (presisi detik); retry FAILED memakai token yang lebih baru secara ketat.
+- `grounding_claimed_at` TIMESTAMP NULL — identitas lease processing; dibersihkan pada requeue transient.
+- `grounding_completed_at` TIMESTAMP NULL — waktu terminal grounding.
+
+K2C eligibility memakai pinned `profile_version_id` + fingerprint triple (`material_content_hash`, `material_file_hash`, `extractor_implementation`) terhadap Profile dan live Material. Katalog EXTRACTED max 200; request serialized max 262144 byte; max 4 refs per factual claim. Job `GroundQuestionBlueprintImport` mirror kontrak antrian interpretasi dengan overlap key `blueprint-import-grounding:{importId}`. Trigger eksplisit saja. Zero credit / no Draft artifacts. Shared-cache/multi-worker runtime proof tetap Final Phase K (SQLite in-memory suite bukan bukti MySQL concurrency).
+
 ### AI Engine
 
 #### `prompt_versions`
