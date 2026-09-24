@@ -25,12 +25,14 @@ class ConfirmQuestionBlueprint
         private AssertBlueprintShape $assertShape,
         private AssertBlueprintRowContexts $assertContexts,
         private ResolveActivePro $resolveActivePro,
+        private ResolveImportedBlueprintProfile $importedProfile,
     ) {}
 
     public function handle(User $actor, QuestionBlueprint $blueprint): QuestionBlueprint
     {
         return DB::transaction(function () use ($actor, $blueprint): QuestionBlueprint {
             $material = $this->lockUserAndMaterial((int) $actor->id, (int) $blueprint->material_id);
+            $imports = $this->importedProfile->lockImports((int) $blueprint->blueprint_id);
             $graph = $this->lockBlueprintGraph($blueprint);
             $locked = $graph['blueprint'];
 
@@ -48,7 +50,15 @@ class ConfirmQuestionBlueprint
                 throw new BlueprintRejectedException(BlueprintErrorCode::MaterialIneligible);
             }
 
-            $profile = $this->assertProfile->requireReferencedReady($material, (int) $locked->profile_version_id);
+            $profile = $imports->isEmpty()
+                ? $this->assertProfile->requireReferencedReady($material, (int) $locked->profile_version_id)
+                : $this->importedProfile->requirePinned(
+                    $imports->first(),
+                    (int) $locked->profile_version_id,
+                    (int) $locked->user_id,
+                    (int) $locked->material_id,
+                    $material,
+                );
             $mode = $locked->mode instanceof BlueprintMode ? $locked->mode : BlueprintMode::Simple;
 
             if ($mode === BlueprintMode::Advanced && ! $this->resolveActivePro->handle($actor)) {

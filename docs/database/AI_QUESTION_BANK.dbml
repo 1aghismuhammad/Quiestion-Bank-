@@ -684,6 +684,7 @@ Table question_blueprint_imports {
   user_id bigint [not null]
   material_id bigint [not null]
   profile_version_id bigint [not null]
+  created_blueprint_id bigint [note: 'Nullable BIGINT UNSIGNED. No default. No backfill. Non-unique. FK to question_blueprints.blueprint_id, ON DELETE RESTRICT. NULL until this import is converted, including historical imports. Not a UNIQUE constraint.']
   status blueprint_import_status [not null, default: 'pending']
   original_file_name varchar(255) [not null]
   storage_path varchar(255)
@@ -723,9 +724,10 @@ Table question_blueprint_imports {
   indexes {
     (user_id, material_id, status) [name: 'qbp_import_user_mat_status_idx']
     (user_id, material_id, file_hash) [name: 'qbp_import_user_mat_hash_idx']
+    created_blueprint_id [name: 'qbp_import_created_blueprint_fk']
   }
 
-  Note: 'Backend foundation for K2A/K2A.1 plus K2B.1 structural persistence, K2B.2 AI interpretation, and K2C Material Grounding columns. No public grounding UI, no Draft Blueprint, no generation credit for interpretation/grounding. Duplicate protection remains application-level (PENDING/PROCESSING/EXTRACTED) using owner/material locks plus active-status lookup; indexes are ordinary and non-unique. New EXTRACTED rows persist extracted_text plus structured_document (structure_schema_version=blueprint-import-structure-v1) before source cleanup, then queue interpretation. Legacy rows may have null structural and/or interpretation and/or grounding columns (no backfill). Extraction, interpretation, and grounding states are separate. Interpretation uses interpretation_queued_at as cycle token; grounding uses grounding_queued_at. InterpretQuestionBlueprintImport and GroundQuestionBlueprintImport are WithoutOverlapping per import and do not implement ShouldBeUnique. Grounding is explicitly queued (not auto from interpretation success). Extraction queue dispatch remains unique/overlap-protected per import. Source cleanup is best-effort: successful delete nulls storage_path; failed delete retains storage_path.'
+  Note: 'Backend foundation for K2A/K2A.1 plus K2B.1 structural persistence, K2B.2 AI interpretation, K2C Material Grounding columns, and K2D created_blueprint_id. Owner DOCX upload and draft conversion are K2D. Grounding and interpretation do not charge generation credit. created_blueprint_id is a nullable non-unique provenance pointer, not a unique index. Duplicate protection remains application-level (PENDING/PROCESSING/EXTRACTED) using owner/material locks plus active-status lookup; indexes are ordinary and non-unique. New EXTRACTED rows persist extracted_text plus structured_document (structure_schema_version=blueprint-import-structure-v1) before source cleanup, then queue interpretation. Legacy rows may have null structural and/or interpretation and/or grounding columns (no backfill). Extraction, interpretation, and grounding states are separate. Interpretation uses interpretation_queued_at as cycle token; grounding uses grounding_queued_at. InterpretQuestionBlueprintImport and GroundQuestionBlueprintImport are WithoutOverlapping per import and do not implement ShouldBeUnique. Grounding is explicitly queued (not auto from interpretation success). Extraction queue dispatch remains unique/overlap-protected per import. Source cleanup is best-effort: successful delete nulls storage_path; failed delete retains storage_path.'
 }
 
 //////////////////////////////////////////////////////
@@ -1125,6 +1127,7 @@ Ref: material_profile_chunks.profile_chunk_id < question_blueprint_row_contexts.
 Ref: question_blueprints.blueprint_id < question_blueprint_attempts.blueprint_id [delete: restrict]
 Ref: users.id < question_blueprint_fill_events.user_id [delete: restrict]
 Ref: question_blueprints.blueprint_id < question_blueprint_fill_events.blueprint_id [delete: restrict]
+Ref: question_blueprints.blueprint_id < question_blueprint_imports.created_blueprint_id [delete: restrict]
 
 Ref: users.id < ai_generation_runs.user_id [delete: restrict]
 Ref: materials.material_id < ai_generation_runs.material_id [delete: restrict]

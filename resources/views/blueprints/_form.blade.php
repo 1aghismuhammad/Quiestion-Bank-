@@ -64,11 +64,11 @@
 </div>
 
 <div style="margin-top: 12px;">
-    <label class="label" for="assessment_type">Tipe assessment</label>
+    <label class="label" for="assessment_type">Jenis Asesmen</label>
     <select class="input" id="assessment_type" name="assessment_type" required>
         @foreach ($assessments as $assessment)
             <option value="{{ $assessment->value }}" @selected(old('assessment_type', $blueprint?->assessment_type->value ?? 'formative') === $assessment->value)>
-                {{ $assessment->value }}
+                {{ $assessment->label() }}
             </option>
         @endforeach
     </select>
@@ -87,6 +87,7 @@
             'difficulties' => $difficulties,
             'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
             'mappingOptions' => $mappingOptions,
+            'importLinked' => $importLinked ?? false,
             'canRemove' => count($rows) > 1,
         ])
     @endforeach

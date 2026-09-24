@@ -30,6 +30,36 @@ class BlueprintOwnerHttpTest extends TestCase
         $this->seed(PlanSeeder::class);
     }
 
+    public function test_blueprint_index_offers_manual_ai_and_docx_upload(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $this->readyProfile($owner, $material);
+
+        $html = $this->actingAs($owner)
+            ->get(route('materials.blueprints.index', $material))
+            ->assertOk()
+            ->assertSee('Buat Kisi-kisi')
+            ->assertSee('Buat Kisi-kisi Manual')
+            ->assertSee('Buat dengan AI')
+            ->assertSee('Unggah Kisi-kisi DOCX')
+            ->assertSee('Pilih file DOCX')
+            ->assertSee('Belum ada file dipilih')
+            ->assertSee('Unggah Kisi-kisi')
+            ->assertDontSee('Choose File')
+            ->assertDontSee('No file chosen')
+            ->assertDontSee('Upload kisi-kisi')
+            ->getContent();
+
+        $this->assertStringContainsString('method="POST"', $html);
+        $this->assertStringContainsString('enctype="multipart/form-data"', $html);
+        $this->assertStringContainsString('name="file"', $html);
+        $this->assertStringContainsString('type="file"', $html);
+        $this->assertStringContainsString(route('materials.blueprint-imports.store', $material, false), $html);
+        $this->assertStringContainsString(route('materials.blueprints.ai', $material, false), $html);
+        $this->assertStringContainsString(route('materials.blueprints.create', $material, false), $html);
+    }
+
     public function test_guest_cannot_open_blueprint_pages(): void
     {
         $owner = $this->createCompleteUser();

@@ -8,6 +8,7 @@ use App\Actions\Generations\AssertMaterialEligibleForGeneration;
 use App\Actions\Generations\ResolveGenerationUsage;
 use App\Actions\QuestionBlueprints\AssertBlueprintShape;
 use App\Actions\QuestionBlueprints\AssertReadyMatchingProfile;
+use App\Actions\QuestionBlueprints\ResolveImportedBlueprintProfile;
 use App\Actions\Subscriptions\ResolveActivePro;
 use App\Actions\Subscriptions\ResolveGenerationQuota;
 use App\Actions\Subscriptions\ResolveUserEntitlement;
@@ -45,6 +46,7 @@ class StartGenerationRun
         private ResolveGenerationUsage $resolveUsage,
         private AssertMaterialEligibleForGeneration $assertEligible,
         private AssertReadyMatchingProfile $assertProfile,
+        private ResolveImportedBlueprintProfile $importedProfile,
         private AssertBlueprintShape $assertShape,
         private AssertAdvancedRunQualification $assertQualification,
         private ComputeGenerationRunFingerprint $fingerprint,
@@ -181,10 +183,7 @@ class StartGenerationRun
             }
 
             try {
-                $profile = $this->assertProfile->requireReferencedReady(
-                    $material,
-                    (int) $lockedBlueprint->profile_version_id,
-                );
+                $profile = $this->importedProfile->profileForBlueprint($lockedBlueprint, $material, lock: true);
             } catch (BlueprintRejectedException $exception) {
                 throw new GenerationRunRejectedException(match ($exception->errorCode) {
                     BlueprintErrorCode::ProfileRequired => GenerationRunErrorCode::ProfileRequired,

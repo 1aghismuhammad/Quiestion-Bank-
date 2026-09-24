@@ -25,6 +25,7 @@ class UpdateBlueprintDraft
         private PersistBlueprintRows $persistRows,
         private ResolveBlueprintRowContexts $resolveContexts,
         private ResolveActivePro $resolveActivePro,
+        private ResolveImportedBlueprintProfile $importedProfile,
     ) {}
 
     /**
@@ -47,6 +48,7 @@ class UpdateBlueprintDraft
 
         return DB::transaction(function () use ($actor, $blueprint, $title, $assessmentType, $rows, $mode): QuestionBlueprint {
             $material = $this->lockUserAndMaterial((int) $actor->id, (int) $blueprint->material_id);
+            $imports = $this->importedProfile->lockImports((int) $blueprint->blueprint_id);
             $graph = $this->lockBlueprintGraph($blueprint);
             $locked = $graph['blueprint'];
 
@@ -72,7 +74,15 @@ class UpdateBlueprintDraft
                 throw new BlueprintRejectedException(BlueprintErrorCode::AdvancedRequiresPro);
             }
 
-            $profile = $this->assertProfile->requireReferencedReady($material, (int) $locked->profile_version_id);
+            $profile = $imports->isEmpty()
+                ? $this->assertProfile->requireReferencedReady($material, (int) $locked->profile_version_id)
+                : $this->importedProfile->requirePinned(
+                    $imports->first(),
+                    (int) $locked->profile_version_id,
+                    (int) $locked->user_id,
+                    (int) $locked->material_id,
+                    $material,
+                );
             $this->assertShape->handle($rows, $destination);
 
             $locked->title = $title;

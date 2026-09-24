@@ -8,7 +8,7 @@
     </div>
 
     <p class="muted">KISI-KISI MANUAL</p>
-    <h1>Buat kisi-kisi</h1>
+    <h1>Buat Kisi-kisi Manual</h1>
 
     <div class="card">
         <form method="POST" action="{{ route('materials.blueprints.store', $material) }}">

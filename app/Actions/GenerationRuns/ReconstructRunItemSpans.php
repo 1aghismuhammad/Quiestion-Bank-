@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\GenerationRuns;
 
 use App\Actions\QuestionBlueprints\AssertReadyMatchingProfile;
+use App\Actions\QuestionBlueprints\ResolveImportedBlueprintProfile;
 use App\Enums\GenerationErrorCode;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Exceptions\QuestionBlueprints\BlueprintRejectedException;
@@ -18,7 +19,10 @@ use App\Support\Generations\RunItemSpanWindows;
 
 class ReconstructRunItemSpans
 {
-    public function __construct(private AssertReadyMatchingProfile $assertProfile) {}
+    public function __construct(
+        private AssertReadyMatchingProfile $assertProfile,
+        private ResolveImportedBlueprintProfile $importedProfile,
+    ) {}
 
     /**
      * Validate every persisted provenance-bearing span, then join provider-facing
@@ -41,7 +45,7 @@ class ReconstructRunItemSpans
         }
 
         try {
-            $this->assertProfile->requireReferencedReady($material, (int) $run->profile_version_id);
+            $this->importedProfile->profileForRun($run, $material, lock: false);
         } catch (BlueprintRejectedException) {
             return ['content' => '', 'error' => GenerationErrorCode::BlueprintStale];
         }

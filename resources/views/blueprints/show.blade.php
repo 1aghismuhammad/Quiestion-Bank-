@@ -4,6 +4,21 @@
     $canEditDraft = $blueprint->lifecycle_status->value === 'draft'
         && ! $blueprint->ai_fill_status->isInFlight()
         && $canMutateAdvanced;
+    $lifecycleLabel = match ($blueprint->lifecycle_status->value) {
+        'draft' => 'Draf',
+        'confirmed' => 'Dikonfirmasi',
+        default => 'Status tidak dikenali',
+    };
+    $sourceLabel = match ($blueprint->source->value) {
+        'manual' => 'Manual',
+        'ai' => 'AI',
+        default => 'Sumber tidak dikenali',
+    };
+    $aiFillLabel = match ($blueprint->ai_fill_status->value) {
+        'queued' => 'Dalam antrean',
+        'processing' => 'Sedang diproses',
+        default => null,
+    };
 @endphp
 
 @extends('layouts.app')
@@ -18,11 +33,11 @@
     <p class="muted">KISI-KISI</p>
     <h1>{{ $blueprint->title }}</h1>
     <p>
-        <span class="status">{{ $blueprint->lifecycle_status->value }}</span>
-        <span class="muted">sumber {{ $blueprint->source->value }}</span>
+        <span class="status">{{ $lifecycleLabel }}</span>
+        <span class="muted">sumber {{ $sourceLabel }}</span>
         <span class="muted">mode {{ $blueprint->mode->label() }}{{ $isAdvanced ? ' (Pro)' : '' }}</span>
-        @if ($blueprint->ai_fill_status->isInFlight())
-            <span class="status status-warn">AI {{ $blueprint->ai_fill_status->value }}</span>
+        @if ($blueprint->ai_fill_status->isInFlight() && $aiFillLabel)
+            <span class="status status-warn">AI {{ $aiFillLabel }}</span>
         @endif
     </p>
 
@@ -73,6 +88,7 @@
                     'difficulties' => $difficulties,
                     'maxRows' => $maxRows ?? 5,
                     'mappingOptions' => $mappingOptions,
+                    'importLinked' => $blueprint->sourceImport()->exists(),
                     'isPro' => $isPro,
                     'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
                 ])

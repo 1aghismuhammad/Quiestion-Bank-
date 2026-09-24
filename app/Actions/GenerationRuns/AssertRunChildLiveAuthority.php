@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\GenerationRuns;
 
 use App\Actions\QuestionBlueprints\AssertReadyMatchingProfile;
+use App\Actions\QuestionBlueprints\ResolveImportedBlueprintProfile;
 use App\Enums\GenerationErrorCode;
 use App\Enums\GenerationStatus;
 use App\Exceptions\GenerationRuns\GenerationRunChildAuthorityInvalidException;
@@ -25,6 +26,7 @@ class AssertRunChildLiveAuthority
 
     public function __construct(
         private AssertReadyMatchingProfile $assertProfile,
+        private ResolveImportedBlueprintProfile $importedProfile,
         private ReconstructRunItemSpans $reconstructSpans,
         private AssertRunChildTopology $assertTopology,
     ) {}
@@ -123,7 +125,7 @@ class AssertRunChildLiveAuthority
         }
 
         try {
-            $this->assertProfile->requireReferencedReady($material, (int) $run->profile_version_id);
+            $this->importedProfile->profileForRun($run, $material, lock: false);
         } catch (BlueprintRejectedException) {
             throw new GenerationRunChildAuthorityInvalidException(
                 GenerationErrorCode::BlueprintStale,

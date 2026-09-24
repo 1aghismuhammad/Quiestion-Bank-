@@ -8,6 +8,7 @@ use App\Actions\Generations\BeginGenerationAttempt;
 use App\Actions\Generations\FinishGenerationAttempt;
 use App\Actions\Generations\ValidateTypedGenerationCandidates;
 use App\Actions\QuestionBlueprints\AssertReadyMatchingProfile;
+use App\Actions\QuestionBlueprints\ResolveImportedBlueprintProfile;
 use App\Contracts\AI\QuestionGenerationProvider;
 use App\Data\Generations\BlueprintGenerationContext;
 use App\Data\Generations\GenerationProviderRequest;
@@ -58,6 +59,7 @@ class RunGenerationRunChild
         private FinalizeRunChildFailure $finalizeFailure,
         private ReconstructRunItemSpans $reconstructSpans,
         private AssertReadyMatchingProfile $assertProfile,
+        private ResolveImportedBlueprintProfile $importedProfile,
     ) {}
 
     public function handle(int $generationId, string $executionToken): void
@@ -473,7 +475,7 @@ class RunGenerationRunChild
         }
 
         try {
-            $this->assertProfile->requireReferencedReady($material, (int) $run->profile_version_id);
+            $this->importedProfile->profileForRun($run, $material, lock: false);
         } catch (BlueprintRejectedException) {
             return false;
         }

@@ -10,9 +10,12 @@ use App\Data\MaterialProfiles\ProfileProviderAttemptMetadata;
 use App\Enums\GenerationRunStatus;
 use App\Enums\MaterialProfileStepPurpose;
 use App\Enums\OutputLanguage;
-use App\Models\AiGenerationRun;
+use App\Actions\QuestionBlueprints\CreateBlueprintDraftFromImport;
+use App\Enums\AssessmentType;
+use App\Enums\BlueprintMode;
 use App\Models\Material;
 use App\Models\QuestionBlueprint;
+use App\Models\QuestionBlueprintImport;
 use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
@@ -75,6 +78,31 @@ try {
         $service = app(StartMaterialProfileAnalysis::class);
         $result = $service->handle($actor, $material, $payload['force'] ?? false);
         echo json_encode(['success' => true, 'result' => $result->outcome->value]);
+        exit(0);
+    }
+
+    if ($action === 'convert-blueprint-import') {
+        $actor = User::findOrFail($payload['user_id']);
+        $material = Material::findOrFail($payload['material_id']);
+        $import = QuestionBlueprintImport::findOrFail($payload['import_id']);
+        $rows = $payload['rows'];
+
+        foreach ($rows as $offset => $row) {
+            $rows[$offset]['index'] = (int) $row['index'];
+        }
+
+        $blueprint = app(CreateBlueprintDraftFromImport::class)->handle(
+            $actor,
+            $material,
+            $import,
+            (string) $payload['title'],
+            AssessmentType::from($payload['assessment_type']),
+            BlueprintMode::from($payload['mode']),
+            array_map(static fn (mixed $index): int => (int) $index, $payload['selected_indexes']),
+            array_values($rows),
+        );
+
+        echo json_encode(['success' => true, 'blueprint_id' => $blueprint->blueprint_id]);
         exit(0);
     }
 

@@ -25,6 +25,40 @@ Database Impact:
 Notes:
 -
 ```
+## v0.16.6 K2D Draft Blueprint and Creation Hub
+
+- Date: 24 September 2026
+- Version: 0.16.6
+- Phase: K2D Draft Blueprint creation and public workflow
+- Type: Feature
+- Status: IMPLEMENTED
+
+Added:
+
+- Public DOCX kisi-kisi import on the Blueprint page `/materials/{material}/blueprints`, together with the existing Manual and AI creation paths. Material Detail keeps import summary/history and a link to that page. It is not the primary upload control.
+- Explicit material matching on the import review page (**Cocokkan dengan Materi** / **Pencocokan**), then owner selection of 1–5 eligible candidates and canonical fields, then `CreateBlueprintDraftFromImport` into the existing draft editor. Confirm stays explicit. Generation uses the existing flow.
+- Nullable non-unique `question_blueprint_imports.created_blueprint_id` (`BIGINT UNSIGNED`, no default, no backfill, FK to `question_blueprints.blueprint_id`, `RESTRICT`, ordinary supporting index). Migration `2026_09_23_120000_add_created_blueprint_id_to_question_blueprint_imports_table`. One import creates at most one canonical Blueprint via row lock, pointer re-check, one transaction, and a conditional `whereNull` update. There is no UNIQUE index.
+- Import-linked Profile pin: conversion, draft update, confirm, generation start, generation child authority, run live authority, and span reconstruction use `QuestionBlueprintImport.profile_version_id` while that Profile exists, is READY, owner and Material match, and fingerprints match. A newer READY Profile alone does not invalidate the imported Blueprint. Normal Blueprints still use the newest matching READY Profile.
+- Clone guard: clone still targets the newest matching READY Profile and is rejected before insert when an import-linked pin differs. Contexts are not remapped. AI fill and confirmed DOCX download are unchanged.
+- Indonesian display labels on the K2D/Blueprint screens. Stored enum values are unchanged.
+
+Changed:
+
+- Eligibility: a row is created only when objective, topic, and indicator are grounded. `partial` is allowed only when the only weak factual field is `material`. Ambiguous evidence is not auto-selected. Contexts are the deduplicated, sorted `profile_element_id` values from objective/topic/indicator evidence, validated by `ResolveBlueprintRowContexts`, maximum 4, with no silent truncation.
+- Owner enters `requested_count` and canonical enums. There is no alias map, no automatic `C1/C2` or `PG` conversion, and no numbering parser. `raw_numbering` stays display/reference only. Advanced still requires Pro.
+
+Database Impact:
+
+- Column `created_blueprint_id` on `question_blueprint_imports` as specified above. Database QA PASS: column exists, `bigint unsigned`, nullable YES, default NULL, FK correct, `DELETE_RULE` RESTRICT, `Non_unique = 1`, integrity audit PASS, no pending migrations. Historical imports remained NULL. Persistent `ai_question_bank` was not used as the concurrency fixture.
+
+Notes:
+
+- Planning, combined implementation, source review, automated QA, MySQL concurrency QA, database QA, UI creation hub, UI polish / Indonesian localization, and staging review: PASS.
+- Focused coverage includes `BlueprintImportDraftConversionTest`, `BlueprintImportOwnerSurfaceTest`, and `BlueprintOwnerHttpTest`. Latest full SQLite suite: 1530 passed, 8257 assertions, 0 failures, 0 errors, 9 skipped. The 9 skips are not failures.
+- MySQL `BlueprintImportDraftConversionConcurrencyTest`: 1 passed, 12 assertions, on `ai_question_bank_h3_test`. Two workers converted the same import to one Blueprint, one Series, and one pointer, with no duplicate canonical draft. No new Gemini smoke.
+- K2D MANUAL / BROWSER QA: DEFERRED BY OWNER. Owner chose to continue UI/design refinement and proceed with staging before formal browser QA closure.
+- `COMPLETE + APPROVED`: NO. Manual / browser QA remains a residual gate.
+
 ## v0.16.5 K2C Material Grounding
 
 - Date: 23 September 2026

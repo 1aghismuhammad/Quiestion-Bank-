@@ -5,15 +5,15 @@
             <button class="button button-secondary" type="button" data-remove-row>Hapus baris</button>
         @endif
     </div>
-    <label class="label">Tujuan</label>
+    <label class="label">Tujuan Pembelajaran</label>
     <input class="input" name="rows[{{ $index }}][objective]" value="{{ $row['objective'] ?? '' }}" required>
     <label class="label">Topik</label>
     <input class="input" name="rows[{{ $index }}][topic]" value="{{ $row['topic'] ?? '' }}" required>
-    <label class="label">Indikator</label>
+    <label class="label">Indikator Soal</label>
     <input class="input" name="rows[{{ $index }}][indicator]" value="{{ $row['indicator'] ?? '' }}" required>
     <div class="field-grid">
         <div>
-            <label class="label">Level kognitif</label>
+            <label class="label">Level Kognitif</label>
             <select class="input" name="rows[{{ $index }}][cognitive_level]" required>
                 @foreach ($cognitiveLevels as $level)
                     <option value="{{ $level->value }}" @selected(($row['cognitive_level'] ?? '') === $level->value)>{{ $level->label() }}</option>
@@ -21,15 +21,15 @@
             </select>
         </div>
         <div>
-            <label class="label">Kesulitan</label>
+            <label class="label">Tingkat Kesulitan</label>
             <select class="input" name="rows[{{ $index }}][difficulty]" required>
                 @foreach ($difficulties as $difficulty)
-                    <option value="{{ $difficulty->value }}" @selected(($row['difficulty'] ?? '') === $difficulty->value)>{{ $difficulty->value }}</option>
+                    <option value="{{ $difficulty->value }}" @selected(($row['difficulty'] ?? '') === $difficulty->value)>{{ $difficulty->label() }}</option>
                 @endforeach
             </select>
         </div>
         <div>
-            <label class="label">Tipe soal</label>
+            <label class="label">Tipe Soal</label>
             <select class="input" name="rows[{{ $index }}][question_type]" required>
                 @foreach ($questionTypes as $type)
                     <option value="{{ $type->value }}" @selected(($row['question_type'] ?? 'multiple_choice') === $type->value)>{{ $type->label() }}</option>
@@ -37,11 +37,17 @@
             </select>
         </div>
         <div>
-            <label class="label">Jumlah soal</label>
+            <label class="label">Jumlah Soal</label>
             <input class="input" type="number" min="1" max="10" name="rows[{{ $index }}][requested_count]" value="{{ $row['requested_count'] ?? 1 }}" required>
         </div>
     </div>
     <label class="label" for="row-source-{{ $index }}">Sumber konteks</label>
+    @if (! empty($importLinked))
+        @foreach ($row['sources'] ?? [] as $source)
+            <input type="hidden" name="rows[{{ $index }}][sources][]" value="{{ $source }}">
+        @endforeach
+        <p class="muted">Konteks impor dipertahankan ({{ count($row['sources'] ?? []) }}).</p>
+    @else
     <select class="input" id="row-source-{{ $index }}" name="rows[{{ $index }}][sources][]" required>
         <option value="">Pilih cuplikan profil</option>
         @foreach ($mappingOptions['elements'] as $element)
@@ -55,6 +61,7 @@
             </option>
         @endforeach
     </select>
+    @endif
     @error('rows.'.$index.'.sources')
         <div class="error-text">{{ $message }}</div>
     @enderror

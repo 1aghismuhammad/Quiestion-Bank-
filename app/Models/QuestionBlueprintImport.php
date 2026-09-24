@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'user_id',
     'material_id',
     'profile_version_id',
+    'created_blueprint_id',
     'status',
     'original_file_name',
     'storage_path',
@@ -69,6 +70,11 @@ class QuestionBlueprintImport extends Model
     public function profileVersion(): BelongsTo
     {
         return $this->belongsTo(MaterialProfileVersion::class, 'profile_version_id', 'profile_version_id');
+    }
+
+    public function createdBlueprint(): BelongsTo
+    {
+        return $this->belongsTo(QuestionBlueprint::class, 'created_blueprint_id', 'blueprint_id');
     }
 
     protected function casts(): array

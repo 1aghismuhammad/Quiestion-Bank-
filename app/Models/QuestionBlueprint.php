@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'blueprint_series_id',
@@ -83,6 +84,11 @@ class QuestionBlueprint extends Model
     public function generationRuns(): HasMany
     {
         return $this->hasMany(AiGenerationRun::class, 'blueprint_id', 'blueprint_id');
+    }
+
+    public function sourceImport(): HasOne
+    {
+        return $this->hasOne(QuestionBlueprintImport::class, 'created_blueprint_id', 'blueprint_id');
     }
 
     /**

@@ -145,6 +145,11 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertOk()
             ->assertSee('latest-import.docx')
             ->assertSee('Lihat Riwayat Impor')
+            ->assertSee('Impor Kisi-kisi')
+            ->assertSee('Buka Halaman Kisi-kisi')
+            ->assertDontSee('name="file"', false)
+            ->assertDontSee('Unggah Kisi-kisi')
+            ->assertDontSee('Pilih file DOCX')
             ->assertSee(route('materials.blueprint-imports.show', [$this->material, $latest], false))
             ->assertSee(route('materials.blueprint-imports.index', $this->material, false));
     }
@@ -154,8 +159,12 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
         $this->actingAs($this->owner)
             ->get(route('materials.show', $this->material))
             ->assertOk()
-            ->assertSee('Belum ada impor kisi-kisi.')
-            ->assertDontSee('Lihat Riwayat Impor');
+            ->assertSee('Belum ada kisi-kisi DOCX yang diunggah.')
+            ->assertSee('Buka Halaman Kisi-kisi')
+            ->assertDontSee('Lihat Riwayat Impor')
+            ->assertDontSee('name="file"', false)
+            ->assertDontSee('Unggah Kisi-kisi')
+            ->assertDontSee('Pilih file DOCX');
     }
 
     public function test_older_import_remains_navigable(): void
@@ -322,6 +331,8 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
         $this->assertSame([
             'extraction_status',
             'interpretation_status',
+            'grounding_status',
+            'draft_blueprint_id',
             'terminal',
             'can_retry',
             'review_url',
@@ -331,6 +342,9 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
         $this->assertArrayNotHasKey('candidates', $payload);
         $this->assertArrayNotHasKey('interpretation_result', $payload);
         $this->assertArrayNotHasKey('structured_document', $payload);
+        $this->assertArrayNotHasKey('storage_path', $payload);
+        $this->assertNull($payload['grounding_status']);
+        $this->assertNull($payload['draft_blueprint_id']);
     }
 
     public function test_retry_failed_invokes_action_and_dispatches_job(): void

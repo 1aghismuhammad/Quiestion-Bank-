@@ -19,6 +19,16 @@ class QuestionBlueprintImportPolicy
         return $this->ownsImport($user, $import);
     }
 
+    public function ground(User $user, QuestionBlueprintImport $import): bool
+    {
+        return $this->ownsImport($user, $import);
+    }
+
+    public function convert(User $user, QuestionBlueprintImport $import): bool
+    {
+        return $this->ownsImport($user, $import);
+    }
+
     public function create(User $user): bool
     {
         return true; // Requires Material context, validated in Action

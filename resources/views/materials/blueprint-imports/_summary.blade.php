@@ -5,7 +5,7 @@
         'processing' => 'Sedang diekstraksi',
         'extracted' => 'Ekstraksi selesai',
         'failed' => 'Ekstraksi gagal',
-        default => $latest?->status->value,
+        default => 'Status tidak dikenali',
     };
 
     $interpretation = $latest?->interpretation_status;
@@ -15,15 +15,16 @@
         'processing' => 'Interpretasi diproses',
         'review_ready' => 'Siap ditinjau',
         'failed' => 'Interpretasi gagal',
-        default => $interpretation?->value ?? 'Belum diinterpretasi',
+        default => 'Status tidak dikenali',
     };
 @endphp
 
 <div class="card" style="margin-bottom: 20px;">
-    <h2>Impor kisi-kisi</h2>
+    <h2>Impor Kisi-kisi</h2>
+    <p class="muted">Lihat kisi-kisi DOCX yang pernah diunggah untuk materi ini.</p>
 
     @if ($latest === null)
-        <p class="muted">Belum ada impor kisi-kisi.</p>
+        <p class="muted">Belum ada kisi-kisi DOCX yang diunggah.</p>
     @else
         <p><strong>File:</strong> {{ $latest->original_file_name }}</p>
         <p>
@@ -48,4 +49,8 @@
             </a>
         </div>
     @endif
+
+    <div class="actions" style="margin-top: 12px;">
+        <a class="button button-secondary" href="{{ route('materials.blueprints.index', $material) }}">Buka Halaman Kisi-kisi</a>
+    </div>
 </div>

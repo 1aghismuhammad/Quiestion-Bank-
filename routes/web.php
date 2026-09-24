@@ -132,6 +132,8 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
 
         Route::whereNumber(['material', 'import'])
             ->group(function (): void {
+                Route::post('/materials/{material}/blueprint-imports', [QuestionBlueprintImportController::class, 'store'])
+                    ->name('materials.blueprint-imports.store');
                 Route::get('/materials/{material}/blueprint-imports', [QuestionBlueprintImportController::class, 'index'])
                     ->name('materials.blueprint-imports.index');
                 Route::get('/materials/{material}/blueprint-imports/{import}', [QuestionBlueprintImportController::class, 'show'])
@@ -140,6 +142,12 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
                     ->name('materials.blueprint-imports.status');
                 Route::post('/materials/{material}/blueprint-imports/{import}/retry-interpretation', [QuestionBlueprintImportController::class, 'retry'])
                     ->name('materials.blueprint-imports.retry');
+                Route::post('/materials/{material}/blueprint-imports/{import}/ground', [QuestionBlueprintImportController::class, 'ground'])
+                    ->name('materials.blueprint-imports.ground');
+                Route::post('/materials/{material}/blueprint-imports/{import}/retry-grounding', [QuestionBlueprintImportController::class, 'retryGrounding'])
+                    ->name('materials.blueprint-imports.retry-grounding');
+                Route::post('/materials/{material}/blueprint-imports/{import}/blueprint', [QuestionBlueprintImportController::class, 'convert'])
+                    ->name('materials.blueprint-imports.convert');
             });
 
         Route::scopeBindings()

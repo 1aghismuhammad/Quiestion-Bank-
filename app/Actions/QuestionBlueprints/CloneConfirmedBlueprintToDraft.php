@@ -24,12 +24,14 @@ class CloneConfirmedBlueprintToDraft
     public function __construct(
         private AssertReadyMatchingProfile $assertProfile,
         private ResolveActivePro $resolveActivePro,
+        private ResolveImportedBlueprintProfile $importedProfile,
     ) {}
 
     public function handle(User $actor, QuestionBlueprint $blueprint): QuestionBlueprint
     {
         return DB::transaction(function () use ($actor, $blueprint): QuestionBlueprint {
             $material = $this->lockUserAndMaterial((int) $actor->id, (int) $blueprint->material_id);
+            $imports = $this->importedProfile->lockImports((int) $blueprint->blueprint_id);
             $graph = $this->lockBlueprintGraph($blueprint);
             $source = $graph['blueprint'];
 
@@ -47,6 +49,13 @@ class CloneConfirmedBlueprintToDraft
                 throw new BlueprintRejectedException(BlueprintErrorCode::AdvancedRequiresPro);
             }
 
+            $profile = $this->assertProfile->requireMatchingReady($material);
+
+            if ($imports->isNotEmpty()
+                && (int) $source->profile_version_id !== (int) $profile->profile_version_id) {
+                throw new BlueprintRejectedException(BlueprintErrorCode::ProfileStale);
+            }
+
             $existingDraft = $graph['blueprints']->first(
                 fn (QuestionBlueprint $candidate): bool => $candidate->lifecycle_status === BlueprintLifecycleStatus::Draft,
             );
@@ -55,7 +64,6 @@ class CloneConfirmedBlueprintToDraft
                 return $existingDraft->refresh()->load(['rows.contexts', 'series']);
             }
 
-            $profile = $this->assertProfile->requireMatchingReady($material);
             $fingerprint = $this->assertProfile->fingerprint($material);
             $nextVersion = (int) $graph['blueprints']->max('version') + 1;
 
