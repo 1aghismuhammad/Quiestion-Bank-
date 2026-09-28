@@ -9,6 +9,7 @@ use App\Data\QuestionBlueprints\BlueprintImportGroundingResult;
 use App\Data\QuestionBlueprints\BlueprintImportInterpretationResult;
 use App\Enums\BlueprintImportGroundingCandidateStatus;
 use App\Enums\BlueprintImportGroundingFieldStatus;
+use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileElementOrigin;
 use App\Exceptions\QuestionBlueprints\BlueprintMalformedResponseException;
 use App\Models\MaterialProfileElement;
@@ -89,15 +90,6 @@ class BlueprintImportGroundingResultBuilder
             $providerByIndex[$index] = $providerCandidate;
         }
 
-        $expectedKeys = array_keys($expectedSparseIndexes);
-        $providedKeys = array_keys($providerByIndex);
-        sort($expectedKeys);
-        sort($providedKeys);
-
-        if ($providedKeys !== $expectedKeys) {
-            throw new BlueprintMalformedResponseException('The grounding provider candidate indexes do not match the sparse claim set.');
-        }
-
         $warnings = $this->stringList($provider->warnings);
         $built = [];
 
@@ -112,7 +104,7 @@ class BlueprintImportGroundingResultBuilder
             }
 
             $built[] = $this->buildCandidate(
-                $providerByIndex[$index]['fields'],
+                $providerByIndex[$index]['fields'] ?? [],
                 $interpretationCandidate,
                 $index,
                 $elementsById,
@@ -248,18 +240,9 @@ class BlueprintImportGroundingResultBuilder
         }
 
         $expectedClaims = $this->nonEmptyClaims($interpretationCandidate);
-        $expectedKeys = array_keys($expectedClaims);
-        $providedKeys = array_keys($fields);
-        sort($expectedKeys);
-        $sortedProvided = $providedKeys;
-        sort($sortedProvided);
 
-        if ($sortedProvided !== $expectedKeys) {
-            throw new BlueprintMalformedResponseException('The grounding provider returned a sparse field set that does not match claims.');
-        }
-
-        foreach ($providedKeys as $key) {
-            if (! is_string($key) || ! in_array($key, self::FACTUAL_FIELDS, true)) {
+        foreach ($fields as $key => $providerField) {
+            if (! is_string($key) || ! array_key_exists($key, $expectedClaims)) {
                 throw new BlueprintMalformedResponseException('The grounding provider returned an unknown factual field.');
             }
         }
@@ -281,6 +264,13 @@ class BlueprintImportGroundingResultBuilder
                 continue;
             }
 
+            if (! array_key_exists($field, $fields)) {
+                $fieldMap[$field] = $this->rescuedGroundedField($field, $claimRaw, $elementsById, $profileVersionId)
+                    ?? $this->unresolvedField($claimRaw);
+
+                continue;
+            }
+
             $providerField = $fields[$field];
 
             if (! is_array($providerField)
@@ -298,6 +288,16 @@ class BlueprintImportGroundingResultBuilder
             $ids = $this->normalizeElementIds($providerField['profile_element_ids']);
             $this->assertFieldInvariants($status, $ids);
 
+            if ($status === BlueprintImportGroundingFieldStatus::UNRESOLVED) {
+                $rescued = $this->rescuedGroundedField($field, $claimRaw, $elementsById, $profileVersionId);
+
+                if ($rescued !== null) {
+                    $fieldMap[$field] = $rescued;
+
+                    continue;
+                }
+            }
+
             $fieldMap[$field] = [
                 'claim_raw' => $claimRaw,
                 'status' => $status->value,
@@ -313,6 +313,87 @@ class BlueprintImportGroundingResultBuilder
             'import_provenance' => $this->importProvenance($interpretationCandidate),
             'fields' => $fieldMap,
         ];
+    }
+
+    /**
+     * @param  array<int, MaterialProfileElement>  $elementsById
+     * @return array{claim_raw: string, status: string, material_evidence: list<array<string, mixed>>}|null
+     */
+    private function rescuedGroundedField(string $field, string $claimRaw, array $elementsById, int $profileVersionId): ?array
+    {
+        $elementId = $this->deterministicExactElementId($field, $claimRaw, $elementsById, $profileVersionId);
+
+        if ($elementId === null) {
+            return null;
+        }
+
+        return [
+            'claim_raw' => $claimRaw,
+            'status' => BlueprintImportGroundingFieldStatus::GROUNDED->value,
+            'material_evidence' => $this->buildEvidence([$elementId], $elementsById, $profileVersionId),
+        ];
+    }
+
+    /**
+     * @return array{claim_raw: string, status: string, material_evidence: list<array<string, mixed>>}
+     */
+    private function unresolvedField(string $claimRaw): array
+    {
+        return [
+            'claim_raw' => $claimRaw,
+            'status' => BlueprintImportGroundingFieldStatus::UNRESOLVED->value,
+            'material_evidence' => [],
+        ];
+    }
+
+    /**
+     * @param  array<int, MaterialProfileElement>  $elementsById
+     */
+    private function deterministicExactElementId(string $field, string $claimRaw, array $elementsById, int $profileVersionId): ?int
+    {
+        $kind = match ($field) {
+            'objective' => MaterialProfileElementKind::OBJECTIVE,
+            'topic' => MaterialProfileElementKind::TOPIC,
+            'indicator' => MaterialProfileElementKind::INDICATOR,
+            default => null,
+        };
+
+        if ($kind === null) {
+            return null;
+        }
+
+        $needle = $this->normalizedExactText($claimRaw);
+
+        if ($needle === '') {
+            return null;
+        }
+
+        $match = null;
+
+        foreach ($elementsById as $element) {
+            if (! $element instanceof MaterialProfileElement
+                || $element->origin !== MaterialProfileElementOrigin::EXTRACTED
+                || (int) $element->profile_version_id !== $profileVersionId
+                || $element->kind !== $kind
+                || $this->normalizedExactText((string) $element->text) !== $needle) {
+                continue;
+            }
+
+            if ($match !== null) {
+                return null;
+            }
+
+            $match = (int) $element->profile_element_id;
+        }
+
+        return $match;
+    }
+
+    private function normalizedExactText(string $value): string
+    {
+        $collapsed = preg_replace('/\s+/u', ' ', $value);
+
+        return mb_strtolower(trim(is_string($collapsed) ? $collapsed : $value), 'UTF-8');
     }
 
     /**

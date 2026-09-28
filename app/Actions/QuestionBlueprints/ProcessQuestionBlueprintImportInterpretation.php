@@ -20,6 +20,7 @@ use App\Models\QuestionBlueprintImport;
 use App\Services\AI\BlueprintImportInterpretationPromptBuilder;
 use App\Services\QuestionBlueprints\BlueprintImportInterpretationResultBuilder;
 use App\Services\QuestionBlueprints\BlueprintImportStructureSerializer;
+use App\Services\QuestionBlueprints\DeterministicBlueprintTableBinder;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -56,6 +57,7 @@ class ProcessQuestionBlueprintImportInterpretation
         private BlueprintImportStructureSerializer $serializer,
         private BlueprintImportInterpretationResultBuilder $resultBuilder,
         private QuestionBlueprintImportInterpretationProvider $provider,
+        private DeterministicBlueprintTableBinder $tableBinder,
     ) {}
 
     public function handle(int $importId, string $queuedAt): void
@@ -228,10 +230,13 @@ class ProcessQuestionBlueprintImportInterpretation
             return;
         }
 
-        $providerResult = $this->provider->interpret(
-            $serialized['json'],
-            $promptVersion,
-            (string) config('question_blueprint.primary_model'),
+        $providerResult = $this->tableBinder->merge(
+            $this->provider->interpret(
+                $serialized['json'],
+                $promptVersion,
+                (string) config('question_blueprint.primary_model'),
+            ),
+            $structure,
         );
 
         $result = $this->resultBuilder->build(

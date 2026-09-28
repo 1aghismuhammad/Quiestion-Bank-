@@ -16,7 +16,9 @@ use App\Enums\BlueprintAttemptErrorCode;
 use App\Enums\BlueprintImportGroundingStatus;
 use App\Enums\BlueprintImportInterpretationStatus;
 use App\Enums\BlueprintImportStatus;
+use App\Enums\MaterialProfileElementKind;
 use App\Enums\MaterialProfileStatus;
+use App\Exceptions\QuestionBlueprints\BlueprintMalformedResponseException;
 use App\Exceptions\QuestionBlueprints\BlueprintProviderPermanentException;
 use App\Exceptions\QuestionBlueprints\BlueprintProviderTransientException;
 use App\Jobs\GroundQuestionBlueprintImport;
@@ -569,6 +571,385 @@ class BlueprintImportGroundingTest extends TestCase
             'question_type' => null,
             'assessment_type' => null,
             'requested_count' => null,
+        ];
+    }
+
+    public function test_missing_expected_field_becomes_unresolved_without_evidence(): void
+    {
+        $import = $this->queuedImport($this->interpretation('blueprint_like', [
+            $this->candidate([
+                'objective' => 'Obj',
+                'topic' => 'Topik',
+                'material' => 'Materi',
+                'indicator' => 'Indikator',
+            ]),
+        ]));
+        $element = $this->profileElement($import);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([[
+            'index' => 0,
+            'fields' => [
+                'objective' => $this->groundedField($element->profile_element_id),
+                'topic' => $this->groundedField($element->profile_element_id),
+                'indicator' => ['status' => 'unresolved', 'profile_element_ids' => []],
+            ],
+        ]]);
+
+        $this->process($import);
+        $import->refresh();
+        $fields = $import->grounding_result['candidates'][0]['fields'];
+
+        $this->assertSame(BlueprintImportGroundingStatus::READY, $import->grounding_status);
+        $this->assertNull($import->grounding_error_code);
+        $this->assertSame('grounded', $fields['objective']['status']);
+        $this->assertSame('grounded', $fields['topic']['status']);
+        $this->assertSame('unresolved', $fields['material']['status']);
+        $this->assertSame([], $fields['material']['material_evidence']);
+        $this->assertSame('Materi', $fields['material']['claim_raw']);
+        $this->assertSame('unresolved', $fields['indicator']['status']);
+        $this->assertSame([], $fields['indicator']['material_evidence']);
+    }
+
+    public function test_missing_expected_candidate_is_synthesized_as_unresolved(): void
+    {
+        $import = $this->queuedImport($this->interpretation('blueprint_like', [
+            $this->candidate(['objective' => 'Obj 0', 'topic' => 'Topik 0', 'indicator' => 'Indikator 0']),
+            $this->candidate(['objective' => 'Obj 1', 'topic' => 'Topik 1', 'material' => 'Materi 1', 'indicator' => 'Indikator 1']),
+        ]));
+        $element = $this->profileElement($import);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([[
+            'index' => 1,
+            'fields' => [
+                'objective' => $this->groundedField($element->profile_element_id),
+            ],
+        ]]);
+
+        $this->process($import);
+        $import->refresh();
+        $candidates = $import->grounding_result['candidates'];
+
+        $this->assertSame([0, 1], array_column($candidates, 'index'));
+        $this->assertSame('unresolved', $candidates[0]['fields']['objective']['status']);
+        $this->assertSame('unresolved', $candidates[0]['fields']['topic']['status']);
+        $this->assertSame('unresolved', $candidates[0]['fields']['indicator']['status']);
+        $this->assertSame('not_applicable', $candidates[0]['fields']['material']['status']);
+        $this->assertSame([], $candidates[0]['fields']['objective']['material_evidence']);
+        $this->assertSame('grounded', $candidates[1]['fields']['objective']['status']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['topic']['status']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['material']['status']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['indicator']['status']);
+    }
+
+    public function test_import_three_shape_partial_provider_result_still_becomes_ready(): void
+    {
+        $import = $this->queuedImport($this->interpretation('blueprint_like', [
+            $this->candidate([
+                'objective' => 'Memberikan arah yang jelas kepada mahasiswa untuk menyelesaikan studi',
+                'topic' => 'Jenis Tugas Akhir',
+                'material' => 'Pengertian dan jenis-jenis tugas akhir di Universitas Negeri Semarang',
+                'indicator' => 'Mahasiswa dapat memilih jenis tugas akhir sesuai kapasitas berdasarkan Permendikbudristek Nomor 53 Tahun 2023',
+            ]),
+            $this->candidate([
+                'objective' => 'Menjelaskan kriteria dan bobot penilaian dalam ujian publikasi ilmiah',
+                'topic' => 'Publikasi Ilmiah',
+                'material' => 'Pedoman Penilaian Publikasi Ilmiah',
+                'indicator' => 'Nilai minimal kelulusan ujian tugas akhir adalah B',
+            ]),
+        ]));
+        $element = $this->profileElement($import);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([
+            [
+                'index' => 1,
+                'fields' => [
+                    'objective' => $this->groundedField($element->profile_element_id),
+                ],
+            ],
+            [
+                'index' => 0,
+                'fields' => [
+                    'objective' => $this->groundedField($element->profile_element_id),
+                    'topic' => $this->groundedField($element->profile_element_id),
+                    'indicator' => $this->groundedField($element->profile_element_id),
+                ],
+            ],
+        ]);
+
+        $this->process($import);
+        $import->refresh();
+        $candidates = $import->grounding_result['candidates'];
+
+        $this->assertSame(BlueprintImportGroundingStatus::READY, $import->grounding_status);
+        $this->assertNull($import->grounding_error_code);
+        $this->assertSame([0, 1], array_column($candidates, 'index'));
+        $this->assertSame(
+            ['objective', 'topic', 'material', 'indicator'],
+            array_keys($candidates[0]['fields']),
+        );
+        $this->assertSame(
+            ['objective', 'topic', 'material', 'indicator'],
+            array_keys($candidates[1]['fields']),
+        );
+        $this->assertSame('unresolved', $candidates[0]['fields']['material']['status']);
+        $this->assertSame([], $candidates[0]['fields']['material']['material_evidence']);
+        $this->assertSame('grounded', $candidates[1]['fields']['objective']['status']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['topic']['status']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['material']['status']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['indicator']['status']);
+        foreach ([$candidates[0]['fields']['material'], $candidates[1]['fields']['topic'], $candidates[1]['fields']['material'], $candidates[1]['fields']['indicator']] as $field) {
+            $this->assertSame('unresolved', $field['status']);
+            $this->assertSame([], $field['material_evidence']);
+            $this->assertNotContains($field['status'], ['grounded', 'ambiguous', 'not_applicable']);
+        }
+    }
+
+    public function test_complete_provider_result_keeps_grounded_evidence(): void
+    {
+        $import = $this->queuedImport($this->interpretation('blueprint_like', [
+            $this->candidate([
+                'objective' => 'Obj',
+                'topic' => 'Topik',
+                'material' => 'Materi',
+                'indicator' => 'Indikator',
+            ]),
+        ]));
+        $element = $this->profileElement($import);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([[
+            'index' => 0,
+            'fields' => [
+                'objective' => $this->groundedField($element->profile_element_id),
+                'topic' => $this->groundedField($element->profile_element_id),
+                'material' => $this->groundedField($element->profile_element_id),
+                'indicator' => $this->groundedField($element->profile_element_id),
+            ],
+        ]]);
+
+        $this->process($import);
+        $import->refresh();
+        $fields = $import->grounding_result['candidates'][0]['fields'];
+
+        foreach (['objective', 'topic', 'material', 'indicator'] as $field) {
+            $this->assertSame('grounded', $fields[$field]['status']);
+            $this->assertSame($element->profile_element_id, $fields[$field]['material_evidence'][0]['profile_element_id']);
+        }
+    }
+
+    public function test_unknown_candidate_index_and_unknown_field_are_rejected(): void
+    {
+        $interpretation = $this->interpretation('blueprint_like', [
+            $this->candidate(['objective' => 'Obj', 'topic' => 'Topik']),
+            $this->candidate(['objective' => 'Obj 1']),
+        ]);
+        $import = $this->queuedImport($interpretation);
+        $element = $this->profileElement($import);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([
+            ['index' => 0, 'fields' => ['objective' => $this->groundedField($element->profile_element_id)]],
+            ['index' => 1, 'fields' => ['objective' => $this->groundedField($element->profile_element_id)]],
+            ['index' => 7, 'fields' => ['objective' => $this->groundedField($element->profile_element_id)]],
+        ]);
+
+        try {
+            $this->process($import);
+            $this->fail('An unexpected candidate index must fail closed.');
+        } catch (BlueprintMalformedResponseException $exception) {
+            $this->assertSame('The grounding provider returned an unexpected candidate index.', $exception->getMessage());
+        }
+
+        $import->refresh();
+        $this->assertSame(BlueprintImportGroundingStatus::QUEUED, $import->grounding_status);
+        $this->assertSame(ProcessQuestionBlueprintImportGrounding::ERROR_PROVIDER_INVALID_RESPONSE, $import->grounding_error_code);
+
+        $fieldImport = $this->queuedImport($interpretation);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([[
+            'index' => 0,
+            'fields' => [
+                'objective' => $this->groundedField($element->profile_element_id),
+                'difficulty' => $this->groundedField($element->profile_element_id),
+            ],
+        ]]);
+
+        try {
+            $this->process($fieldImport);
+            $this->fail('An unexpected field must fail closed.');
+        } catch (BlueprintMalformedResponseException $exception) {
+            $this->assertSame('The grounding provider returned an unknown factual field.', $exception->getMessage());
+        }
+    }
+
+    public function test_invalid_element_id_and_invalid_status_remain_rejected(): void
+    {
+        $import = $this->queuedImport();
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([[
+            'index' => 0,
+            'fields' => [
+                'objective' => ['status' => 'grounded', 'profile_element_ids' => [999999]],
+            ],
+        ]]);
+
+        try {
+            $this->process($import);
+            $this->fail('An unknown profile element must fail closed.');
+        } catch (BlueprintMalformedResponseException $exception) {
+            $this->assertSame('The grounding provider referenced an unknown profile_element_id.', $exception->getMessage());
+        }
+
+        $statusImport = $this->queuedImport();
+        $element = $this->profileElement($statusImport);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([[
+            'index' => 0,
+            'fields' => [
+                'objective' => ['status' => 'not_applicable', 'profile_element_ids' => [$element->profile_element_id]],
+            ],
+        ]]);
+
+        try {
+            $this->process($statusImport);
+            $this->fail('An illegal field status must fail closed.');
+        } catch (BlueprintMalformedResponseException $exception) {
+            $this->assertSame('The grounding provider returned an invalid field status.', $exception->getMessage());
+        }
+    }
+
+    public function test_candidate_specific_claims_do_not_receive_another_candidates_material(): void
+    {
+        $import = $this->queuedImport($this->interpretation('blueprint_like', [
+            $this->candidate([
+                'objective' => 'Obj 0',
+                'topic' => 'Topik 0',
+                'material' => 'Materi 0',
+                'indicator' => 'Indikator 0',
+            ]),
+            $this->candidate([
+                'objective' => 'Obj 1',
+                'topic' => 'Topik 1',
+                'indicator' => 'Indikator 1',
+            ]),
+        ]));
+        $element = $this->profileElement($import);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([
+            [
+                'index' => 0,
+                'fields' => [
+                    'objective' => $this->groundedField($element->profile_element_id),
+                    'indicator' => $this->groundedField($element->profile_element_id),
+                ],
+            ],
+            [
+                'index' => 1,
+                'fields' => [
+                    'topic' => $this->groundedField($element->profile_element_id),
+                ],
+            ],
+        ]);
+
+        $this->process($import);
+        $import->refresh();
+        $second = $import->grounding_result['candidates'][1]['fields'];
+
+        $this->assertSame('unresolved', $second['objective']['status']);
+        $this->assertSame('grounded', $second['topic']['status']);
+        $this->assertSame('not_applicable', $second['material']['status']);
+        $this->assertSame('unresolved', $second['indicator']['status']);
+        $this->assertSame([], $second['material']['material_evidence']);
+        $this->assertNull($second['material']['claim_raw']);
+    }
+
+    public function test_import_three_exact_indicator_is_rescued_and_non_exact_topic_stays_unresolved(): void
+    {
+        $indicatorZero = 'Mahasiswa dapat memilih jenis tugas akhir sesuai kapasitas berdasarkan Permendikbudristek Nomor 53 Tahun 2023';
+        $indicatorOne = 'Nilai minimal kelulusan ujian tugas akhir adalah B';
+        $import = $this->queuedImport($this->interpretation('blueprint_like', [
+            $this->candidate([
+                'objective' => 'Memberikan arah yang jelas kepada mahasiswa untuk menyelesaikan studi',
+                'topic' => 'Jenis Tugas Akhir',
+                'material' => 'Pengertian dan jenis-jenis tugas akhir di Universitas Negeri Semarang',
+                'indicator' => $indicatorZero,
+            ]),
+            $this->candidate([
+                'objective' => 'Menjelaskan kriteria dan bobot penilaian dalam ujian publikasi ilmiah',
+                'topic' => 'Publikasi Ilmiah',
+                'material' => 'Pedoman Penilaian Publikasi Ilmiah',
+                'indicator' => $indicatorOne,
+            ]),
+        ]));
+        $sibling = $this->profileElement($import);
+        $exactIndicator = MaterialProfileElement::factory()->extracted()->create([
+            'profile_version_id' => $import->profile_version_id,
+            'source_chunk_id' => $sibling->source_chunk_id,
+            'kind' => MaterialProfileElementKind::INDICATOR,
+            'text' => $indicatorZero,
+            'evidence_excerpt' => 'bukan kunci pencocokan',
+        ]);
+        MaterialProfileElement::factory()->extracted()->create([
+            'profile_version_id' => $import->profile_version_id,
+            'source_chunk_id' => $sibling->source_chunk_id,
+            'kind' => MaterialProfileElementKind::INDICATOR,
+            'text' => '  '.$indicatorOne.'  ',
+        ]);
+        MaterialProfileElement::factory()->extracted()->create([
+            'profile_version_id' => $import->profile_version_id,
+            'source_chunk_id' => $sibling->source_chunk_id,
+            'kind' => MaterialProfileElementKind::TOPIC,
+            'text' => 'Ketentuan Publikasi Ilmiah',
+        ]);
+        MaterialProfileElement::factory()->extracted()->create([
+            'profile_version_id' => $import->profile_version_id,
+            'source_chunk_id' => $sibling->source_chunk_id,
+            'kind' => MaterialProfileElementKind::TOPIC,
+            'text' => 'Pedoman Penilaian Publikasi Ilmiah',
+        ]);
+        $this->fake->using = fn (): BlueprintImportGroundingProviderResult => $this->providerResult([
+            [
+                'index' => 0,
+                'fields' => [
+                    'objective' => $this->groundedField($sibling->profile_element_id),
+                    'topic' => $this->groundedField($sibling->profile_element_id),
+                    'indicator' => ['status' => 'unresolved', 'profile_element_ids' => []],
+                ],
+            ],
+            [
+                'index' => 1,
+                'fields' => [
+                    'objective' => $this->groundedField($sibling->profile_element_id),
+                ],
+            ],
+        ]);
+
+        $this->process($import);
+        $import->refresh();
+        $candidates = $import->grounding_result['candidates'];
+
+        $this->assertSame(BlueprintImportGroundingStatus::READY, $import->grounding_status);
+        $this->assertSame('grounded', $candidates[0]['fields']['objective']['status']);
+        $this->assertSame('grounded', $candidates[0]['fields']['topic']['status']);
+        $this->assertSame('grounded', $candidates[0]['fields']['indicator']['status']);
+        $this->assertSame($exactIndicator->profile_element_id, $candidates[0]['fields']['indicator']['material_evidence'][0]['profile_element_id']);
+        $this->assertSame('unresolved', $candidates[0]['fields']['material']['status']);
+        $this->assertSame([], $candidates[0]['fields']['material']['material_evidence']);
+        $this->assertSame('grounded', $candidates[1]['fields']['indicator']['status']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['topic']['status']);
+        $this->assertSame([], $candidates[1]['fields']['topic']['material_evidence']);
+        $this->assertSame('unresolved', $candidates[1]['fields']['material']['status']);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $candidates
+     */
+    private function providerResult(array $candidates): BlueprintImportGroundingProviderResult
+    {
+        return new BlueprintImportGroundingProviderResult(
+            $candidates,
+            [],
+            new BlueprintProviderAttemptMetadata('fake', 'fake-model', 'blueprint-import-ground-v1', 1, 1, 2, 1),
+        );
+    }
+
+    /**
+     * @return array{status: string, profile_element_ids: list<int>}
+     */
+    private function groundedField(int $elementId): array
+    {
+        return [
+            'status' => 'grounded',
+            'profile_element_ids' => [$elementId],
         ];
     }
 
