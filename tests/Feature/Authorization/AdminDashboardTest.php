@@ -45,10 +45,47 @@ class AdminDashboardTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))
             ->assertOk()
-            ->assertSee('Total User')
-            ->assertSee('Total Admin')
+            ->assertSee('Dasbor admin')
+            ->assertSee('Jumlah pengguna: 2', false)
+            ->assertSee('Jumlah admin: 1', false)
+            ->assertSee('Verifikasi pembayaran')
+            ->assertSee(route('admin.subscription-upgrades.index', ['status' => 'pending']), false)
+            ->assertSee('Kembali ke dasbor')
+            ->assertSee(route('dashboard'), false)
+            ->assertDontSee('Phase 1')
+            ->assertDontSee('Materi saya')
             ->assertViewHas('totalUsers', 2)
             ->assertViewHas('totalAdmins', 1);
+    }
+
+    public function test_ordinary_user_sees_user_dashboard_without_admin_link(): void
+    {
+        $user = $this->createCompleteUserWithRole(RoleName::USER);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Kelola materi')
+            ->assertSee(route('materials.index'), false)
+            ->assertSee('Bank soal')
+            ->assertSee(route('question-sets.index'), false)
+            ->assertSee('Langganan')
+            ->assertSee(route('account.subscription.show'), false)
+            ->assertDontSee('Dasbor admin');
+    }
+
+    public function test_admin_sees_user_dashboard_with_admin_link(): void
+    {
+        $admin = $this->createCompleteUserWithRole(RoleName::ADMIN);
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Kelola materi')
+            ->assertSee('Bank soal')
+            ->assertSee('Langganan')
+            ->assertSee('Dasbor admin')
+            ->assertSee(route('admin.dashboard'), false);
     }
 
     private function createCompleteUserWithRole(

@@ -129,7 +129,7 @@ class QuestionSetIndexShowTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Question Bank')
+            ->assertSee('Bank soal')
             ->assertSee(route('question-sets.index', absolute: false), false)
             ->assertDontSee('Segera hadir pada phase berikutnya.');
 

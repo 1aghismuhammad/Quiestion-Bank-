@@ -1,26 +1,17 @@
 @extends('layouts.app')
 
-@section('title', 'Admin Dashboard')
+@section('title', 'Dasbor admin')
 
 @section('content')
-    <p class="muted">ADMIN DASHBOARD</p>
-    <h1>Ringkasan pengguna</h1>
-    <p class="muted">Monitoring detail belum termasuk dalam Phase 1.</p>
+    <x-ui.page-header>
+        Dasbor admin
+    </x-ui.page-header>
 
-    <p>
-        <a class="button" href="{{ route('materials.index') }}">Materi saya</a>
-        <a class="button" href="{{ route('admin.subscription-upgrades.index') }}">Verifikasi upgrade</a>
-    </p>
+    <p>Jumlah pengguna: {{ $totalUsers }}</p>
+    <p>Jumlah admin: {{ $totalAdmins }}</p>
 
-    <div class="grid" style="margin-top: 24px;">
-        <div class="card">
-            <span class="muted">Total User</span>
-            <p class="stat">{{ $totalUsers }}</p>
-        </div>
-
-        <div class="card">
-            <span class="muted">Total Admin</span>
-            <p class="stat">{{ $totalAdmins }}</p>
-        </div>
+    <div class="action-stack">
+        <x-ui.button href="{{ route('admin.subscription-upgrades.index', ['status' => 'pending']) }}">Verifikasi pembayaran</x-ui.button>
+        <x-ui.button variant="secondary" href="{{ route('dashboard') }}">Kembali ke dasbor</x-ui.button>
     </div>
 @endsection

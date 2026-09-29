@@ -82,12 +82,10 @@ class GenerationHistoryTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
-            ->assertSee('Generate Question')
+            ->assertSee('Kelola materi')
             ->assertSee(route('materials.index', absolute: false), false)
-            ->assertSee('History')
-            ->assertSee(route('generations.index', absolute: false), false)
-            ->assertSee('Question Bank')
-            ->assertSee(route('question-sets.index', absolute: false), false)
+            ->assertDontSee('Generate Question')
+            ->assertDontSee('Material Management')
             ->assertDontSee('Segera hadir pada phase berikutnya.');
     }
 }
