@@ -37,6 +37,8 @@
     --control-height: 44px;
     --control-height-compact: 36px;
     --container-app: 72rem;
+    --container-form: 40rem;
+    --container-reading: 40rem;
     --page-padding-inline: 16px;
     --shadow-none: none;
     --shadow-subtle: 0 1px 2px rgb(28 36 48 / 0.06);
@@ -152,6 +154,42 @@ a {
 
 .page {
     padding: 40px 0;
+}
+
+.page-reading {
+    width: min(var(--container-reading), 100%);
+    margin-inline: auto;
+}
+
+.page-form {
+    width: min(var(--container-form), 100%);
+    margin-inline: auto;
+}
+
+.page-form form {
+    display: grid;
+    gap: 16px;
+}
+
+.ui-input {
+    width: 100%;
+    min-height: var(--control-height);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    font: inherit;
+}
+
+.ui-input[aria-invalid="true"] {
+    border-color: var(--color-danger);
+}
+
+.ui-input:disabled {
+    background: var(--color-surface-subtle);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
 }
 
 .ui-button {

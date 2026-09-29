@@ -14,6 +14,43 @@ class ProfileSetupTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_incomplete_user_sees_whatsapp_setup_form(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('profile.setup'))
+            ->assertOk()
+            ->assertSee('Lengkapi profil')
+            ->assertSee('Nomor WhatsApp')
+            ->assertSee('name="phone_number"', false)
+            ->assertSee('id="phone_number"', false)
+            ->assertSee('Simpan dan lanjutkan');
+    }
+
+    public function test_invalid_phone_is_shown_beside_the_field(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->from(route('profile.setup'))
+            ->followingRedirects()
+            ->post(route('profile.setup.store'), [
+                'phone_number' => 'not-a-phone-number',
+            ])
+            ->assertOk()
+            ->assertSee('The phone number field is required.', false)
+            ->assertSee('value="not-a-phone-number"', false)
+            ->assertSee('aria-invalid="true"', false)
+            ->assertSee('aria-describedby="phone_number-error"', false)
+            ->assertSee('id="phone_number-error"', false)
+            ->assertSee('Simpan dan lanjutkan');
+
+        $this->assertDatabaseMissing('whatsapp_contacts', [
+            'user_id' => $user->id,
+        ]);
+    }
+
     public function test_incomplete_user_is_redirected_to_profile_setup(): void
     {
         $user = User::factory()->create();

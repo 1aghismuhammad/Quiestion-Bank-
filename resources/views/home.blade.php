@@ -3,17 +3,18 @@
 @section('title', 'AI Question Bank')
 
 @section('content')
-    <div class="card" style="max-width: 720px; margin: 48px auto; text-align: center; padding: 48px;">
-        <p class="muted">AI QUESTION BANK SAAS</p>
-        <h1>Buat bank soal dari materi pembelajaran</h1>
-        <p class="muted">
-            Masuk menggunakan akun Google untuk mengakses dashboard dan melengkapi profil.
-        </p>
+    <div class="page-reading">
+        <x-ui.page-header>
+            Masuk ke AI Question Bank
+            <x-slot:supporting>
+                Buat bank soal dari materi pembelajaran.
+            </x-slot:supporting>
+        </x-ui.page-header>
 
         @auth
-            <a class="button" href="{{ route('dashboard') }}">Buka Dashboard</a>
+            <x-ui.button href="{{ route('dashboard') }}">Buka dasbor</x-ui.button>
         @else
-            <a class="button" href="{{ route('auth.google.redirect') }}">Login dengan Google</a>
+            <x-ui.button href="{{ route('login') }}">Login dengan Google</x-ui.button>
         @endauth
     </div>
 @endsection
