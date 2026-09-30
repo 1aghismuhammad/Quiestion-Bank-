@@ -1,29 +1,39 @@
 @php
     $statusLabels = [
         'draft' => 'Draf',
-        'generating' => 'Menghasilkan',
-        'review' => 'Tinjauan',
+        'generating' => 'Dihasilkan',
+        'review' => 'Ditinjau',
         'published' => 'Terbit',
-        'archived' => 'Arsip',
+        'archived' => 'Diarsipkan',
+    ];
+    $statusVariants = [
+        'draft' => 'neutral',
+        'generating' => 'processing',
+        'review' => 'info',
+        'published' => 'success',
+        'archived' => 'neutral',
     ];
 @endphp
 
 @extends('layouts.app')
 
-@section('title', 'Question Bank')
+@section('title', 'Bank soal')
 
 @section('content')
-    <p class="muted">QUESTION BANK</p>
-    <h1>Bank soal</h1>
+    <x-ui.page-header>
+        Bank soal
+    </x-ui.page-header>
 
     @if ($questionSets->isEmpty())
-        <div class="card">
-            <p>Belum ada soal di Question Bank.</p>
-            <p class="muted">Simpan generasi yang selesai dari halaman generasi soal.</p>
-            <a class="button" href="{{ route('generations.index') }}">Lihat riwayat generasi</a>
-        </div>
+        <x-ui.empty-state>
+            Belum ada set soal.
+            <x-slot:action>
+                <x-ui.button variant="tertiary" href="{{ route('generations.index') }}">Riwayat pembuatan dari materi</x-ui.button>
+            </x-slot:action>
+        </x-ui.empty-state>
+        <p class="muted">Set soal yang dibuat dari kisi-kisi juga muncul di sini setelah disimpan dari halaman hasil generasi.</p>
     @else
-        <div class="card">
+        <div class="responsive-table table-wrap">
             <table class="table">
                 <thead>
                     <tr>
@@ -31,44 +41,60 @@
                         <th>Status</th>
                         <th>Jumlah soal</th>
                         <th>Dibuat</th>
-                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach ($questionSets as $questionSet)
+                        @php
+                            $statusValue = $questionSet->status->value;
+                        @endphp
                         <tr>
                             <td>
                                 <a href="{{ route('question-sets.show', $questionSet) }}">{{ $questionSet->title }}</a>
                             </td>
                             <td>
-                                <span class="status">{{ $statusLabels[$questionSet->status->value] ?? $questionSet->status->value }}</span>
-                                <span class="muted">({{ $questionSet->status->value }})</span>
+                                <x-ui.status-badge :variant="$statusVariants[$statusValue] ?? 'neutral'">
+                                    {{ $statusLabels[$statusValue] ?? 'Status tidak dikenali' }}
+                                </x-ui.status-badge>
                             </td>
                             <td>{{ $questionSet->total_question }}</td>
                             <td class="muted">{{ $questionSet->created_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</td>
-                            <td>
-                                <a href="{{ route('question-sets.show', $questionSet) }}">Lihat</a>
-                            </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-
-            @if ($questionSets->hasPages())
-                <div class="actions" style="margin-top: 16px;">
-                    @if ($questionSets->onFirstPage())
-                        <span class="muted">Sebelumnya</span>
-                    @else
-                        <a class="button button-secondary" href="{{ $questionSets->previousPageUrl() }}">Sebelumnya</a>
-                    @endif
-
-                    @if ($questionSets->hasMorePages())
-                        <a class="button button-secondary" href="{{ $questionSets->nextPageUrl() }}">Berikutnya</a>
-                    @else
-                        <span class="muted">Berikutnya</span>
-                    @endif
-                </div>
-            @endif
         </div>
+
+        <div class="responsive-summary">
+            @foreach ($questionSets as $questionSet)
+                @php
+                    $statusValue = $questionSet->status->value;
+                @endphp
+                <article class="summary-row">
+                    <x-ui.status-badge :variant="$statusVariants[$statusValue] ?? 'neutral'">
+                        {{ $statusLabels[$statusValue] ?? 'Status tidak dikenali' }}
+                    </x-ui.status-badge>
+                    <strong><a href="{{ route('question-sets.show', $questionSet) }}">{{ $questionSet->title }}</a></strong>
+                    <p class="muted">{{ $questionSet->total_question }} soal</p>
+                    <p class="muted">{{ $questionSet->created_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
+                </article>
+            @endforeach
+        </div>
+
+        @if ($questionSets->hasPages())
+            <div class="action-stack" style="margin-top: 16px;">
+                @if ($questionSets->onFirstPage())
+                    <span class="muted">Sebelumnya</span>
+                @else
+                    <x-ui.button variant="secondary" href="{{ $questionSets->previousPageUrl() }}">Sebelumnya</x-ui.button>
+                @endif
+
+                @if ($questionSets->hasMorePages())
+                    <x-ui.button variant="secondary" href="{{ $questionSets->nextPageUrl() }}">Berikutnya</x-ui.button>
+                @else
+                    <span class="muted">Berikutnya</span>
+                @endif
+            </div>
+        @endif
     @endif
 @endsection

@@ -1,23 +1,44 @@
+@php
+    $statusLabels = [
+        'pending' => 'Tertunda',
+        'approved' => 'Disetujui',
+        'rejected' => 'Ditolak',
+        'cancelled' => 'Dibatalkan',
+    ];
+    $statusVariants = [
+        'pending' => 'processing',
+        'approved' => 'success',
+        'rejected' => 'danger',
+        'cancelled' => 'neutral',
+    ];
+    $filters = [
+        'pending' => 'Tertunda',
+        'approved' => 'Disetujui',
+        'rejected' => 'Ditolak',
+        'cancelled' => 'Dibatalkan',
+        'all' => 'Semua',
+    ];
+@endphp
+
 @extends('layouts.app')
 
-@section('title', 'Verifikasi upgrade')
+@section('title', 'Verifikasi pembayaran')
 
 @section('content')
-    <p class="muted">ADMIN</p>
-    <h1>Verifikasi pembayaran upgrade</h1>
+    <x-ui.page-header>
+        Verifikasi pembayaran
+    </x-ui.page-header>
 
-    <div class="actions" style="margin-bottom: 16px;">
-        <a class="button button-secondary" href="{{ route('admin.subscription-upgrades.index', ['status' => 'pending']) }}">Pending</a>
-        <a class="button button-secondary" href="{{ route('admin.subscription-upgrades.index', ['status' => 'approved']) }}">Approved</a>
-        <a class="button button-secondary" href="{{ route('admin.subscription-upgrades.index', ['status' => 'rejected']) }}">Rejected</a>
-        <a class="button button-secondary" href="{{ route('admin.subscription-upgrades.index', ['status' => 'cancelled']) }}">Cancelled</a>
-        <a class="button button-secondary" href="{{ route('admin.subscription-upgrades.index', ['status' => 'all']) }}">Semua</a>
+    <div class="action-stack" style="margin-bottom: 16px;">
+        @foreach ($filters as $value => $label)
+            <x-ui.button variant="secondary" href="{{ route('admin.subscription-upgrades.index', ['status' => $value]) }}">{{ $label }}</x-ui.button>
+        @endforeach
     </div>
 
-    <div class="card">
-        @if ($requests->isEmpty())
-            <p>Tidak ada permintaan.</p>
-        @else
+    @if ($requests->isEmpty())
+        <x-ui.empty-state>Tidak ada permintaan.</x-ui.empty-state>
+    @else
+        <div class="responsive-table table-wrap">
             <table class="table">
                 <thead>
                     <tr>
@@ -31,6 +52,9 @@
                 </thead>
                 <tbody>
                     @foreach ($requests as $upgradeRequest)
+                        @php
+                            $statusValue = $upgradeRequest->status->value;
+                        @endphp
                         <tr>
                             <td>
                                 <a href="{{ route('admin.subscription-upgrades.show', $upgradeRequest) }}">
@@ -40,28 +64,51 @@
                             <td>{{ $upgradeRequest->user?->email }}</td>
                             <td>{{ $upgradeRequest->offer_name }}</td>
                             <td>Rp{{ number_format($upgradeRequest->price_amount, 0, ',', '.') }}</td>
-                            <td>{{ $upgradeRequest->status->value }}</td>
+                            <td>
+                                <x-ui.status-badge :variant="$statusVariants[$statusValue] ?? 'neutral'">
+                                    {{ $statusLabels[$statusValue] ?? 'Status tidak dikenali' }}
+                                </x-ui.status-badge>
+                            </td>
                             <td class="muted">{{ $upgradeRequest->requested_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
+        </div>
 
-            @if ($requests->hasPages())
-                <div class="actions" style="margin-top: 16px;">
-                    @if ($requests->onFirstPage())
-                        <span class="muted">Sebelumnya</span>
-                    @else
-                        <a class="button button-secondary" href="{{ $requests->previousPageUrl() }}">Sebelumnya</a>
-                    @endif
+        <div class="responsive-summary">
+            @foreach ($requests as $upgradeRequest)
+                @php
+                    $statusValue = $upgradeRequest->status->value;
+                @endphp
+                <article class="summary-row">
+                    <x-ui.status-badge :variant="$statusVariants[$statusValue] ?? 'neutral'">
+                        {{ $statusLabels[$statusValue] ?? 'Status tidak dikenali' }}
+                    </x-ui.status-badge>
+                    <strong>
+                        <a href="{{ route('admin.subscription-upgrades.show', $upgradeRequest) }}">{{ $upgradeRequest->reference_code }}</a>
+                    </strong>
+                    <p>{{ $upgradeRequest->user?->email }}</p>
+                    <p class="muted">{{ $upgradeRequest->offer_name }} · Rp{{ number_format($upgradeRequest->price_amount, 0, ',', '.') }}</p>
+                    <p class="muted">{{ $upgradeRequest->requested_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
+                </article>
+            @endforeach
+        </div>
 
-                    @if ($requests->hasMorePages())
-                        <a class="button button-secondary" href="{{ $requests->nextPageUrl() }}">Berikutnya</a>
-                    @else
-                        <span class="muted">Berikutnya</span>
-                    @endif
-                </div>
-            @endif
+        @if ($requests->hasPages())
+            <div class="action-stack" style="margin-top: 16px;">
+                @if ($requests->onFirstPage())
+                    <span class="muted">Sebelumnya</span>
+                @else
+                    <x-ui.button variant="secondary" href="{{ $requests->previousPageUrl() }}">Sebelumnya</x-ui.button>
+                @endif
+
+                @if ($requests->hasMorePages())
+                    <x-ui.button variant="secondary" href="{{ $requests->nextPageUrl() }}">Berikutnya</x-ui.button>
+                @else
+                    <span class="muted">Berikutnya</span>
+                @endif
+            </div>
         @endif
-    </div>
+    @endif
 @endsection

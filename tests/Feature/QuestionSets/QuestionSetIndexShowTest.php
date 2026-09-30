@@ -40,7 +40,10 @@ class QuestionSetIndexShowTest extends TestCase
         $this->actingAs($owner)
             ->get(route('question-sets.index'))
             ->assertOk()
-            ->assertSee('Belum ada soal di Question Bank')
+            ->assertSee('Belum ada set soal.')
+            ->assertSee('Riwayat pembuatan dari materi')
+            ->assertSee('Set soal yang dibuat dari kisi-kisi juga muncul di sini setelah disimpan dari halaman hasil generasi.')
+            ->assertSee(route('generations.index', absolute: false), false)
             ->assertDontSee('Foreign bank title');
 
         QuestionSet::factory()->for($owner)->count(15)->create();
@@ -50,6 +53,8 @@ class QuestionSetIndexShowTest extends TestCase
             ->get(route('question-sets.index'))
             ->assertOk()
             ->assertSee('Visible bank set')
+            ->assertSee('Draf')
+            ->assertDontSee('(draft)')
             ->assertDontSee('Foreign bank title')
             ->assertSee('Berikutnya');
 
@@ -87,7 +92,8 @@ class QuestionSetIndexShowTest extends TestCase
             ->get(route('question-sets.show', $set))
             ->assertOk()
             ->assertSee('Bank detail')
-            ->assertSee('draft')
+            ->assertSee('Draf')
+            ->assertDontSee('(draft)')
             ->assertSee('Visible bank stem')
             ->assertSee('Option A for Visible bank stem')
             ->assertSee('Option B for Visible bank stem')
@@ -97,7 +103,29 @@ class QuestionSetIndexShowTest extends TestCase
             ->assertDontSee('execution_token')
             ->assertSee('Edit')
             ->assertSee('Terbitkan')
+            ->assertDontSee('Unduh DOCX')
             ->assertDontSee('Hapus');
+    }
+
+    public function test_published_show_offers_downloads_without_edit_or_publish(): void
+    {
+        $owner = $this->createCompleteUser();
+        $set = QuestionSet::factory()->for($owner)->create([
+            'title' => 'Set terbit',
+            'status' => QuestionSetStatus::PUBLISHED,
+            'total_question' => 0,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('question-sets.show', $set))
+            ->assertOk()
+            ->assertSee('Terbit')
+            ->assertSee('Unduh DOCX siswa')
+            ->assertSee('Unduh DOCX guru')
+            ->assertSee(route('question-sets.download-student', $set, false), false)
+            ->assertSee(route('question-sets.download-teacher', $set, false), false)
+            ->assertDontSee('Terbitkan')
+            ->assertDontSee('>Edit<', false);
     }
 
     public function test_stranger_and_admin_cannot_show_foreign_set(): void

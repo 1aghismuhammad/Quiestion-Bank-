@@ -46,12 +46,16 @@ class AccountSubscriptionPageTest extends TestCase
             ->assertOk()
             ->assertSee('Free')
             ->assertSee('0,0 MiB / 50,0 MiB')
+            ->assertSee('Kuota pembuatan soal:')
+            ->assertDontSee('Kuota generation:', false)
             ->assertSee('2 seumur hidup')
             ->assertDontSee('used')
             ->assertDontSee('remaining')
             ->assertDontSee('0 / 100')
             ->assertSee('Pro 1 bulan')
-            ->assertSee('Pro 3 bulan');
+            ->assertSee('Pro 3 bulan')
+            ->assertSee('name="offer_id"', false)
+            ->assertDontSee('ui-button-primary', false);
     }
 
     public function test_pro_page_shows_validity_window_and_hides_inactive_offers(): void
@@ -80,9 +84,12 @@ class AccountSubscriptionPageTest extends TestCase
             ->assertSee('28 Aug 2026')
             ->assertSee('28 Sep 2026')
             ->assertSee('28 Oct 2026')
+            ->assertSee('Jendela pembuatan soal saat ini:')
+            ->assertDontSee('Jendela generation saat ini:', false)
             ->assertSee('Perpanjangan terantre')
             ->assertSee('Pro 1 bulan')
-            ->assertDontSee('Pro 3 bulan');
+            ->assertDontSee('Pro 3 bulan')
+            ->assertSee('ui-button-primary', false);
 
         Carbon::setTestNow();
     }
@@ -129,12 +136,32 @@ class AccountSubscriptionPageTest extends TestCase
         $this->assertSame(1, SubscriptionUpgradeRequest::query()->count());
         $pending = SubscriptionUpgradeRequest::query()->firstOrFail();
 
-        $this->actingAs($user)
+        $html = $this->actingAs($user)
             ->get(route('account.subscription.show'))
             ->assertOk()
             ->assertSee($pending->reference_code)
             ->assertSee('Permintaan tertunda')
-            ->assertSee('Selesaikan atau tunggu verifikasi');
+            ->assertSee('<strong>Referensi:</strong>', false)
+            ->assertDontSee('<strong>Ref:</strong>', false)
+            ->assertSee('Selesaikan atau tunggu verifikasi')
+            ->assertSee(route('account.subscription.confirm', absolute: false), false)
+            ->getContent();
+
+        $this->assertStringNotContainsString('name="offer_id"', $html);
+
+        SubscriptionUpgradeRequest::factory()->for($user)->create([
+            'status' => UpgradeRequestStatus::CANCELLED,
+            'offer_id' => $one->offer_id,
+            'plan_id' => $one->plan_id,
+            'offer_name' => 'Riwayat dibatalkan',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('account.subscription.show'))
+            ->assertOk()
+            ->assertSee('Riwayat dibatalkan')
+            ->assertSee('<th>Referensi</th>', false)
+            ->assertDontSee('<th>Ref</th>', false);
     }
 
     public function test_user_does_not_see_another_users_pending_reference(): void

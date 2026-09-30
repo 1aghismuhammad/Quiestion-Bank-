@@ -62,7 +62,13 @@ class AdminSubscriptionUpgradeTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.subscription-upgrades.index'))
             ->assertOk()
-            ->assertSee($request->reference_code);
+            ->assertSee($request->reference_code)
+            ->assertSee('Tertunda')
+            ->assertSee('status=pending', false)
+            ->assertSee('status=approved', false)
+            ->assertSee('status=rejected', false)
+            ->assertSee('status=cancelled', false)
+            ->assertSee('status=all', false);
 
         $this->actingAs($admin)
             ->get(route('admin.subscription-upgrades.show', $request))
@@ -88,6 +94,16 @@ class AdminSubscriptionUpgradeTest extends TestCase
         $this->assertSame(1, Subscription::query()->count());
         $this->assertSame(UpgradeRequestStatus::APPROVED, $request->fresh()->status);
         $this->assertNotNull($request->fresh()->approved_subscription_id);
+
+        $this->actingAs($admin)
+            ->get(route('admin.subscription-upgrades.show', $request))
+            ->assertOk()
+            ->assertSee('Disetujui')
+            ->assertSee('Masa berlaku')
+            ->assertDontSee('Setujui')
+            ->assertDontSee('Batalkan')
+            ->assertDontSee('Tolak')
+            ->assertDontSee('snapshot');
     }
 
     public function test_reject_requires_reason_and_cancel_works(): void

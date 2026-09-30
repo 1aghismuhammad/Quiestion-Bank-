@@ -297,7 +297,8 @@ class UpdateDraftQuestionSetTest extends TestCase
             ->assertOk()
             ->assertSee('Form judul')
             ->assertSee('Stem 1')
-            ->assertSee('Simpan perubahan')
+            ->assertSee('Simpan')
+            ->assertDontSee('Simpan perubahan')
             ->assertDontSee('Hapus');
     }
 
