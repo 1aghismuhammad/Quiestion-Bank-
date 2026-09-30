@@ -21,7 +21,7 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>File</th>
+                        <th>Berkas</th>
                         <th>Ekstraksi</th>
                         <th>Interpretasi</th>
                         <th>Pencocokan</th>

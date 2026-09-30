@@ -42,8 +42,8 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Ref</th>
-                        <th>User</th>
+                        <th>Referensi</th>
+                        <th>Pengguna</th>
                         <th>Penawaran</th>
                         <th>Jumlah</th>
                         <th>Status</th>

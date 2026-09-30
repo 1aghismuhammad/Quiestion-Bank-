@@ -47,9 +47,9 @@
             Status saat ini: {{ $statusLabel }}
         </p>
         <p><strong>Materi:</strong> {{ $generation->material?->title ?? 'Materi tidak tersedia' }}</p>
-        <p><strong>Tipe assessment:</strong> {{ $generation->assessment_type->label() }}</p>
+        <p><strong>Jenis asesmen:</strong> {{ $generation->assessment_type->label() }}</p>
         <p><strong>Tingkat kesulitan:</strong> {{ $generation->difficulty_level->label() }}</p>
-        <p><strong>Tipe soal:</strong> {{ $generation->question_type->label() }}</p>
+        <p><strong>Bentuk soal:</strong> {{ $generation->question_type->label() }}</p>
         <p><strong>Jumlah soal:</strong> {{ $generation->question_count }}</p>
         <p><strong>Bahasa keluaran:</strong> {{ $languageLabels[$generation->output_language?->value] ?? 'Bahasa tidak dikenali' }}</p>
         <p class="muted">Antrian {{ $generation->queued_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Generations;
 
 use App\Enums\MaterialStatus;
+use App\Enums\OutputLanguage;
 use App\Enums\QuestionType;
 use App\Enums\UsageStatus;
 use App\Enums\UserStatus;
@@ -70,6 +71,11 @@ class GenerationCreateStoreTest extends TestCase
             ->assertOk()
             ->assertSee('Ready lesson')
             ->assertSee('Pilihan ganda')
+            ->assertSee('Jenis asesmen')
+            ->assertDontSee('Tipe assessment')
+            ->assertSee('Bentuk soal')
+            ->assertDontSee('Tipe soal')
+            ->assertDontSee('Tipe Soal')
             ->assertSee('Bahasa Indonesia')
             ->assertSee('English')
             ->assertSee('value="5"', false)
@@ -81,6 +87,26 @@ class GenerationCreateStoreTest extends TestCase
             ->assertDontSee('essay')
             ->assertDontSee('Simpan ke Question Bank')
             ->assertDontSee('Import ke Question Bank');
+    }
+
+    public function test_material_show_renders_generation_language_labels(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $this->startGeneration($owner, $material, outputLanguage: OutputLanguage::ID);
+        $this->startGeneration($owner, $material, outputLanguage: OutputLanguage::EN);
+
+        $html = $this->actingAs($owner)
+            ->get(route('materials.show', $material))
+            ->assertOk()
+            ->assertSee('Bahasa Indonesia')
+            ->assertSee('English')
+            ->assertSee('Menunggu diproses')
+            ->assertDontSee('Menunggu antrian')
+            ->getContent();
+
+        $this->assertStringNotContainsString('<td>id</td>', $html);
+        $this->assertStringNotContainsString('<td>en</td>', $html);
     }
 
     public function test_cross_user_material_create_and_store_are_forbidden(): void

@@ -68,7 +68,11 @@ class AdminSubscriptionUpgradeTest extends TestCase
             ->assertSee('status=approved', false)
             ->assertSee('status=rejected', false)
             ->assertSee('status=cancelled', false)
-            ->assertSee('status=all', false);
+            ->assertSee('status=all', false)
+            ->assertSee('<th>Referensi</th>', false)
+            ->assertSee('<th>Pengguna</th>', false)
+            ->assertDontSee('<th>Ref</th>', false)
+            ->assertDontSee('<th>User</th>', false);
 
         $this->actingAs($admin)
             ->get(route('admin.subscription-upgrades.show', $request))

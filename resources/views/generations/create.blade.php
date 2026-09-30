@@ -33,7 +33,7 @@
 
             <div class="field-grid">
                 <div>
-                    <label class="label" for="assessment_type">Tipe assessment</label>
+                    <label class="label" for="assessment_type">Jenis asesmen</label>
                     <select class="ui-input" id="assessment_type" name="assessment_type" required>
                         @foreach ($assessments as $assessment)
                             <option value="{{ $assessment->value }}" @selected(old('assessment_type', 'formative') === $assessment->value)>
@@ -61,7 +61,7 @@
                 </div>
 
                 <div>
-                    <label class="label" for="question_type_label">Tipe soal</label>
+                    <label class="label" for="question_type_label">Bentuk soal</label>
                     <input class="ui-input" id="question_type_label" type="text" value="Pilihan ganda" disabled>
                     <input type="hidden" name="question_type" value="multiple_choice">
                     @error('question_type')

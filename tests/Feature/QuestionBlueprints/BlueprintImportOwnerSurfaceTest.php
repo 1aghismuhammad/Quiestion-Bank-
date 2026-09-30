@@ -113,6 +113,8 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertOk()
             ->assertSee('newer.docx')
             ->assertSee('older.docx')
+            ->assertSee('<th>Berkas</th>', false)
+            ->assertDontSee('<th>File</th>', false)
             ->assertDontSee('foreign.docx')
             ->getContent();
 
@@ -629,6 +631,17 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertSee('name="rows[0][difficulty]"', false)
             ->assertSee('name="rows[0][question_type]"', false)
             ->assertSee('name="rows[0][requested_count]"', false)
+            ->assertSee('for="import-row-0-cognitive_level"', false)
+            ->assertSee('id="import-row-0-cognitive_level"', false)
+            ->assertSee('for="import-row-0-difficulty"', false)
+            ->assertSee('id="import-row-0-difficulty"', false)
+            ->assertSee('for="import-row-0-question_type"', false)
+            ->assertSee('id="import-row-0-question_type"', false)
+            ->assertSee('Bentuk soal')
+            ->assertDontSee('Tipe Soal')
+            ->assertDontSee('Tipe soal')
+            ->assertSee('for="import-row-0-requested_count"', false)
+            ->assertSee('id="import-row-0-requested_count"', false)
             ->getContent();
         $this->assertStringContainsString('ui-badge-success', $eligibleHtml);
 

@@ -4,11 +4,15 @@
     $extraction = $material->extraction_status->value;
     $manualRefresh = in_array($extraction, ['pending', 'processing', 'failed'], true);
     $generationLabels = [
-        'queued' => 'Menunggu antrian',
+        'queued' => 'Menunggu diproses',
         'processing' => 'Sedang diproses',
         'completed' => 'Selesai',
         'failed' => 'Gagal',
         'cancelled' => 'Dibatalkan',
+    ];
+    $languageLabels = [
+        'id' => 'Bahasa Indonesia',
+        'en' => 'English',
     ];
 @endphp
 
@@ -94,7 +98,7 @@
                                 <a href="{{ route('generations.show', $generation) }}">{{ $generationLabels[$generation->generation_status->value] ?? $generation->generation_status->value }}</a>
                             </td>
                             <td>{{ $generation->question_count }}</td>
-                            <td>{{ $generation->output_language?->value }}</td>
+                            <td>{{ $languageLabels[$generation->output_language?->value ?? ''] ?? 'Bahasa tidak dikenali' }}</td>
                             <td class="muted">{{ $generation->queued_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</td>
                         </tr>
                     @endforeach

@@ -241,26 +241,26 @@
                             <li><strong>{{ $field['label'] }}:</strong> {{ $field['value'] }}</li>
                         @endforeach
                     </ul>
-                    <label class="label">Level Kognitif</label>
-                    <select class="input" name="rows[{{ $candidate['index'] }}][cognitive_level]" required>
+                    <label class="label" for="import-row-{{ $candidate['index'] }}-cognitive_level">Level Kognitif</label>
+                    <select class="input" id="import-row-{{ $candidate['index'] }}-cognitive_level" name="rows[{{ $candidate['index'] }}][cognitive_level]" required>
                         @foreach ($cognitiveLevels as $level)
                             <option value="{{ $level->value }}">{{ $level->label() }}</option>
                         @endforeach
                     </select>
-                    <label class="label">Tingkat Kesulitan</label>
-                    <select class="input" name="rows[{{ $candidate['index'] }}][difficulty]" required>
+                    <label class="label" for="import-row-{{ $candidate['index'] }}-difficulty">Tingkat Kesulitan</label>
+                    <select class="input" id="import-row-{{ $candidate['index'] }}-difficulty" name="rows[{{ $candidate['index'] }}][difficulty]" required>
                         @foreach ($difficulties as $difficulty)
                             <option value="{{ $difficulty->value }}">{{ $difficulty->label() }}</option>
                         @endforeach
                     </select>
-                    <label class="label">Tipe Soal</label>
-                    <select class="input" name="rows[{{ $candidate['index'] }}][question_type]" required>
+                    <label class="label" for="import-row-{{ $candidate['index'] }}-question_type">Bentuk soal</label>
+                    <select class="input" id="import-row-{{ $candidate['index'] }}-question_type" name="rows[{{ $candidate['index'] }}][question_type]" required>
                         @foreach ($questionTypes as $type)
                             <option value="{{ $type->value }}">{{ $type->label() }}</option>
                         @endforeach
                     </select>
-                    <label class="label">Jumlah Soal</label>
-                    <input class="input" type="number" min="1" max="10" name="rows[{{ $candidate['index'] }}][requested_count]" value="1" required>
+                    <label class="label" for="import-row-{{ $candidate['index'] }}-requested_count">Jumlah Soal</label>
+                    <input class="input" id="import-row-{{ $candidate['index'] }}-requested_count" type="number" min="1" max="10" name="rows[{{ $candidate['index'] }}][requested_count]" value="1" required>
                 </div>
             @endforeach
             <button class="button" style="margin-top: 12px;" type="submit">Simpan sebagai draf</button>
