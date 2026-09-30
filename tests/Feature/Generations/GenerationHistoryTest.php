@@ -58,10 +58,12 @@ class GenerationHistoryTest extends TestCase
         $this->actingAs($owner)
             ->get(route('generations.index'))
             ->assertOk()
-            ->assertSee('Riwayat generasi')
+            ->assertSee('Pembuatan soal')
+            ->assertDontSee('Riwayat generasi')
             ->assertSee('Owner history material')
             ->assertDontSee('Foreign history material')
-            ->assertSee('queued')
+            ->assertSee('Menunggu diproses')
+            ->assertDontSee('queued')
             ->assertSee('Berikutnya')
             ->assertDontSee('Simpan ke Question Bank');
 
@@ -73,6 +75,19 @@ class GenerationHistoryTest extends TestCase
 
         $this->assertSame(16, $owner->generations()->count());
         $this->assertSame(1, $stranger->generations()->count());
+    }
+
+    public function test_empty_history_points_at_materials(): void
+    {
+        $owner = $this->createCompleteUser();
+
+        $this->actingAs($owner)
+            ->get(route('generations.index'))
+            ->assertOk()
+            ->assertSee('Pembuatan soal')
+            ->assertSee('Belum ada pembuatan soal.')
+            ->assertSee('Pilih materi')
+            ->assertSee(route('materials.index', absolute: false), false);
     }
 
     public function test_dashboard_links_to_materials_and_generation_history(): void

@@ -43,10 +43,13 @@ class GenerationShowStatusTest extends TestCase
         $this->actingAs($owner)
             ->get(route('generations.show', $queued))
             ->assertOk()
-            ->assertSee('queued')
+            ->assertSee('Menunggu diproses')
+            ->assertSee('data-generation-status="queued"', false)
+            ->assertSee('ui-badge-processing', false)
             ->assertSee('Owned material')
-            ->assertSee('multiple_choice')
+            ->assertSee('Pilihan Ganda')
             ->assertSee('Muat ulang')
+            ->assertSee(json_encode(route('generations.status', $queued)), false)
             ->assertSee('aria-live="polite"', false)
             ->assertSee('data.generation_status !== initialStatus', false)
             ->assertSee('var initialStatus', false)
@@ -57,7 +60,8 @@ class GenerationShowStatusTest extends TestCase
         $this->actingAs($owner)
             ->get(route('generations.show', $processing))
             ->assertOk()
-            ->assertSee('processing')
+            ->assertSee('Sedang diproses')
+            ->assertSee('data-generation-status="processing"', false)
             ->assertSee('data.generation_status !== initialStatus', false)
             ->assertDontSee(self::PARTIAL_MARKER)
             ->assertDontSee('secret-execution-token')
@@ -67,12 +71,15 @@ class GenerationShowStatusTest extends TestCase
         $this->actingAs($owner)
             ->get(route('generations.show', $completed))
             ->assertOk()
-            ->assertSee('completed')
+            ->assertSee('Selesai')
+            ->assertSee('ui-badge-success', false)
+            ->assertSee(route('question-sets.import', $completed), false)
+            ->assertDontSee('question-sets.import-run', false)
             ->assertSee('Visible completed stem')
             ->assertSee('Option A for Visible completed stem')
             ->assertSee('Jawaban benar')
             ->assertSee('Penjelasan')
-            ->assertSee('Simpan ke Question Bank')
+            ->assertSee('Simpan ke bank soal')
             ->assertDontSee('data.generation_status !== initialStatus', false)
             ->assertDontSee(self::PARTIAL_MARKER)
             ->assertDontSee('Coba lagi');
@@ -80,12 +87,68 @@ class GenerationShowStatusTest extends TestCase
         $this->actingAs($owner)
             ->get(route('generations.show', $failed))
             ->assertOk()
-            ->assertSee('failed')
+            ->assertSee('Gagal')
+            ->assertSee('data-generation-status="failed"', false)
+            ->assertSee('ui-badge-danger', false)
             ->assertSee('Generasi gagal aman.')
             ->assertSee('Coba lagi')
             ->assertDontSee(self::PARTIAL_MARKER)
             ->assertDontSee('provider-debug-stack')
             ->assertDontSee('Simpan ke Question Bank');
+    }
+
+    public function test_cancelled_generation_is_neutral_and_has_no_primary_action(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $cancelled = $this->generation($owner, $material, GenerationStatus::CANCELLED);
+
+        $this->actingAs($owner)
+            ->get(route('generations.show', $cancelled))
+            ->assertOk()
+            ->assertSee('Dibatalkan')
+            ->assertSee('ui-badge-neutral', false)
+            ->assertSee('data-generation-status="cancelled"', false)
+            ->assertDontSee('ui-badge-danger', false)
+            ->assertDontSee('status-error', false)
+            ->assertDontSee('Coba lagi')
+            ->assertDontSee('Simpan ke Question Bank')
+            ->assertDontSee('data.generation_status !== initialStatus', false);
+    }
+
+    public function test_completed_show_renders_question_text_separately_from_options(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+        $generation = $this->generation($owner, $material, GenerationStatus::COMPLETED);
+        $generation->update([
+            'result_json' => [[
+                'question' => 'QUESTION_MARKER_NOT_IN_OPTIONS',
+                'options' => [
+                    'A' => 'Option A only',
+                    'B' => 'Option B only',
+                    'C' => 'Option C only',
+                    'D' => 'Option D only',
+                ],
+                'correct_answer' => 'A',
+                'explanation' => 'Explanation without the question marker',
+            ]],
+        ]);
+
+        $html = $this->actingAs($owner)
+            ->get(route('generations.show', $generation->fresh()))
+            ->assertOk()
+            ->assertSee('Option A only')
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<strong>\s*1\.\s*<\/strong>\s*QUESTION_MARKER_NOT_IN_OPTIONS/',
+            $html,
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<strong>\s*A\.\s*<\/strong>\s*QUESTION_MARKER_NOT_IN_OPTIONS/',
+            $html,
+        );
     }
 
     public function test_cross_user_generation_show_and_status_are_not_found(): void

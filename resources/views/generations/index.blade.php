@@ -1,10 +1,17 @@
 @php
     $statusLabels = [
-        'queued' => 'Antrian',
-        'processing' => 'Diproses',
+        'queued' => 'Menunggu diproses',
+        'processing' => 'Sedang diproses',
         'completed' => 'Selesai',
         'failed' => 'Gagal',
         'cancelled' => 'Dibatalkan',
+    ];
+    $statusVariants = [
+        'queued' => 'processing',
+        'processing' => 'processing',
+        'completed' => 'success',
+        'failed' => 'danger',
+        'cancelled' => 'neutral',
     ];
     $languageLabels = [
         'id' => 'Bahasa Indonesia',
@@ -14,19 +21,22 @@
 
 @extends('layouts.app')
 
-@section('title', 'Riwayat generasi')
+@section('title', 'Pembuatan soal')
 
 @section('content')
-    <p class="muted">GENERATION HISTORY</p>
-    <h1>Riwayat generasi</h1>
+    <x-ui.page-header>
+        Pembuatan soal
+    </x-ui.page-header>
 
     @if ($generations->isEmpty())
-        <div class="card">
-            <p>Belum ada generasi soal.</p>
-            <a class="button" href="{{ route('materials.index') }}">Pilih materi</a>
-        </div>
+        <x-ui.empty-state>
+            Belum ada pembuatan soal.
+            <x-slot:action>
+                <x-ui.button href="{{ route('materials.index') }}">Pilih materi</x-ui.button>
+            </x-slot:action>
+        </x-ui.empty-state>
     @else
-        <div class="card">
+        <div class="responsive-table table-wrap">
             <table class="table">
                 <thead>
                     <tr>
@@ -39,37 +49,58 @@
                 </thead>
                 <tbody>
                     @foreach ($generations as $generation)
+                        @php
+                            $statusValue = $generation->generation_status->value;
+                        @endphp
                         <tr>
                             <td>
                                 <a href="{{ route('generations.show', $generation) }}">
-                                    {{ $statusLabels[$generation->generation_status->value] ?? $generation->generation_status->value }}
+                                    <x-ui.status-badge :variant="$statusVariants[$statusValue] ?? 'neutral'">
+                                        {{ $statusLabels[$statusValue] ?? 'Status tidak dikenali' }}
+                                    </x-ui.status-badge>
                                 </a>
-                                <span class="muted">({{ $generation->generation_status->value }})</span>
                             </td>
                             <td>{{ $generation->material?->title ?? 'Materi tidak tersedia' }}</td>
                             <td>{{ $generation->question_count }}</td>
-                            <td>{{ $languageLabels[$generation->output_language?->value] ?? $generation->output_language?->value }}</td>
+                            <td>{{ $languageLabels[$generation->output_language?->value] ?? 'Bahasa tidak dikenali' }}</td>
                             <td class="muted">{{ $generation->queued_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-
-            @if ($generations->hasPages())
-                <div class="actions" style="margin-top: 16px;">
-                    @if ($generations->onFirstPage())
-                        <span class="muted">Sebelumnya</span>
-                    @else
-                        <a class="button button-secondary" href="{{ $generations->previousPageUrl() }}">Sebelumnya</a>
-                    @endif
-
-                    @if ($generations->hasMorePages())
-                        <a class="button button-secondary" href="{{ $generations->nextPageUrl() }}">Berikutnya</a>
-                    @else
-                        <span class="muted">Berikutnya</span>
-                    @endif
-                </div>
-            @endif
         </div>
+
+        <div class="responsive-summary">
+            @foreach ($generations as $generation)
+                @php
+                    $statusValue = $generation->generation_status->value;
+                @endphp
+                <article class="summary-row">
+                    <x-ui.status-badge :variant="$statusVariants[$statusValue] ?? 'neutral'">
+                        {{ $statusLabels[$statusValue] ?? 'Status tidak dikenali' }}
+                    </x-ui.status-badge>
+                    <strong>{{ $generation->material?->title ?? 'Materi tidak tersedia' }}</strong>
+                    <p class="muted">{{ $generation->question_count }} soal · {{ $languageLabels[$generation->output_language?->value] ?? 'Bahasa tidak dikenali' }}</p>
+                    <p class="muted">{{ $generation->queued_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
+                    <x-ui.button variant="secondary" href="{{ route('generations.show', $generation) }}">Buka</x-ui.button>
+                </article>
+            @endforeach
+        </div>
+
+        @if ($generations->hasPages())
+            <div class="action-stack" style="margin-top: 16px;">
+                @if ($generations->onFirstPage())
+                    <span class="muted">Sebelumnya</span>
+                @else
+                    <x-ui.button variant="secondary" href="{{ $generations->previousPageUrl() }}">Sebelumnya</x-ui.button>
+                @endif
+
+                @if ($generations->hasMorePages())
+                    <x-ui.button variant="secondary" href="{{ $generations->nextPageUrl() }}">Berikutnya</x-ui.button>
+                @else
+                    <span class="muted">Berikutnya</span>
+                @endif
+            </div>
+        @endif
     @endif
 @endsection

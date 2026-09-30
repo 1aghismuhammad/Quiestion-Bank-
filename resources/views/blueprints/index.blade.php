@@ -19,34 +19,36 @@
             white-space: nowrap;
             border: 0;
         }
-        .file-picker-input:focus + .button { outline: 2px solid #2356d8; outline-offset: 2px; }
+        .file-picker-input:focus + .ui-button { outline: 2px solid #2356d8; outline-offset: 2px; }
         .file-picker-name { margin: 0; max-width: 100%; overflow-wrap: anywhere; }
-        .blueprint-table-wrap { max-width: 100%; overflow-x: auto; }
     </style>
 
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('materials.show', $material) }}">Kembali ke materi</a>
-    </div>
-
-    <p class="muted">KISI-KISI</p>
-    <h1>{{ $material->title }}</h1>
-    <h2>Buat Kisi-kisi</h2>
-    <p class="muted">Pilih cara yang paling sesuai untuk membuat kisi-kisi dari materi ini.</p>
+    <x-ui.page-header>
+        Kisi-kisi
+        <x-slot:back>
+            <x-ui.button variant="tertiary" href="{{ route('materials.show', $material) }}">Kembali ke materi</x-ui.button>
+        </x-slot:back>
+        <x-slot:supporting>{{ $material->title }}</x-slot:supporting>
+    </x-ui.page-header>
 
     @if ($readyProfile === null)
-        <div class="alert alert-error">
+        <x-ui.alert variant="danger">
             Materi perlu memiliki profil yang siap sebelum kisi-kisi dapat dibuat atau dikonfirmasi.
-            <a href="{{ route('materials.profile.show', $material) }}">Buka Analisis Profil</a>
-        </div>
+            <x-ui.button variant="tertiary" href="{{ route('materials.profile.show', $material) }}">Buka Analisis Profil</x-ui.button>
+        </x-ui.alert>
     @endif
 
-    <div class="card creation-card">
-        <h2>Buat Manual</h2>
+    <x-ui.panel class="creation-card">
+        <h2>Buat manual</h2>
         <p class="creation-copy">Susun kisi-kisi sendiri dari awal sesuai kebutuhan Anda.</p>
-        <a class="button" href="{{ route('materials.blueprints.create', $material) }}">Buat Kisi-kisi Manual</a>
-    </div>
+        @if ($readyProfile === null)
+            <button class="ui-button ui-button-secondary" type="button" disabled>Buat manual</button>
+        @else
+            <x-ui.button variant="secondary" href="{{ route('materials.blueprints.create', $material) }}">Buat manual</x-ui.button>
+        @endif
+    </x-ui.panel>
 
-    <div class="card creation-card">
+    <x-ui.panel class="creation-card">
         <h2>Buat dengan AI</h2>
         <p class="creation-copy">Gunakan materi yang telah dianalisis untuk membantu menyusun kisi-kisi.</p>
         <form method="POST" action="{{ route('materials.blueprints.ai', $material) }}">
@@ -65,39 +67,43 @@
             @endif
             <div id="ai-simple-wrap" style="margin-top: 12px;">
                 <label class="label" for="question_type">Tipe Soal</label>
-                <select class="input" id="question_type" name="question_type">
+                <select class="ui-input" id="question_type" name="question_type">
                     @foreach ($questionTypes as $type)
                         <option value="{{ $type->value }}">{{ $type->label() }}</option>
                     @endforeach
                 </select>
                 <label class="label" for="simple_target_total" style="margin-top: 12px;">Jumlah Soal (1–{{ $maxSimpleTotal }})</label>
-                <input class="input" id="simple_target_total" name="target_total" type="number" min="1" max="{{ $maxSimpleTotal }}" value="10">
+                <input class="ui-input" id="simple_target_total" name="target_total" type="number" min="1" max="{{ $maxSimpleTotal }}" value="10">
             </div>
             <div id="ai-advanced-wrap" style="margin-top: 12px;" hidden>
                 <p class="muted">Isi jumlah per tipe. Total 1–{{ $maxAdvancedTotal }}.</p>
                 <label class="label" for="count_mcq">Pilihan Ganda</label>
-                <input class="input" id="count_mcq" name="type_counts[multiple_choice]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
+                <input class="ui-input" id="count_mcq" name="type_counts[multiple_choice]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
                 <label class="label" for="count_tf">Benar/Salah</label>
-                <input class="input" id="count_tf" name="type_counts[true_false]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
+                <input class="ui-input" id="count_tf" name="type_counts[true_false]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
                 <label class="label" for="count_essay">Esai</label>
-                <input class="input" id="count_essay" name="type_counts[essay]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
+                <input class="ui-input" id="count_essay" name="type_counts[essay]" type="number" min="0" max="{{ $maxAdvancedTotal }}" value="0" disabled>
                 <p style="margin-top: 8px;"><strong>Total:</strong> <span data-ai-live-total>0</span></p>
                 <input type="hidden" id="advanced_target_total" name="target_total" value="0" disabled>
             </div>
             <div style="margin-top: 16px;">
-                <button class="button" type="submit">Buat dengan AI</button>
+                <x-ui.button variant="secondary" type="submit" :disabled="$readyProfile === null">Buat dengan AI</x-ui.button>
             </div>
         </form>
-    </div>
+    </x-ui.panel>
 
-    <div class="card creation-card">
-        <h2>Unggah Kisi-kisi DOCX</h2>
+    <x-ui.panel class="creation-card">
+        <h2>Unggah DOCX</h2>
         <p class="creation-copy">Sudah memiliki kisi-kisi? Unggah file DOCX untuk ditinjau dan disesuaikan dengan materi.</p>
         <form method="POST" action="{{ route('materials.blueprint-imports.store', $material) }}" enctype="multipart/form-data">
             @csrf
             <div class="file-picker">
-                <input id="blueprint-import-file" class="file-picker-input" type="file" name="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
-                <label class="button button-secondary" for="blueprint-import-file">Pilih file DOCX</label>
+                <input id="blueprint-import-file" class="file-picker-input" type="file" name="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required @disabled($readyProfile === null)>
+                @if ($readyProfile === null)
+                    <span class="ui-button ui-button-secondary" aria-disabled="true">Pilih file DOCX</span>
+                @else
+                    <label class="ui-button ui-button-secondary" for="blueprint-import-file">Pilih file DOCX</label>
+                @endif
                 <p class="muted file-picker-name" id="blueprint-import-file-name">Belum ada file dipilih</p>
             </div>
             @error('file')
@@ -106,16 +112,18 @@
             @error('material')
                 <div class="error-text">{{ $message }}</div>
             @enderror
-            <button class="button" style="margin-top: 12px;" type="submit">Unggah Kisi-kisi</button>
+            <div style="margin-top: 12px;">
+                <x-ui.button variant="secondary" type="submit" :disabled="$readyProfile === null">Unggah DOCX</x-ui.button>
+            </div>
         </form>
-    </div>
+    </x-ui.panel>
 
-    <div class="card">
+    <x-ui.panel>
         <h2>Kisi-kisi materi ini</h2>
         @if ($blueprints->isEmpty())
-            <p class="muted">Belum ada kisi-kisi untuk materi ini.</p>
+            <p>Belum ada kisi-kisi.</p>
         @else
-            <div class="blueprint-table-wrap">
+            <div class="responsive-table table-wrap">
                 <table class="table">
                     <thead>
                         <tr>
@@ -134,11 +142,13 @@
                                 </td>
                                 <td>{{ $blueprint->mode->label() }}</td>
                                 <td>
-                                    {{ match ($blueprint->lifecycle_status->value) {
-                                        'draft' => 'Draf',
-                                        'confirmed' => 'Dikonfirmasi',
-                                        default => 'Status tidak dikenali',
-                                    } }}
+                                    @if ($blueprint->lifecycle_status->value === 'confirmed')
+                                        <x-ui.status-badge variant="success">Dikonfirmasi</x-ui.status-badge>
+                                    @elseif ($blueprint->lifecycle_status->value === 'draft')
+                                        <x-ui.status-badge variant="neutral">Draf</x-ui.status-badge>
+                                    @else
+                                        <x-ui.status-badge>Status tidak dikenali</x-ui.status-badge>
+                                    @endif
                                 </td>
                                 <td>
                                     {{ match ($blueprint->source->value) {
@@ -153,8 +163,24 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="responsive-summary">
+                @foreach ($blueprints as $blueprint)
+                    <article class="summary-row">
+                        <strong><a href="{{ route('materials.blueprints.show', [$material, $blueprint]) }}">{{ $blueprint->title }}</a></strong>
+                        <p class="muted">{{ $blueprint->mode->label() }} · {{ $blueprint->rows->count() }} baris</p>
+                        @if ($blueprint->lifecycle_status->value === 'confirmed')
+                            <x-ui.status-badge variant="success">Dikonfirmasi</x-ui.status-badge>
+                        @elseif ($blueprint->lifecycle_status->value === 'draft')
+                            <x-ui.status-badge variant="neutral">Draf</x-ui.status-badge>
+                        @else
+                            <x-ui.status-badge>Status tidak dikenali</x-ui.status-badge>
+                        @endif
+                    </article>
+                @endforeach
+            </div>
         @endif
-    </div>
+    </x-ui.panel>
 
     <script>
         (function () {

@@ -14,30 +14,30 @@
 
 @extends('layouts.app')
 
-@section('title', 'Generate soal')
+@section('title', 'Buat soal dari materi')
 
 @section('content')
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('materials.show', $material) }}">Kembali ke materi</a>
-    </div>
+    <div class="page-form">
+        <x-ui.page-header>
+            Buat soal dari materi
+            <x-slot:back>
+                <x-ui.button variant="tertiary" href="{{ route('materials.show', $material) }}">Kembali ke materi</x-ui.button>
+            </x-slot:back>
+            <x-slot:supporting>{{ $material->title }}</x-slot:supporting>
+        </x-ui.page-header>
 
-    <p class="muted">GENERATE QUESTIONS</p>
-    <h1>Generate soal</h1>
-    <p><strong>Materi:</strong> {{ $material->title }}</p>
+        @include('generations._quota', ['usage' => $usage])
 
-    @include('generations._quota', ['usage' => $usage])
-
-    <div class="card">
         <form method="POST" action="{{ route('generations.store', $material) }}">
             @csrf
 
             <div class="field-grid">
                 <div>
                     <label class="label" for="assessment_type">Tipe assessment</label>
-                    <select class="input" id="assessment_type" name="assessment_type" required>
+                    <select class="ui-input" id="assessment_type" name="assessment_type" required>
                         @foreach ($assessments as $assessment)
                             <option value="{{ $assessment->value }}" @selected(old('assessment_type', 'formative') === $assessment->value)>
-                                {{ $assessmentLabels[$assessment->value] ?? $assessment->value }}
+                                {{ $assessmentLabels[$assessment->value] ?? 'Jenis tidak dikenali' }}
                             </option>
                         @endforeach
                     </select>
@@ -48,10 +48,10 @@
 
                 <div>
                     <label class="label" for="difficulty_level">Tingkat kesulitan</label>
-                    <select class="input" id="difficulty_level" name="difficulty_level" required>
+                    <select class="ui-input" id="difficulty_level" name="difficulty_level" required>
                         @foreach ($difficulties as $difficulty)
                             <option value="{{ $difficulty->value }}" @selected(old('difficulty_level', 'medium') === $difficulty->value)>
-                                {{ $difficultyLabels[$difficulty->value] ?? $difficulty->value }}
+                                {{ $difficultyLabels[$difficulty->value] ?? 'Tingkat tidak dikenali' }}
                             </option>
                         @endforeach
                     </select>
@@ -61,8 +61,8 @@
                 </div>
 
                 <div>
-                    <label class="label" for="question_type">Tipe soal</label>
-                    <input class="input" id="question_type" type="text" value="Pilihan ganda" disabled>
+                    <label class="label" for="question_type_label">Tipe soal</label>
+                    <input class="ui-input" id="question_type_label" type="text" value="Pilihan ganda" disabled>
                     <input type="hidden" name="question_type" value="multiple_choice">
                     @error('question_type')
                         <div class="error-text">{{ $message }}</div>
@@ -71,7 +71,7 @@
 
                 <div>
                     <label class="label" for="question_count">Jumlah soal</label>
-                    <input class="input" id="question_count" name="question_count" type="number" min="1" max="{{ $maxQuestions }}" value="{{ old('question_count', 5) }}" required>
+                    <input class="ui-input" id="question_count" name="question_count" type="number" min="1" max="{{ $maxQuestions }}" value="{{ old('question_count', 5) }}" required>
                     @error('question_count')
                         <div class="error-text">{{ $message }}</div>
                     @enderror
@@ -79,7 +79,7 @@
 
                 <div>
                     <label class="label" for="output_language">Bahasa keluaran</label>
-                    <select class="input" id="output_language" name="output_language" required>
+                    <select class="ui-input" id="output_language" name="output_language" required>
                         <option value="id" @selected(old('output_language', 'id') === 'id')>Bahasa Indonesia</option>
                         <option value="en" @selected(old('output_language', 'id') === 'en')>English</option>
                     </select>
@@ -97,7 +97,7 @@
                 <div class="error-text">{{ $message }}</div>
             @enderror
 
-            <button class="button" style="margin-top: 16px;" type="submit">Mulai generate</button>
+            <x-ui.button type="submit">Buat soal</x-ui.button>
         </form>
     </div>
 @endsection

@@ -1,48 +1,90 @@
+@php
+    $statusLabels = [
+        'queued' => 'Menunggu diproses',
+        'processing' => 'Sedang diproses',
+        'completed' => 'Selesai',
+        'failed' => 'Gagal',
+        'cancelled' => 'Dibatalkan',
+    ];
+    $statusVariants = [
+        'queued' => 'processing',
+        'processing' => 'processing',
+        'completed' => 'success',
+        'failed' => 'danger',
+        'cancelled' => 'neutral',
+    ];
+    $runStatus = $run->status->value;
+    $runLabel = $statusLabels[$runStatus] ?? 'Status tidak dikenali';
+    $runVariant = $statusVariants[$runStatus] ?? 'neutral';
+@endphp
+
 @extends('layouts.app')
 
 @section('title', 'Status generasi kisi-kisi')
 
 @section('content')
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('materials.blueprints.show', [$run->material, $run->blueprint]) }}">Kembali ke kisi-kisi</a>
-    </div>
+    <x-ui.page-header>
+        {{ $run->blueprint?->title ?? 'Generasi kisi-kisi' }}
+        <x-slot:back>
+            <x-ui.button variant="tertiary" href="{{ route('materials.blueprints.show', [$run->material, $run->blueprint]) }}">Kembali ke kisi-kisi</x-ui.button>
+        </x-slot:back>
+        <x-slot:supporting>Mode {{ $run->mode->label() }}</x-slot:supporting>
+        <x-slot:status>
+            <x-ui.status-badge :variant="$runVariant" data-run-status="{{ $runStatus }}">{{ $runLabel }}</x-ui.status-badge>
+        </x-slot:status>
+    </x-ui.page-header>
 
-    <p class="muted">GENERATION RUN</p>
-    <h1>{{ $run->blueprint?->title ?? 'Generasi kisi-kisi' }}</h1>
-    <p>
-        <span class="status {{ $run->status->value === 'failed' ? 'status-error' : ($run->status->value === 'completed' ? '' : 'status-warn') }}">
-            {{ $run->status->value }}
-        </span>
-        <span class="muted">mode {{ $run->mode->label() }}</span>
-    </p>
     <p>Total soal: {{ $run->total_requested_questions }} · Kredit: {{ $run->credits_required }}</p>
     <p class="muted">{{ $presentation->questionOrderLabel }} · {{ $presentation->optionOrderLabel }}</p>
 
     @if ($run->error_message)
-        <div class="alert alert-error">{{ $run->error_message }}</div>
+        <x-ui.alert variant="danger">{{ $run->error_message }}</x-ui.alert>
     @endif
 
-    <div class="card" style="margin-bottom: 20px;">
+    <x-ui.panel>
         <h2>Langkah</h2>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Status</th>
-                    <th>Jumlah</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($run->children as $child)
+        <div class="responsive-table table-wrap">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>{{ $child->child_index }}</td>
-                        <td>{{ $child->generation_status->value }}</td>
-                        <td>{{ $child->question_count }}</td>
+                        <th>#</th>
+                        <th>Status</th>
+                        <th>Jumlah</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
+                </thead>
+                <tbody>
+                    @foreach ($run->children as $child)
+                        @php
+                            $childStatus = $child->generation_status->value;
+                        @endphp
+                        <tr>
+                            <td>{{ $child->child_index }}</td>
+                            <td>
+                                <x-ui.status-badge :variant="$statusVariants[$childStatus] ?? 'neutral'">
+                                    {{ $statusLabels[$childStatus] ?? 'Status tidak dikenali' }}
+                                </x-ui.status-badge>
+                            </td>
+                            <td>{{ $child->question_count }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        <div class="responsive-summary">
+            @foreach ($run->children as $child)
+                @php
+                    $childStatus = $child->generation_status->value;
+                @endphp
+                <article class="summary-row">
+                    <strong>Langkah {{ $child->child_index }}</strong>
+                    <x-ui.status-badge :variant="$statusVariants[$childStatus] ?? 'neutral'">
+                        {{ $statusLabels[$childStatus] ?? 'Status tidak dikenali' }}
+                    </x-ui.status-badge>
+                    <p class="muted">{{ $child->question_count }} soal</p>
+                </article>
+            @endforeach
+        </div>
+    </x-ui.panel>
 
     @if ($run->status->value === 'completed')
         @error('generation_run')
@@ -54,16 +96,16 @@
 
         @if ($run->questionSet)
             <p style="margin-bottom: 20px;">
-                <a class="button" href="{{ route('question-sets.show', $run->questionSet) }}">Buka di Question Bank</a>
+                <x-ui.button href="{{ route('question-sets.show', $run->questionSet) }}">Buka bank soal</x-ui.button>
             </p>
         @else
             <form method="POST" action="{{ route('question-sets.import-run', $run) }}" style="margin-bottom: 20px;">
                 @csrf
-                <button class="button" type="submit">Simpan ke Question Bank</button>
+                <x-ui.button type="submit">Simpan ke bank soal</x-ui.button>
             </form>
         @endif
 
-        <div class="card" style="margin-bottom: 20px;">
+        <x-ui.panel>
             <h2>Soal yang dihasilkan</h2>
             @foreach ($presentation->questions as $question)
                 <article style="margin-bottom: 16px;">
@@ -97,17 +139,17 @@
                     @endif
                 </article>
             @endforeach
-        </div>
+        </x-ui.panel>
     @endif
 
     @if ($run->status->value === 'failed' && $canRetry)
         <form method="POST" action="{{ route('generation-runs.retry', $run) }}">
             @csrf
             <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) Illuminate\Support\Str::uuid()) }}">
-            <button class="button" type="submit">Coba lagi</button>
+            <x-ui.button type="submit">Coba lagi</x-ui.button>
         </form>
     @elseif ($run->status->value === 'failed' && ! $canRetry)
-        <div class="alert alert-error">Paket Pro aktif diperlukan untuk mencoba ulang generasi lanjutan.</div>
+        <x-ui.alert variant="danger">Paket Pro aktif diperlukan untuk mencoba ulang generasi lanjutan.</x-ui.alert>
     @endif
 
     @if (! $run->status->isTerminal())

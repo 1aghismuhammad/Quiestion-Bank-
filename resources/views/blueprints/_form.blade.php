@@ -57,7 +57,7 @@
 
 <div>
     <label class="label" for="title">Judul</label>
-    <input class="input" id="title" name="title" value="{{ old('title', $blueprint->title ?? '') }}" required>
+    <input class="ui-input" id="title" name="title" value="{{ old('title', $blueprint->title ?? '') }}" required>
     @error('title')
         <div class="error-text">{{ $message }}</div>
     @enderror
@@ -65,7 +65,7 @@
 
 <div style="margin-top: 12px;">
     <label class="label" for="assessment_type">Jenis Asesmen</label>
-    <select class="input" id="assessment_type" name="assessment_type" required>
+    <select class="ui-input" id="assessment_type" name="assessment_type" required>
         @foreach ($assessments as $assessment)
             <option value="{{ $assessment->value }}" @selected(old('assessment_type', $blueprint?->assessment_type->value ?? 'formative') === $assessment->value)>
                 {{ $assessment->label() }}
@@ -94,7 +94,7 @@
 </div>
 
 <div class="actions" style="margin-top: 12px;">
-    <button class="button button-secondary" type="button" id="blueprint-add-row" @disabled(count($rows) >= $maxRows)>Tambah baris</button>
+    <button class="ui-button ui-button-secondary" type="button" id="blueprint-add-row" @disabled(count($rows) >= $maxRows)>Tambah baris</button>
 </div>
 
 <template id="blueprint-row-template">
@@ -160,6 +160,15 @@
             cards.forEach(function (card, index) {
                 card.querySelectorAll('[name]').forEach(function (input) {
                     input.name = input.name.replace(/rows\[[^\]]+\]/, 'rows[' + index + ']');
+                });
+                card.querySelectorAll('[data-row-field]').forEach(function (node) {
+                    const field = node.getAttribute('data-row-field');
+                    const controlId = 'blueprint-row-' + index + '-' + field;
+                    if (node.tagName === 'LABEL') {
+                        node.setAttribute('for', controlId);
+                    } else {
+                        node.id = controlId;
+                    }
                 });
                 const heading = card.querySelector('[data-row-heading]');
                 if (heading) {

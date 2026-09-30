@@ -1,55 +1,57 @@
 @php
     $status = $generation->generation_status;
     $statusLabels = [
-        'queued' => 'Antrian',
-        'processing' => 'Diproses',
+        'queued' => 'Menunggu diproses',
+        'processing' => 'Sedang diproses',
         'completed' => 'Selesai',
         'failed' => 'Gagal',
         'cancelled' => 'Dibatalkan',
+    ];
+    $statusVariants = [
+        'queued' => 'processing',
+        'processing' => 'processing',
+        'completed' => 'success',
+        'failed' => 'danger',
+        'cancelled' => 'neutral',
     ];
     $languageLabels = [
         'id' => 'Bahasa Indonesia',
         'en' => 'English',
     ];
-    $statusClass = match ($status->value) {
-        'queued', 'processing' => 'status status-warn',
-        'failed', 'cancelled' => 'status status-error',
-        default => 'status',
-    };
+    $statusLabel = $statusLabels[$status->value] ?? 'Status tidak dikenali';
+    $statusVariant = $statusVariants[$status->value] ?? 'neutral';
 @endphp
 
 @extends('layouts.app')
 
-@section('title', 'Generasi soal')
+@section('title', 'Status generasi')
 
 @section('content')
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('generations.index') }}">Riwayat generasi</a>
-        @if ($generation->material)
-            <a href="{{ route('materials.show', $generation->material) }}">Kembali ke materi</a>
-        @endif
-    </div>
-
-    <p class="muted">GENERATION</p>
-    <h1>Status generasi</h1>
+    <x-ui.page-header>
+        Status generasi
+        <x-slot:back>
+            <x-ui.button variant="tertiary" href="{{ route('generations.index') }}">Pembuatan soal</x-ui.button>
+            @if ($generation->material)
+                <x-ui.button variant="tertiary" href="{{ route('materials.show', $generation->material) }}">Kembali ke materi</x-ui.button>
+            @endif
+        </x-slot:back>
+        <x-slot:status>
+            <x-ui.status-badge id="generation-status-label" :variant="$statusVariant" data-generation-status="{{ $status->value }}">{{ $statusLabel }}</x-ui.status-badge>
+        </x-slot:status>
+    </x-ui.page-header>
 
     @include('generations._quota', ['usage' => $usage])
 
-    <div class="card" style="margin-bottom: 20px;">
-        <p>
-            <strong>Status:</strong>
-            <span class="{{ $statusClass }}" id="generation-status-label">{{ $statusLabels[$status->value] ?? $status->value }}</span>
-            <span class="muted">({{ $status->value }})</span>
-        </p>
+    <x-ui.panel>
         <p aria-live="polite" id="generation-status-live">
-            Status saat ini: {{ $status->value }}
+            Status saat ini: {{ $statusLabel }}
         </p>
         <p><strong>Materi:</strong> {{ $generation->material?->title ?? 'Materi tidak tersedia' }}</p>
-        <p><strong>Tipe assessment:</strong> {{ $generation->assessment_type->value }}</p>
-        <p><strong>Tingkat kesulitan:</strong> {{ $generation->difficulty_level->value }}</p>
-        <p><strong>Tipe soal:</strong> {{ $generation->question_type->value }}</p>
+        <p><strong>Tipe assessment:</strong> {{ $generation->assessment_type->label() }}</p>
+        <p><strong>Tingkat kesulitan:</strong> {{ $generation->difficulty_level->label() }}</p>
+        <p><strong>Tipe soal:</strong> {{ $generation->question_type->label() }}</p>
         <p><strong>Jumlah soal:</strong> {{ $generation->question_count }}</p>
-        <p><strong>Bahasa keluaran:</strong> {{ $languageLabels[$generation->output_language?->value] ?? $generation->output_language?->value }}</p>
+        <p><strong>Bahasa keluaran:</strong> {{ $languageLabels[$generation->output_language?->value] ?? 'Bahasa tidak dikenali' }}</p>
         <p class="muted">Antrian {{ $generation->queued_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
 
         @if (! $isTerminal)
@@ -64,7 +66,7 @@
             @can('retry', $generation)
                 <form method="POST" action="{{ route('generations.retry', $generation) }}">
                     @csrf
-                    <button class="button" type="submit">Coba lagi</button>
+                    <x-ui.button type="submit">Coba lagi</x-ui.button>
                 </form>
             @endcan
         @endif
@@ -88,32 +90,35 @@
         @if ($status->value === 'completed')
             @if ($generation->questionSet)
                 <p>
-                    <a class="button" href="{{ route('question-sets.show', $generation->questionSet) }}">Lihat di Question Bank</a>
+                    <x-ui.button href="{{ route('question-sets.show', $generation->questionSet) }}">Buka bank soal</x-ui.button>
                 </p>
             @else
                 <form method="POST" action="{{ route('question-sets.import', $generation) }}">
                     @csrf
-                    <button class="button" type="submit">Simpan ke Question Bank</button>
+                    <x-ui.button type="submit">Simpan ke bank soal</x-ui.button>
                 </form>
             @endif
         @endif
-    </div>
+    </x-ui.panel>
 
     @if ($status->value === 'completed' && count($questions) > 0)
-        <div class="card">
-            <h2>Pratinjau soal</h2>
+        <x-ui.panel>
+            <h2>Soal</h2>
             @foreach ($questions as $index => $question)
-                <div style="margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #dce3ee;">
-                    <p><strong>{{ $index + 1 }}.</strong> {{ $question['question'] ?? '' }}</p>
+                <article>
+                    <p>
+                        <strong>{{ $index + 1 }}.</strong>
+                        {{ $question['question'] ?? '' }}
+                    </p>
                     <p><strong>A.</strong> {{ $question['options']['A'] ?? '' }}</p>
                     <p><strong>B.</strong> {{ $question['options']['B'] ?? '' }}</p>
                     <p><strong>C.</strong> {{ $question['options']['C'] ?? '' }}</p>
                     <p><strong>D.</strong> {{ $question['options']['D'] ?? '' }}</p>
                     <p><strong>Jawaban benar:</strong> {{ $question['correct_answer'] ?? '' }}</p>
                     <p><strong>Penjelasan:</strong> {{ $question['explanation'] ?? '' }}</p>
-                </div>
+                </article>
             @endforeach
-        </div>
+        </x-ui.panel>
     @endif
 @endsection
 
@@ -124,6 +129,13 @@
                 var statusUrl = @json(route('generations.status', $generation));
                 var initialStatus = @json($generation->generation_status->value);
                 var live = document.getElementById('generation-status-live');
+                var labels = {
+                    queued: 'Menunggu diproses',
+                    processing: 'Sedang diproses',
+                    completed: 'Selesai',
+                    failed: 'Gagal',
+                    cancelled: 'Dibatalkan'
+                };
 
                 function poll() {
                     fetch(statusUrl, {
@@ -140,7 +152,7 @@
                             return;
                         }
                         if (live && data.generation_status) {
-                            live.textContent = 'Status saat ini: ' + data.generation_status;
+                            live.textContent = 'Status saat ini: ' + (labels[data.generation_status] || 'Status tidak dikenali');
                         }
                         if (data.generation_status !== initialStatus || data.terminal) {
                             window.location.reload();

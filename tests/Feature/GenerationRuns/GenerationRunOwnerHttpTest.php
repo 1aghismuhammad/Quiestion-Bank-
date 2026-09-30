@@ -6,12 +6,15 @@ namespace Tests\Feature\GenerationRuns;
 
 use App\Actions\GenerationRuns\StartGenerationRun;
 use App\Actions\Generations\RunQuestionGeneration;
+use App\Enums\GenerationRunMode;
+use App\Enums\GenerationRunStatus;
 use App\Enums\OutputLanguage;
 use App\Events\GenerationRunChildDispatchRequested;
 use App\Jobs\GenerateQuestionsJob;
 use App\Models\AiGenerationRun;
 use App\Models\AiUsageLog;
 use App\Models\Material;
+use App\Models\QuestionSet;
 use Database\Seeders\PlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -92,6 +95,11 @@ class GenerationRunOwnerHttpTest extends TestCase
             ->get(route('generation-runs.show', $run->fresh()))
             ->assertOk()
             ->assertSee('Soal yang dihasilkan', false)
+            ->assertSee('Selesai')
+            ->assertSee('Simpan ke bank soal')
+            ->assertSee(route('question-sets.import-run', $run), false)
+            ->assertDontSee('Dibatalkan')
+            ->assertDontSee('payload.terminal', false)
             ->assertDontSee('<script>alert(1)</script>', false)
             ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt; stem', false)
             ->assertDontSee('execution_token', false)
@@ -100,6 +108,7 @@ class GenerationRunOwnerHttpTest extends TestCase
             ->getContent();
 
         $this->assertStringNotContainsString('prompt', strtolower($html));
+        $this->assertStringNotContainsString('/generations/', $html);
 
         $json = $this->actingAs($owner)
             ->getJson(route('generation-runs.status', $run))
@@ -241,5 +250,70 @@ class GenerationRunOwnerHttpTest extends TestCase
 
         $this->assertSame(1, AiUsageLog::query()->where('generation_run_id', $retried->generation_run_id)->count());
         $this->assertSame(2, Queue::pushed(GenerateQuestionsJob::class)->count());
+    }
+
+    public function test_run_show_branches_keep_retry_save_and_poll_routes(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create([
+            'content' => str_repeat('Kalimat materi untuk generasi soal. ', 30),
+        ]);
+        $this->readyProfile($owner, $material);
+        $blueprint = $this->confirmDraft($owner, $this->createDraft($owner, $material, [$this->sampleRow(1)]));
+        $run = $this->app->make(StartGenerationRun::class)->handle(
+            $owner,
+            $blueprint,
+            OutputLanguage::ID,
+            (string) Str::uuid(),
+        );
+
+        $this->actingAs($owner)
+            ->get(route('generation-runs.show', $run))
+            ->assertOk()
+            ->assertSee('Menunggu diproses')
+            ->assertSee('ui-badge-processing', false)
+            ->assertSee(json_encode(route('generation-runs.status', $run)), false)
+            ->assertDontSee('Coba lagi')
+            ->assertDontSee('Simpan ke Question Bank')
+            ->assertDontSee('Dibatalkan')
+            ->assertDontSee(route('question-sets.import-run', $run), false);
+
+        $run->update(['status' => GenerationRunStatus::Failed]);
+
+        $this->actingAs($owner)
+            ->get(route('generation-runs.show', $run->fresh()))
+            ->assertOk()
+            ->assertSee('Gagal')
+            ->assertSee('Coba lagi')
+            ->assertSee('name="idempotency_key"', false)
+            ->assertSee(route('generation-runs.retry', $run), false)
+            ->assertDontSee(route('question-sets.import-run', $run), false)
+            ->assertDontSee(json_encode(route('generation-runs.status', $run)), false);
+
+        $run->update(['mode' => GenerationRunMode::Advanced]);
+
+        $this->actingAs($owner)
+            ->get(route('generation-runs.show', $run->fresh()))
+            ->assertOk()
+            ->assertDontSee('Coba lagi')
+            ->assertSee('Paket Pro aktif diperlukan untuk mencoba ulang generasi lanjutan.');
+
+        $run->update([
+            'status' => GenerationRunStatus::Completed,
+            'mode' => GenerationRunMode::Simple,
+        ]);
+        QuestionSet::factory()->create([
+            'user_id' => $owner->id,
+            'generation_id' => null,
+            'generation_run_id' => $run->generation_run_id,
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('generation-runs.show', $run->fresh()))
+            ->assertOk()
+            ->assertSee('Selesai')
+            ->assertSee('Buka bank soal')
+            ->assertDontSee('Simpan ke Question Bank')
+            ->assertDontSee('Dibatalkan');
     }
 }

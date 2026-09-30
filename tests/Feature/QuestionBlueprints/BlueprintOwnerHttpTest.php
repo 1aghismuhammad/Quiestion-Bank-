@@ -39,13 +39,13 @@ class BlueprintOwnerHttpTest extends TestCase
         $html = $this->actingAs($owner)
             ->get(route('materials.blueprints.index', $material))
             ->assertOk()
-            ->assertSee('Buat Kisi-kisi')
-            ->assertSee('Buat Kisi-kisi Manual')
+            ->assertSee('Kisi-kisi')
+            ->assertSee('Buat manual')
             ->assertSee('Buat dengan AI')
-            ->assertSee('Unggah Kisi-kisi DOCX')
+            ->assertSee('Unggah DOCX')
             ->assertSee('Pilih file DOCX')
             ->assertSee('Belum ada file dipilih')
-            ->assertSee('Unggah Kisi-kisi')
+            ->assertSee('Belum ada kisi-kisi.')
             ->assertDontSee('Choose File')
             ->assertDontSee('No file chosen')
             ->assertDontSee('Upload kisi-kisi')
@@ -58,6 +58,36 @@ class BlueprintOwnerHttpTest extends TestCase
         $this->assertStringContainsString(route('materials.blueprint-imports.store', $material, false), $html);
         $this->assertStringContainsString(route('materials.blueprints.ai', $material, false), $html);
         $this->assertStringContainsString(route('materials.blueprints.create', $material, false), $html);
+        $this->assertMatchesRegularExpression('/id="ai-mode-advanced"[^>]*disabled/', $html);
+        $this->assertDoesNotMatchRegularExpression('/id="blueprint-import-file"[^>]*disabled/', $html);
+        $this->assertMatchesRegularExpression('/<label[^>]*for="blueprint-import-file"[^>]*>\s*Pilih file DOCX\s*<\/label>/', $html);
+        $this->assertDoesNotMatchRegularExpression('/aria-disabled="true"[^>]*>\s*Pilih file DOCX/', $html);
+    }
+
+    public function test_missing_ready_profile_keeps_creation_paths_visible_but_not_usable(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create();
+
+        $html = $this->actingAs($owner)
+            ->get(route('materials.blueprints.index', $material))
+            ->assertOk()
+            ->assertSee('Materi perlu memiliki profil yang siap sebelum kisi-kisi dapat dibuat atau dikonfirmasi.')
+            ->assertSee('Buat manual')
+            ->assertSee('Buat dengan AI')
+            ->assertSee('Unggah DOCX')
+            ->assertSee('Pilih file DOCX')
+            ->getContent();
+
+        $this->assertStringNotContainsString(route('materials.blueprints.create', $material, false), $html);
+        $this->assertMatchesRegularExpression('/id="blueprint-import-file"[^>]*disabled/', $html);
+        $this->assertMatchesRegularExpression('/<span[^>]*aria-disabled="true"[^>]*>\s*Pilih file DOCX\s*<\/span>/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<label[^>]*for="blueprint-import-file"/', $html);
+        $this->assertMatchesRegularExpression('/<button[^>]*disabled[^>]*>\s*Buat manual\s*<\/button>/', $html);
+        $this->assertMatchesRegularExpression('/<button[^>]*disabled[^>]*>\s*Buat dengan AI\s*<\/button>/', $html);
+        $this->assertMatchesRegularExpression('/<button[^>]*disabled[^>]*>\s*Unggah DOCX\s*<\/button>/', $html);
+        $this->assertStringContainsString(route('materials.blueprints.ai', $material, false), $html);
+        $this->assertStringContainsString(route('materials.blueprint-imports.store', $material, false), $html);
     }
 
     public function test_guest_cannot_open_blueprint_pages(): void
@@ -105,6 +135,21 @@ class BlueprintOwnerHttpTest extends TestCase
             ->assertSee('Hapus baris')
             ->assertSee('Sumber konteks')
             ->getContent();
+
+        foreach (['objective', 'topic', 'indicator', 'cognitive_level', 'difficulty', 'question_type', 'requested_count', 'sources'] as $field) {
+            $this->assertMatchesRegularExpression(
+                '/<label[^>]*for="blueprint-row-0-'.$field.'"[^>]*data-row-field="'.$field.'"/',
+                $html,
+            );
+            $this->assertMatchesRegularExpression(
+                '/<(?:input|select)[^>]*id="blueprint-row-0-'.$field.'"[^>]*data-row-field="'.$field.'"[^>]*name="rows\[0\]\['.$field.'\]/',
+                $html,
+            );
+        }
+        $this->assertStringContainsString('rows[__INDEX__][objective]', $html);
+        $this->assertStringContainsString("const controlId = 'blueprint-row-' + index + '-' + field;", $html);
+        $this->assertStringContainsString("node.setAttribute('for', controlId);", $html);
+        $this->assertStringContainsString('node.id = controlId;', $html);
 
         $this->assertSame(0, $this->visibleRemoveButtonCount($html));
         $this->assertGreaterThan(0, $this->templateRemoveButtonCount($html));
@@ -249,6 +294,79 @@ class BlueprintOwnerHttpTest extends TestCase
             ->assertOk()
             ->assertDontSee('element:'.$validElement->profile_element_id, false)
             ->assertDontSee('chunk:'.$validChunk->profile_chunk_id, false);
+    }
+
+    public function test_show_branches_follow_current_edit_and_confirm_gates(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create([
+            'content' => 'Materi fotosintesis untuk status kisi-kisi.',
+        ]);
+        $this->readyProfile($owner, $material);
+        $draft = $this->createDraft($owner, $material);
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $draft]))
+            ->assertOk()
+            ->assertSee('Konfirmasi kisi-kisi')
+            ->assertSee('Simpan draf')
+            ->assertDontSee('Coba isi AI lagi')
+            ->assertDontSee(route('generation-runs.create', [$material, $draft], false), false);
+
+        $draft->update(['ai_fill_status' => BlueprintAiFillStatus::Queued]);
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $draft]))
+            ->assertOk()
+            ->assertDontSee('Konfirmasi kisi-kisi')
+            ->assertDontSee('Simpan draf')
+            ->assertDontSee('Coba isi AI lagi')
+            ->assertSee(json_encode(route('materials.blueprints.status', [$material, $draft])), false);
+
+        $draft->update(['ai_fill_status' => BlueprintAiFillStatus::Processing]);
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $draft]))
+            ->assertOk()
+            ->assertDontSee('Konfirmasi kisi-kisi')
+            ->assertDontSee('Simpan draf')
+            ->assertSee(json_encode(route('materials.blueprints.status', [$material, $draft])), false);
+
+        $draft->update(['ai_fill_status' => BlueprintAiFillStatus::Succeeded]);
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $draft->fresh()]))
+            ->assertOk()
+            ->assertSee('Draf')
+            ->assertSee('Konfirmasi kisi-kisi')
+            ->assertSee('Simpan draf')
+            ->assertSee('Pengisian AI selesai. Kisi-kisi ini masih draf sampai dikonfirmasi.')
+            ->assertDontSee('Coba isi AI lagi')
+            ->assertDontSee(route('generation-runs.create', [$material, $draft], false), false);
+
+        $draft->update(['ai_fill_status' => BlueprintAiFillStatus::Failed]);
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $draft->fresh()]))
+            ->assertOk()
+            ->assertSee('Konfirmasi kisi-kisi')
+            ->assertSee('Simpan draf')
+            ->assertSee('Coba isi AI lagi')
+            ->assertDontSee(route('generation-runs.create', [$material, $draft], false), false);
+
+        $confirmed = $this->confirmDraft($owner, $draft->fresh());
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $confirmed]))
+            ->assertOk()
+            ->assertSee('Dikonfirmasi')
+            ->assertSee('Buat soal')
+            ->assertSee('Unduh DOCX')
+            ->assertSee('Salin ke draf baru')
+            ->assertSee(route('generation-runs.create', [$material, $confirmed], false), false)
+            ->assertDontSee('Konfirmasi kisi-kisi')
+            ->assertDontSee('Simpan draf')
+            ->assertDontSee('Coba isi AI lagi');
     }
 
     public function test_two_old_rows_render_visible_delete_controls(): void

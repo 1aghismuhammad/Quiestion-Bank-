@@ -581,8 +581,8 @@ class ImportCompletedGenerationRunTest extends TestCase
         $this->actingAs($owner)
             ->get(route('generation-runs.show', $run))
             ->assertOk()
-            ->assertSee('Simpan ke Question Bank')
-            ->assertDontSee('Buka di Question Bank')
+            ->assertSee('Simpan ke bank soal')
+            ->assertDontSee('Buka bank soal')
             ->assertSee('Visible completed stem');
 
         $this->actingAs($owner)->post(route('question-sets.import-run', $run));
@@ -590,8 +590,8 @@ class ImportCompletedGenerationRunTest extends TestCase
         $this->actingAs($owner)
             ->get(route('generation-runs.show', $run->fresh()))
             ->assertOk()
-            ->assertSee('Buka di Question Bank')
-            ->assertDontSee('Simpan ke Question Bank')
+            ->assertSee('Buka bank soal')
+            ->assertDontSee('Simpan ke bank soal')
             ->assertSee('Visible completed stem');
     }
 

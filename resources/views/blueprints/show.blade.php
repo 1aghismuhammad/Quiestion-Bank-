@@ -9,6 +9,11 @@
         'confirmed' => 'Dikonfirmasi',
         default => 'Status tidak dikenali',
     };
+    $lifecycleVariant = match ($blueprint->lifecycle_status->value) {
+        'draft' => 'neutral',
+        'confirmed' => 'success',
+        default => 'neutral',
+    };
     $sourceLabel = match ($blueprint->source->value) {
         'manual' => 'Manual',
         'ai' => 'AI',
@@ -26,58 +31,68 @@
 @section('title', $blueprint->title)
 
 @section('content')
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('materials.blueprints.index', $material) }}">Kembali ke kisi-kisi</a>
-    </div>
-
-    <p class="muted">KISI-KISI</p>
-    <h1>{{ $blueprint->title }}</h1>
-    <p>
-        <span class="status">{{ $lifecycleLabel }}</span>
-        <span class="muted">sumber {{ $sourceLabel }}</span>
-        <span class="muted">mode {{ $blueprint->mode->label() }}{{ $isAdvanced ? ' (Pro)' : '' }}</span>
-        @if ($blueprint->ai_fill_status->isInFlight() && $aiFillLabel)
-            <span class="status status-warn">AI {{ $aiFillLabel }}</span>
-        @endif
-    </p>
+    <x-ui.page-header>
+        {{ $blueprint->title }}
+        <x-slot:back>
+            <x-ui.button variant="tertiary" href="{{ route('materials.blueprints.index', $material) }}">Kembali ke kisi-kisi</x-ui.button>
+        </x-slot:back>
+        <x-slot:supporting>
+            Sumber {{ $sourceLabel }} · Mode {{ $blueprint->mode->label() }}{{ $isAdvanced ? ' (Pro)' : '' }}
+        </x-slot:supporting>
+        <x-slot:status>
+            <x-ui.status-badge :variant="$lifecycleVariant">{{ $lifecycleLabel }}</x-ui.status-badge>
+            @if ($blueprint->ai_fill_status->isInFlight() && $aiFillLabel)
+                <x-ui.status-badge variant="processing">AI {{ $aiFillLabel }}</x-ui.status-badge>
+            @endif
+            @if ($blueprint->lifecycle_status->value === 'draft' && $blueprint->ai_fill_status->value === 'failed')
+                <x-ui.status-badge variant="danger">Gagal</x-ui.status-badge>
+            @endif
+        </x-slot:status>
+    </x-ui.page-header>
 
     @if ($blueprint->error_message)
-        <div class="alert alert-error">{{ $blueprint->error_message }}</div>
+        <x-ui.alert variant="danger">{{ $blueprint->error_message }}</x-ui.alert>
+    @endif
+
+    @if ($blueprint->ai_fill_status->value === 'succeeded' && $blueprint->lifecycle_status->value === 'draft')
+        <x-ui.alert variant="info">Pengisian AI selesai. Kisi-kisi ini masih draf sampai dikonfirmasi.</x-ui.alert>
     @endif
 
     @if ($isAdvanced && ! $isPro)
-        <div class="alert alert-error">Paket Pro tidak aktif. Kisi-kisi lanjutan tetap dapat dilihat, tetapi tidak dapat diubah, dikonfirmasi, disalin, atau dipakai untuk generasi baru.</div>
+        <x-ui.alert variant="danger">Paket Pro tidak aktif. Kisi-kisi lanjutan tetap dapat dilihat, tetapi tidak dapat diubah, dikonfirmasi, disalin, atau dipakai untuk generasi baru.</x-ui.alert>
     @endif
 
-    <div class="actions" style="margin-bottom: 20px;">
+    <div class="action-stack" style="margin-bottom: 20px;">
         @if ($canEditDraft)
             <form method="POST" action="{{ route('materials.blueprints.confirm', [$material, $blueprint]) }}">
                 @csrf
-                <button class="button" type="submit">Konfirmasi kisi-kisi</button>
+                <x-ui.button type="submit">Konfirmasi kisi-kisi</x-ui.button>
             </form>
         @endif
 
         @if ($blueprint->lifecycle_status->value === 'confirmed')
-            <a class="button" href="{{ route('materials.blueprints.download', [$material, $blueprint]) }}">Unduh DOCX</a>
             @if ($canMutateAdvanced)
-                <a class="button" href="{{ route('generation-runs.create', [$material, $blueprint]) }}">Generate soal</a>
+                <x-ui.button href="{{ route('generation-runs.create', [$material, $blueprint]) }}">Buat soal</x-ui.button>
+            @endif
+            <x-ui.button variant="secondary" href="{{ route('materials.blueprints.download', [$material, $blueprint]) }}">Unduh DOCX</x-ui.button>
+            @if ($canMutateAdvanced)
                 <form method="POST" action="{{ route('materials.blueprints.clone', [$material, $blueprint]) }}">
                     @csrf
-                    <button class="button button-secondary" type="submit">Salin ke draf baru</button>
+                    <x-ui.button variant="secondary" type="submit">Salin ke draf baru</x-ui.button>
                 </form>
             @endif
         @endif
 
-        @if ($blueprint->ai_fill_status->value === 'failed' && $canMutateAdvanced)
+        @if ($blueprint->lifecycle_status->value === 'draft' && $blueprint->ai_fill_status->value === 'failed' && $canMutateAdvanced)
             <form method="POST" action="{{ route('materials.blueprints.retry-ai', [$material, $blueprint]) }}">
                 @csrf
-                <button class="button button-secondary" type="submit">Coba isi AI lagi</button>
+                <x-ui.button variant="secondary" type="submit">Coba isi AI lagi</x-ui.button>
             </form>
         @endif
     </div>
 
     @if ($canEditDraft)
-        <div class="card" style="margin-bottom: 20px;">
+        <div class="page-form">
             <form method="POST" action="{{ route('materials.blueprints.update', [$material, $blueprint]) }}">
                 @csrf
                 @method('PATCH')
@@ -92,11 +107,11 @@
                     'isPro' => $isPro,
                     'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
                 ])
-                <button class="button" type="submit">Simpan draf</button>
+                <x-ui.button variant="secondary" type="submit">Simpan draf</x-ui.button>
             </form>
         </div>
     @else
-        <div class="card">
+        <div class="responsive-table table-wrap">
             <table class="table">
                 <thead>
                     <tr>
@@ -130,6 +145,23 @@
                     @endforeach
                 </tbody>
             </table>
+        </div>
+        <div class="responsive-summary">
+            @php $summaryCursor = 1; @endphp
+            @foreach ($blueprint->rows as $row)
+                @php
+                    $start = $summaryCursor;
+                    $end = $start + $row->requested_count - 1;
+                    $questionRange = $start === $end ? (string) $start : "{$start}–{$end}";
+                    $summaryCursor = $end + 1;
+                @endphp
+                <article class="summary-row">
+                    <strong>Baris {{ $loop->iteration }}</strong>
+                    <p>{{ $row->objective }}</p>
+                    <p class="muted">{{ $row->topic }} · {{ $row->indicator }}</p>
+                    <p class="muted">{{ $row->cognitive_level->label() }} · {{ $row->question_type->label() }} · No. {{ $questionRange }}</p>
+                </article>
+            @endforeach
         </div>
     @endif
 

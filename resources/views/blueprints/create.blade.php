@@ -1,16 +1,16 @@
 @extends('layouts.app')
 
-@section('title', 'Buat kisi-kisi')
+@section('title', 'Buat kisi-kisi manual')
 
 @section('content')
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('materials.blueprints.index', $material) }}">Kembali ke kisi-kisi</a>
-    </div>
+    <div class="page-form">
+        <x-ui.page-header>
+            Buat kisi-kisi manual
+            <x-slot:back>
+                <x-ui.button variant="tertiary" href="{{ route('materials.blueprints.index', $material) }}">Kembali ke kisi-kisi</x-ui.button>
+            </x-slot:back>
+        </x-ui.page-header>
 
-    <p class="muted">KISI-KISI MANUAL</p>
-    <h1>Buat Kisi-kisi Manual</h1>
-
-    <div class="card">
         <form method="POST" action="{{ route('materials.blueprints.store', $material) }}">
             @csrf
             @include('blueprints._form', [
@@ -23,7 +23,7 @@
                 'isPro' => $isPro,
                 'questionTypes' => $questionTypes ?? \App\Enums\QuestionType::cases(),
             ])
-            <button class="button" type="submit">Simpan draf</button>
+            <x-ui.button type="submit">Simpan draf</x-ui.button>
         </form>
     </div>
 @endsection
