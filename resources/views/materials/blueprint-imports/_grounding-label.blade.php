@@ -3,7 +3,7 @@
         null, '' => 'Belum dicocokkan',
         'queued' => 'Menunggu verifikasi',
         'processing' => 'Sedang dicocokkan',
-        'ready' => 'Siap',
+        'ready' => 'Pencocokan selesai',
         'failed' => 'Gagal',
         default => 'Status tidak dikenali',
     };

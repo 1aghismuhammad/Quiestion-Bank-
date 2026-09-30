@@ -192,6 +192,11 @@ a {
     cursor: not-allowed;
 }
 
+textarea.ui-input {
+    min-height: 8rem;
+    resize: vertical;
+}
+
 .ui-button {
     display: inline-flex;
     align-items: center;
@@ -511,6 +516,35 @@ textarea.input {
     display: grid;
     gap: 12px;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.table-wrap {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.responsive-summary {
+    display: none;
+}
+
+.summary-row {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+@media (max-width: 47.99rem) {
+    .responsive-table {
+        display: none;
+    }
+
+    .responsive-summary {
+        display: grid;
+        gap: 12px;
+    }
 }
 
 h1,

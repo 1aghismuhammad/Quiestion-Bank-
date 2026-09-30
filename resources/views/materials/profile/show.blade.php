@@ -8,15 +8,15 @@
         'none' => 'Belum dianalisis',
         'queued' => 'Menunggu antrian',
         'processing' => 'Sedang dianalisis',
-        'ready' => 'Siap',
+        'ready' => 'Hasil analisis siap',
         'failed' => 'Gagal',
         'stale' => 'Tidak sesuai konten terbaru',
     ];
 
     $stateClasses = [
         'none' => 'status status-muted',
-        'queued' => 'status status-warn',
-        'processing' => 'status status-warn',
+        'queued' => 'status status-muted',
+        'processing' => 'ui-badge ui-badge-processing',
         'ready' => 'status',
         'failed' => 'status status-error',
         'stale' => 'status status-warn',
@@ -125,7 +125,7 @@
             @if ($profile->canStart)
                 <form method="POST" action="{{ route('materials.profile.store', $material) }}">
                     @csrf
-                    <button class="button" type="submit">Mulai analisis profil</button>
+                    <button class="button" type="submit">Mulai analisis</button>
                 </form>
             @else
                 <p class="status status-warn">Materi belum bisa dianalisis</p>
@@ -168,7 +168,7 @@
             </p>
 
             @if (! $profile->hasAnyElements())
-                <p class="muted">Profil ini tidak memiliki butir untuk ditampilkan.</p>
+                <p class="muted">Tidak ada butir profil yang ditemukan.</p>
             @endif
         </div>
 
@@ -236,7 +236,7 @@
 
             <form method="POST" action="{{ route('materials.profile.regenerate', $material) }}">
                 @csrf
-                <button class="button" type="submit">Jalankan analisis baru</button>
+                <button class="button" type="submit">{{ $state === \App\Enums\MaterialProfileOwnerState::Failed ? 'Coba lagi' : 'Jalankan analisis baru' }}</button>
             </form>
         </div>
     @endif

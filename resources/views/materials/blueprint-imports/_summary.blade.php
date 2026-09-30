@@ -17,6 +17,15 @@
         'failed' => 'Interpretasi gagal',
         default => 'Status tidak dikenali',
     };
+    $grounding = $latest?->grounding_status;
+    $groundingLabel = match ($grounding?->value) {
+        null => 'Belum dicocokkan',
+        'queued' => 'Menunggu pencocokan',
+        'processing' => 'Sedang dicocokkan',
+        'ready' => 'Pencocokan selesai',
+        'failed' => 'Pencocokan gagal',
+        default => 'Status tidak dikenali',
+    };
 @endphp
 
 <div class="card" style="margin-bottom: 20px;">
@@ -27,14 +36,14 @@
         <p class="muted">Belum ada kisi-kisi DOCX yang diunggah.</p>
     @else
         <p><strong>File:</strong> {{ $latest->original_file_name }}</p>
-        <p>
-            <strong>Ekstraksi:</strong>
-            <span class="status">{{ $extractionLabel }}</span>
-        </p>
-        <p>
-            <strong>Interpretasi:</strong>
-            <span class="status">{{ $interpretationLabel }}</span>
-        </p>
+        <x-ui.import-progress
+            :extraction-label="$extractionLabel"
+            extraction-variant="neutral"
+            :interpretation-label="$interpretationLabel"
+            interpretation-variant="neutral"
+            :grounding-label="$groundingLabel"
+            grounding-variant="neutral"
+        />
         <p class="muted">
             Dibuat
             {{ $latest->created_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}

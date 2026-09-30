@@ -131,10 +131,10 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertSee('Apa itu analisis profil materi?')
             ->assertSee('tidak memotong kuota generasi soal')
             ->assertSee('action="'.route('materials.profile.store', $this->material).'"', false)
-            ->assertSee('Mulai analisis profil');
+            ->assertSee('Mulai analisis');
 
         $html = (string) $response->getContent();
-        $this->assertSame(1, substr_count($html, 'Mulai analisis profil'));
+        $this->assertSame(1, substr_count($html, 'Mulai analisis'));
         $this->assertSame(1, substr_count($html, 'action="'.route('materials.profile.store', $this->material).'"'));
         $this->assertSame(0, substr_count($html, 'Jalankan analisis baru'));
         $this->assertSame(0, substr_count($html, 'action="'.route('materials.profile.regenerate', $this->material).'"'));
@@ -332,6 +332,8 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Sedang dianalisis')
+            ->assertSee('ui-badge-processing', false)
+            ->assertDontSee('status-warn', false)
             ->assertSee('1 dari 4 langkah')
             ->assertSee('membaca bagian materi')
             ->assertSee('role="status"', false)
@@ -374,7 +376,7 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
         $response = $this->actingAs($this->owner)->get(route('materials.profile.show', $material));
 
         $response->assertOk()
-            ->assertSee('Siap')
+            ->assertSee('Hasil analisis siap')
             ->assertSee('Profil terkini untuk konten materi saat ini')
             ->assertSee('Materi ujian')
             ->assertSee('Topik dan cakupan materi')
@@ -434,10 +436,10 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertSee('Analisis tidak selesai')
             ->assertSee($expectedMessage)
             ->assertSee('Riwayat analisis sebelumnya tetap tersimpan')
-            ->assertSee('Jalankan analisis baru');
+            ->assertSee('Coba lagi');
 
         $failedHtml = (string) $response->getContent();
-        $this->assertSame(1, substr_count($failedHtml, 'Jalankan analisis baru'));
+        $this->assertSame(1, substr_count($failedHtml, 'Coba lagi'));
         $this->assertSame(1, substr_count($failedHtml, 'action="'.route('materials.profile.regenerate', $this->material).'"'));
         $this->assertSame(0, substr_count($failedHtml, 'Mulai analisis profil'));
 

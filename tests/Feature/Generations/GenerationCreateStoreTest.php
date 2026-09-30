@@ -147,7 +147,7 @@ class GenerationCreateStoreTest extends TestCase
         $this->actingAs($owner)
             ->get(route('materials.show', $material))
             ->assertOk()
-            ->assertSee('Generate Questions')
+            ->assertSee('Buat soal')
             ->assertDontSee('Simpan ke Question Bank');
     }
 

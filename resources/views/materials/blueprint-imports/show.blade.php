@@ -11,26 +11,48 @@
     <p class="muted">TINJAUAN IMPOR</p>
     <h1>{{ $review->originalFileName }}</h1>
 
-    @if (session('success'))
-        <div class="alert alert-success" style="margin-top: 12px;">{{ session('success') }}</div>
-    @endif
-
-    <div class="card" style="margin-top: 16px; margin-bottom: 20px;" id="import-review-status">
-        <p>
-            <strong>Ekstraksi:</strong>
-            <span class="status">{{ $review->extractionStatusLabel }}</span>
-        </p>
-        <p>
-            <strong>Interpretasi:</strong>
-            <span class="status">{{ $review->interpretationStatusLabel }}</span>
-        </p>
-
-        <p>
-            <strong>Pencocokan:</strong>
-            <span class="status">
-                @include('materials.blueprint-imports._grounding-label', ['status' => $import->grounding_status?->value])
-            </span>
-        </p>
+    <div style="margin-top: 16px; margin-bottom: 20px;" id="import-review-status">
+        @php
+            $presentationVariant = function (?string $status, string $pipeline): string {
+                return match ($pipeline) {
+                    'extraction' => match ($status) {
+                        'pending' => 'neutral',
+                        'processing' => 'processing',
+                        'extracted' => 'success',
+                        'failed' => 'danger',
+                        default => 'neutral',
+                    },
+                    'interpretation' => match ($status) {
+                        null, '' => 'neutral',
+                        'queued' => 'neutral',
+                        'processing' => 'processing',
+                        'review_ready' => 'success',
+                        'failed' => 'danger',
+                        default => 'neutral',
+                    },
+                    'grounding' => match ($status) {
+                        null, '' => 'neutral',
+                        'queued' => 'neutral',
+                        'processing' => 'processing',
+                        'ready' => 'success',
+                        'failed' => 'danger',
+                        default => 'neutral',
+                    },
+                    default => 'neutral',
+                };
+            };
+            $groundingText = trim(view('materials.blueprint-imports._grounding-label', [
+                'status' => $import->grounding_status?->value,
+            ])->render());
+        @endphp
+        <x-ui.import-progress
+            :extraction-label="$review->extractionStatusLabel"
+            :extraction-variant="$presentationVariant($review->extractionStatus, 'extraction')"
+            :interpretation-label="$review->interpretationStatusLabel"
+            :interpretation-variant="$presentationVariant($review->interpretationStatus, 'interpretation')"
+            :grounding-label="$groundingText"
+            :grounding-variant="$presentationVariant($import->grounding_status?->value, 'grounding')"
+        />
 
         @if ($review->isInFlight() || $groundingInFlight)
             <p class="muted" id="import-state-live">Proses masih berjalan. Halaman akan dimuat ulang saat selesai.</p>
@@ -54,14 +76,14 @@
             <form method="POST" action="{{ route('materials.blueprint-imports.ground', [$material, $import]) }}" style="margin-top: 12px;">
                 @csrf
                 <p class="muted">Kisi-kisi akan dibandingkan dengan materi agar tujuan, topik, dan indikator memiliki acuan yang sesuai.</p>
-                <button class="button" type="submit">Cocokkan dengan Materi</button>
+                <button class="button" type="submit">Cocokkan dengan materi</button>
             </form>
         @endif
 
         @if ($import->grounding_status?->value === 'failed')
             <form method="POST" action="{{ route('materials.blueprint-imports.retry-grounding', [$material, $import]) }}" style="margin-top: 12px;">
                 @csrf
-                <button class="button" type="submit">Coba Lagi</button>
+                <button class="button" type="submit">Coba lagi pencocokan</button>
             </form>
         @endif
 
@@ -178,7 +200,7 @@
             <a class="button" href="{{ route('materials.blueprints.show', [$material, $import->created_blueprint_id]) }}">Buka draf</a>
         </div>
     @elseif ($import->grounding_status?->value === 'ready' && $convertibleIndexes !== [])
-        <form class="card" method="POST" action="{{ route('materials.blueprint-imports.convert', [$material, $import]) }}" style="margin-top: 16px;">
+        <form method="POST" action="{{ route('materials.blueprint-imports.convert', [$material, $import]) }}" style="margin-top: 16px;">
             @csrf
             <h2>Buat draf kisi-kisi</h2>
             <p class="muted">Pilih kandidat yang akan dipakai, lalu lengkapi isian kisi-kisi. Konteks materi ditentukan secara otomatis.</p>
@@ -207,7 +229,7 @@
                 @if (! in_array($candidate['index'], $convertibleIndexes, true))
                     @continue
                 @endif
-                <div class="card" style="margin-top: 12px;">
+                <div class="summary-row" style="margin-top: 12px;">
                     <label>
                         <input type="checkbox" name="selected_indexes[]" value="{{ $candidate['index'] }}">
                         Kandidat {{ $candidate['index'] + 1 }}
@@ -241,8 +263,10 @@
                     <input class="input" type="number" min="1" max="10" name="rows[{{ $candidate['index'] }}][requested_count]" value="1" required>
                 </div>
             @endforeach
-            <button class="button" style="margin-top: 12px;" type="submit">Simpan sebagai Draf</button>
+            <button class="button" style="margin-top: 12px;" type="submit">Simpan sebagai draf</button>
         </form>
+    @elseif ($import->grounding_status?->value === 'ready')
+        <p>Pencocokan selesai. Tidak ada kandidat yang dapat dipakai.</p>
     @endif
 @endsection
 

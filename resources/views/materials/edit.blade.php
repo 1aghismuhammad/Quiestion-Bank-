@@ -3,33 +3,37 @@
 @section('title', 'Edit materi')
 
 @section('content')
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('materials.show', $material) }}">Kembali ke detail</a>
-    </div>
+    <div class="page-form">
+        <x-ui.page-header>
+            Edit materi
+        </x-ui.page-header>
 
-    <p class="muted">EDIT MATERI</p>
-    <h1>{{ $material->title }}</h1>
-
-    <div class="card" style="max-width: 720px;">
         <form method="POST" action="{{ route('materials.update', $material) }}">
             @csrf
             @method('PATCH')
 
-            <label class="label" for="title">Judul</label>
-            <input class="input" id="title" name="title" type="text" value="{{ old('title', $material->title) }}" required>
-            @error('title')
-                <div class="error-text">{{ $message }}</div>
-            @enderror
+            <x-ui.text-input
+                name="title"
+                id="title"
+                label="Judul"
+                :value="old('title', $material->title)"
+                required
+            />
 
             @if ($isText)
-                <label class="label" for="content" style="margin-top: 16px;">Konten</label>
-                <textarea class="input" id="content" name="content" required>{{ old('content', $material->content) }}</textarea>
-                @error('content')
-                    <div class="error-text">{{ $message }}</div>
-                @enderror
+                <x-ui.textarea
+                    name="content"
+                    id="content"
+                    label="Konten"
+                    :value="old('content', $material->content)"
+                    required
+                />
             @endif
 
-            <button class="button" style="margin-top: 16px;" type="submit">Simpan perubahan</button>
+            <div class="action-stack">
+                <x-ui.button type="submit">Simpan perubahan</x-ui.button>
+                <x-ui.button variant="tertiary" href="{{ route('materials.show', $material) }}">Kembali ke detail</x-ui.button>
+            </div>
         </form>
     </div>
 @endsection

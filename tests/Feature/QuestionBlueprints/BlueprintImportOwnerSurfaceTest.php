@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\QuestionBlueprints;
 
+use App\Data\QuestionBlueprints\BlueprintImportGroundingResult;
 use App\Data\QuestionBlueprints\BlueprintImportInterpretationResult;
+use App\Enums\BlueprintImportGroundingStatus;
 use App\Enums\BlueprintImportInterpretationStatus;
 use App\Enums\BlueprintImportStatus;
 use App\Jobs\InterpretQuestionBlueprintImport;
 use App\Models\AiGenerationRun;
 use App\Models\AiUsageLog;
 use App\Models\Material;
+use App\Models\MaterialProfileElement;
 use App\Models\MaterialProfileVersion;
 use App\Models\QuestionBlueprint;
 use App\Models\QuestionBlueprintImport;
@@ -589,6 +592,203 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->post(route('materials.blueprint-imports.retry', [$this->material, $import]))
             ->assertOk()
             ->assertSee('Permintaan percobaan ulang telah diproses. Status terbaru akan ditampilkan.');
+    }
+
+    public function test_import_review_branches_keep_conversion_behind_the_server_gate(): void
+    {
+        $reviewReady = $this->makeReviewReady('blueprint_like', []);
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.show', [$this->material, $reviewReady]))
+            ->assertOk()
+            ->assertSee('Cocokkan dengan materi')
+            ->assertDontSee('Simpan sebagai draf')
+            ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $reviewReady]).'"', false);
+
+        $empty = $this->makeImport([
+            'grounding_status' => BlueprintImportGroundingStatus::READY,
+            'grounding_result' => null,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.show', [$this->material, $empty]))
+            ->assertOk()
+            ->assertSee('Pencocokan selesai. Tidak ada kandidat yang dapat dipakai.')
+            ->assertDontSee('Simpan sebagai draf')
+            ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $empty]).'"', false);
+
+        $eligible = $this->eligibleGroundedImport();
+        $eligibleHtml = $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.show', [$this->material, $eligible]))
+            ->assertOk()
+            ->assertSee('Simpan sebagai draf')
+            ->assertSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $eligible]).'"', false)
+            ->assertSee('name="selected_indexes[]"', false)
+            ->assertSee('name="rows[0][index]"', false)
+            ->assertSee('name="rows[0][cognitive_level]"', false)
+            ->assertSee('name="rows[0][difficulty]"', false)
+            ->assertSee('name="rows[0][question_type]"', false)
+            ->assertSee('name="rows[0][requested_count]"', false)
+            ->getContent();
+        $this->assertStringContainsString('ui-badge-success', $eligibleHtml);
+
+        $series = \App\Models\QuestionBlueprintSeries::factory()->create([
+            'user_id' => $this->owner->id,
+            'material_id' => $this->material->material_id,
+        ]);
+        $blueprint = QuestionBlueprint::factory()->create([
+            'blueprint_series_id' => $series->getKey(),
+        ]);
+        $draft = $this->makeImport([
+            'created_blueprint_id' => $blueprint->getKey(),
+            'grounding_status' => BlueprintImportGroundingStatus::READY,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.show', [$this->material, $draft]))
+            ->assertOk()
+            ->assertSee('Buka draf')
+            ->assertSee(route('materials.blueprints.show', [$this->material, $blueprint]), false)
+            ->assertDontSee('Simpan sebagai draf')
+            ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $draft]).'"', false);
+
+        $failedGrounding = $this->makeImport([
+            'grounding_status' => BlueprintImportGroundingStatus::FAILED,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.show', [$this->material, $failedGrounding]))
+            ->assertOk()
+            ->assertSee('action="'.route('materials.blueprint-imports.retry-grounding', [$this->material, $failedGrounding]).'"', false)
+            ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $failedGrounding]).'"', false)
+            ->assertSee('ui-badge-danger', false);
+
+        $processing = $this->makeImport([
+            'status' => BlueprintImportStatus::PROCESSING,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.show', [$this->material, $processing]))
+            ->assertOk()
+            ->assertSee('ui-badge-processing', false)
+            ->assertDontSee('Simpan sebagai draf');
+    }
+
+    private function eligibleGroundedImport(): QuestionBlueprintImport
+    {
+        $profile = $this->profileFor($this->material);
+        $element = MaterialProfileElement::query()
+            ->where('profile_version_id', $profile->profile_version_id)
+            ->firstOrFail();
+        $import = $this->makeImport([
+            'profile_version_id' => $profile->profile_version_id,
+            'status' => BlueprintImportStatus::EXTRACTED,
+            'interpretation_status' => BlueprintImportInterpretationStatus::REVIEW_READY,
+            'interpretation_result' => $this->presentationInterpretation(),
+            'material_content_hash' => $profile->material_content_hash,
+            'material_file_hash' => $profile->material_file_hash,
+            'extractor_implementation' => $profile->extractor_implementation,
+        ]);
+        $import->refresh();
+        $import->update([
+            'grounding_status' => BlueprintImportGroundingStatus::READY,
+            'grounding_result' => $this->presentationGrounding(
+                $profile,
+                $element,
+                hash('sha256', (string) $import->getRawOriginal('interpretation_result')),
+            ),
+        ]);
+
+        return $import->fresh();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentationInterpretation(): array
+    {
+        $keys = ['objective', 'topic', 'material', 'indicator', 'cognitive_level', 'difficulty', 'question_type', 'assessment_type', 'numbering', 'extra'];
+        $raw = [
+            'objective' => 'Tujuan daur air',
+            'topic' => 'Topik daur air',
+            'indicator' => 'Indikator daur air',
+            'numbering' => '1-5',
+            'cognitive_level' => 'C2',
+        ];
+        $candidate = [
+            'source_refs' => [],
+            'warnings' => [],
+            'unresolved' => [],
+            'cognitive_level' => null,
+            'difficulty' => null,
+            'question_type' => null,
+            'assessment_type' => null,
+            'requested_count' => null,
+        ];
+
+        foreach ($keys as $key) {
+            $candidate['raw_'.$key] = $raw[$key] ?? null;
+            $candidate['source_refs'][$key] = $key === 'objective'
+                ? [['kind' => 'paragraph', 'block_ordinal' => 0]]
+                : [];
+        }
+
+        return [
+            'schema_version' => BlueprintImportInterpretationResult::SCHEMA_VERSION,
+            'document_kind' => 'blueprint_like',
+            'warnings' => [],
+            'candidates' => [$candidate],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentationGrounding(MaterialProfileVersion $profile, MaterialProfileElement $element, string $sha): array
+    {
+        $evidence = [[
+            'profile_element_id' => $element->profile_element_id,
+            'source_chunk_id' => $element->source_chunk_id,
+            'char_start' => 0,
+            'char_end' => 12,
+            'evidence_excerpt' => 'BUKTI-JANGAN-DISALIN',
+            'evidence_locator' => null,
+        ]];
+        $field = static fn (string $claim): array => [
+            'claim_raw' => $claim,
+            'status' => 'grounded',
+            'material_evidence' => $evidence,
+        ];
+
+        return [
+            'schema_version' => BlueprintImportGroundingResult::SCHEMA_VERSION,
+            'grounded_profile_version_id' => $profile->profile_version_id,
+            'interpretation_schema_version' => BlueprintImportInterpretationResult::SCHEMA_VERSION,
+            'interpretation_result_sha256' => $sha,
+            'fingerprint' => [
+                'material_content_hash' => $profile->material_content_hash,
+                'material_file_hash' => $profile->material_file_hash,
+                'extractor_implementation' => $profile->extractor_implementation,
+            ],
+            'document_rollup' => 'grounded',
+            'warnings' => [],
+            'metadata' => [],
+            'candidates' => [[
+                'index' => 0,
+                'rollup' => 'partial',
+                'import_provenance' => [],
+                'fields' => [
+                    'objective' => $field('Tujuan daur air'),
+                    'topic' => $field('Topik daur air'),
+                    'indicator' => $field('Indikator daur air'),
+                    'material' => [
+                        'claim_raw' => null,
+                        'status' => 'not_applicable',
+                        'material_evidence' => [],
+                    ],
+                ],
+            ]],
+        ];
     }
 
     /**

@@ -1,30 +1,39 @@
 @extends('layouts.app')
 
-@section('title', 'Buat materi')
+@section('title', 'Unggah materi')
 
 @section('content')
-    <p class="muted">MATERIAL MANAGEMENT</p>
-    <h1>Buat materi</h1>
-    <p class="muted">Unggah file PDF, DOCX, atau TXT (maksimal 10 MB). Materi teks lama tetap dapat dilihat dan diedit, tetapi materi baru hanya dapat dibuat melalui unggah file.</p>
+    <div class="page-form">
+        <x-ui.page-header>
+            Unggah materi
+            <x-slot:supporting>
+                Unggah file PDF, DOCX, atau TXT (maksimal 10 MB). Materi teks lama tetap dapat dilihat dan diedit, tetapi materi baru hanya dapat dibuat melalui unggah file.
+            </x-slot:supporting>
+        </x-ui.page-header>
 
-    <div class="card">
-        <h2>Unggah file</h2>
         <form method="POST" action="{{ route('materials.store-upload') }}" enctype="multipart/form-data">
             @csrf
 
-            <label class="label" for="title">Judul</label>
-            <input class="input" id="title" name="title" type="text" value="{{ old('title') }}" required>
-            @error('title')
-                <div class="error-text">{{ $message }}</div>
-            @enderror
+            <x-ui.text-input
+                name="title"
+                id="title"
+                label="Judul"
+                :value="old('title')"
+                required
+            />
 
-            <label class="label" for="file" style="margin-top: 16px;">File (PDF, DOCX, TXT)</label>
-            <input class="input" id="file" name="file" type="file" accept=".pdf,.docx,.txt" required>
-            @error('file')
-                <div class="error-text">{{ $message }}</div>
-            @enderror
+            <div>
+                <label class="label" for="file">Berkas PDF, DOCX, atau TXT</label>
+                <input class="ui-input" id="file" name="file" type="file" accept=".pdf,.docx,.txt" required>
+                @error('file')
+                    <div class="error-text" id="file-error">{{ $message }}</div>
+                @enderror
+            </div>
 
-            <button class="button" style="margin-top: 16px;" type="submit">Unggah materi</button>
+            <div class="action-stack">
+                <x-ui.button type="submit">Unggah materi</x-ui.button>
+                <x-ui.button variant="tertiary" href="{{ route('materials.index') }}">Kembali</x-ui.button>
+            </div>
         </form>
     </div>
 @endsection
