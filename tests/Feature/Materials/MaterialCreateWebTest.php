@@ -32,15 +32,57 @@ class MaterialCreateWebTest extends TestCase
         $this->actingAs($this->createCompleteUser())
             ->get(route('materials.create'))
             ->assertOk()
-            ->assertSee('Unggah file')
+            ->assertSee('Unggah materi')
+            ->assertSee('Kembali ke materi')
+            ->assertSee('Berkas PDF, DOCX, atau TXT')
+            ->assertSee('Pilih berkas')
+            ->assertSee('Judul materi')
+            ->assertDontSee('(opsional)')
             ->assertSee('10 MB')
             ->assertSee('PDF')
-            ->assertSee('Materi teks lama tetap dapat dilihat dan diedit')
+            ->assertSee('action="'.route('materials.store-upload').'"', false)
+            ->assertSee('method="POST"', false)
+            ->assertSee('name="_token"', false)
+            ->assertSee('name="title"', false)
+            ->assertSee('name="file"', false)
             ->assertDontSee('unggahan teks')
             ->assertDontSee('Simpan materi teks')
             ->assertDontSee('teks manual')
             ->assertDontSee('name="content"', false)
             ->assertDontSee('<textarea', false);
+    }
+
+    public function test_validation_errors_render_next_to_fields_and_keep_old_title(): void
+    {
+        $user = $this->createCompleteUser();
+
+        $this->actingAs($user)
+            ->from(route('materials.create'))
+            ->post(route('materials.store-upload'), ['title' => 'Judul lama'])
+            ->assertRedirect(route('materials.create'));
+
+        $this->actingAs($user)
+            ->get(route('materials.create'))
+            ->assertOk()
+            ->assertSee('File materi wajib diunggah.')
+            ->assertSee('id="file-error"', false)
+            ->assertSee('value="Judul lama"', false);
+    }
+
+    public function test_missing_title_error_renders_next_to_title_field(): void
+    {
+        $user = $this->createCompleteUser();
+
+        $this->actingAs($user)
+            ->from(route('materials.create'))
+            ->post(route('materials.store-upload'), ['title' => ''])
+            ->assertRedirect(route('materials.create'));
+
+        $this->actingAs($user)
+            ->get(route('materials.create'))
+            ->assertSee('Judul materi wajib diisi.')
+            ->assertSee('id="title-error"', false)
+            ->assertSee('aria-invalid="true"', false);
     }
 
     public function test_direct_post_to_materials_text_returns_404_and_creates_nothing(): void
