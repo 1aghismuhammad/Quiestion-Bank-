@@ -26,15 +26,12 @@ class HomePageTest extends TestCase
         $response->assertDontSee('name="email"', false);
     }
 
-    public function test_authenticated_home_offers_dashboard(): void
+    public function test_authenticated_home_redirects_to_dashboard(): void
     {
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('home'));
-
-        $response->assertOk();
-        $response->assertSee('Buka dasbor');
-        $response->assertSee('href="'.route('dashboard').'"', false);
-        $response->assertDontSee('Login dengan Google');
+        $this->actingAs($user)
+            ->get(route('home'))
+            ->assertRedirect(route('dashboard'));
     }
 }
