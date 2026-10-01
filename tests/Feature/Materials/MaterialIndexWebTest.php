@@ -26,6 +26,11 @@ class MaterialIndexWebTest extends TestCase
         $this->actingAs($owner)
             ->get(route('materials.index'))
             ->assertOk()
+            ->assertSee('Materi saya')
+            ->assertSee('Kelola materi pembelajaran yang digunakan sebagai dasar pembuatan soal.')
+            ->assertSee('Buat materi')
+            ->assertSee('Arsip')
+            ->assertSee('Buka')
             ->assertSee('Owner lesson')
             ->assertDontSee('Secret lesson')
             ->assertDontSee('Old lesson')
@@ -45,6 +50,10 @@ class MaterialIndexWebTest extends TestCase
         $this->actingAs($owner)
             ->get(route('materials.archived'))
             ->assertOk()
+            ->assertSee('Materi terarsip')
+            ->assertSee('Materi pembelajaran yang telah diarsipkan.')
+            ->assertSee('Materi aktif')
+            ->assertDontSee('Buat materi')
             ->assertSee('Archived lesson')
             ->assertDontSee('Active lesson')
             ->assertDontSee('Foreign archive');
@@ -72,6 +81,8 @@ class MaterialIndexWebTest extends TestCase
         $this->actingAs($owner)
             ->get(route('materials.index'))
             ->assertOk()
-            ->assertSee('Belum ada materi');
+            ->assertSee('Materi saya')
+            ->assertSee('Belum ada materi. Mulai dengan mengunggah PDF, DOCX, atau TXT.')
+            ->assertSee('Buat materi');
     }
 }
