@@ -2402,3 +2402,606 @@ p {
         transform: none;
     }
 }
+/* VIS-06 IMP-02 import review */
+.blueprint-import-review__page {
+    animation: blueprint-import-review-enter 200ms ease-out backwards;
+}
+
+.blueprint-import-review__back {
+    margin-bottom: 12px;
+}
+
+.blueprint-import-review__back a {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    color: var(--color-text-muted);
+    font-weight: 650;
+    text-decoration: none;
+    transition: color 160ms ease-out;
+}
+
+.blueprint-import-review__back a svg {
+    transition: transform 160ms ease-out;
+}
+
+.blueprint-import-review__back a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 160ms ease-out;
+}
+
+.blueprint-import-review__back a:hover,
+.blueprint-import-review__back a:focus-visible {
+    color: #5145dc;
+}
+
+.blueprint-import-review__back a:hover svg,
+.blueprint-import-review__back a:focus-visible svg {
+    transform: translateX(-3px);
+}
+
+.blueprint-import-review__back a:hover::after,
+.blueprint-import-review__back a:focus-visible::after {
+    transform: scaleX(1);
+}
+
+.blueprint-import-review__back a:focus-visible {
+    outline: 2px solid #5145dc;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.blueprint-import-review__hero {
+    margin-bottom: 20px;
+}
+
+.blueprint-import-review__hero p {
+    margin: 0 0 8px;
+    font-size: 0.875rem;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+}
+
+.blueprint-import-review__hero h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
+.blueprint-import-review__progress {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.blueprint-import-review__stages {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+}
+
+.blueprint-import-review__stages p {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.blueprint-import-review__stages strong {
+    min-width: 6rem;
+}
+
+.blueprint-import-review__async {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 16px 20px;
+    background: #f6f4ff;
+    border: 1px solid #e4dff6;
+    border-radius: 16px;
+}
+
+.blueprint-import-review__async-icon {
+    flex: 0 0 auto;
+    color: #5145dc;
+    animation: blueprint-import-review-spin 2.4s linear infinite;
+}
+
+.blueprint-import-review__async p {
+    margin: 4px 0 0;
+}
+
+.blueprint-import-review__banner {
+    margin-bottom: 24px;
+}
+
+.blueprint-import-review__ground-form,
+.blueprint-import-review__retry {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+}
+
+.blueprint-import-review__ground-form p {
+    margin: 0;
+}
+
+.blueprint-import-review__page .ui-button {
+    min-height: 44px;
+    border-radius: 12px;
+    font-weight: 650;
+    transition: background-color 160ms ease-out, border-color 160ms ease-out, box-shadow 160ms ease-out, transform 160ms ease-out;
+}
+
+.blueprint-import-review__page .ui-button:not(.button-secondary) {
+    background: #5145dc;
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 2px 6px rgba(81, 69, 220, 0.18);
+}
+
+.blueprint-import-review__page .ui-button:not(.button-secondary):hover:not(:disabled) {
+    background: #4233cd;
+    box-shadow: 0 8px 18px rgba(81, 69, 220, 0.24);
+    transform: translateY(-1px);
+}
+
+.blueprint-import-review__page .ui-button:not(.button-secondary):active:not(:disabled) {
+    box-shadow: 0 2px 6px rgba(81, 69, 220, 0.18);
+    transform: translateY(0) scale(0.99);
+}
+
+.blueprint-import-review__page .ui-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: #a9a2f6;
+    box-shadow: none;
+}
+
+.blueprint-import-review__page .button-secondary {
+    background: #ffffff;
+    border: 1px solid #e4e0d8;
+    color: var(--color-text);
+}
+
+.blueprint-import-review__page .button-secondary:hover {
+    background: #faf9f6;
+    border-color: #cfc9bd;
+}
+
+.blueprint-import-review__main {
+    display: grid;
+    gap: 24px;
+    align-items: start;
+}
+
+.blueprint-import-review__candidates-header {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.blueprint-import-review__candidates-header h2 {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+    font-weight: 650;
+}
+
+.blueprint-import-review__candidates-header p {
+    margin: 0;
+}
+
+.blueprint-import-review__count {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 12px;
+    background: #f6f4ff;
+    border-radius: 999px;
+    color: #5145dc;
+    font-size: 0.875rem;
+    font-weight: 650;
+    justify-self: start;
+}
+
+.blueprint-import-review__meta {
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+}
+
+.blueprint-import-review__meta h3 {
+    margin: 0 0 4px;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.blueprint-import-review__meta p {
+    margin: 0;
+    font-weight: 650;
+}
+
+.blueprint-import-review__zero {
+    padding: 40px 20px;
+    background: #ffffff;
+    border: 1px dashed #c5cad3;
+    border-radius: 20px;
+    text-align: center;
+}
+
+.blueprint-import-review__candidate {
+    margin-bottom: 16px;
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(28, 36, 48, 0.04);
+}
+
+.blueprint-import-review__candidate--ineligible {
+    opacity: 0.8;
+    background: #faf9f6;
+}
+
+.blueprint-import-review__candidate-header {
+    margin-bottom: 16px;
+}
+
+.blueprint-import-review__candidate-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 650;
+}
+
+.blueprint-import-review__candidate-fields {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.blueprint-import-review__candidate-fields > div {
+    display: grid;
+    gap: 4px;
+    padding: 12px 16px;
+    background: #f6f5f2;
+    border-radius: 12px;
+}
+
+.blueprint-import-review__candidate-fields > div.blueprint-import-review__candidate-long {
+    background: #f6f4ff;
+}
+
+.blueprint-import-review__candidate-fields strong {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.blueprint-import-review__candidate-fields span {
+    overflow-wrap: anywhere;
+    font-weight: 650;
+}
+
+.blueprint-import-review__candidate-issues {
+    margin-top: 16px;
+    padding: 16px;
+    background: #fff4dc;
+    border-radius: 12px;
+}
+
+.blueprint-import-review__candidate-issues h4 {
+    margin: 0 0 4px;
+    font-size: 0.875rem;
+    color: var(--color-warning);
+}
+
+.blueprint-import-review__candidate-issues p {
+    margin: 0 0 8px;
+    color: var(--color-warning);
+}
+
+.blueprint-import-review__candidate-issues ul {
+    margin: 0;
+    padding-left: 20px;
+    color: var(--color-warning);
+}
+
+.blueprint-import-review__candidate-provenance {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f0ede6;
+    font-size: 0.875rem;
+}
+
+.blueprint-import-review__candidate-provenance p {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0 0 8px;
+}
+
+.blueprint-import-review__candidate-provenance p:last-child {
+    margin: 0;
+}
+
+.blueprint-import-review__candidate-provenance svg {
+    margin-top: 2px;
+    flex: 0 0 auto;
+}
+
+.blueprint-import-review__pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 24px;
+}
+
+.blueprint-import-review__panel {
+    min-width: 0;
+}
+
+.blueprint-import-review__created {
+    padding: 24px;
+    background: #f6f4ff;
+    border: 1px solid #e4dff6;
+    border-radius: 20px;
+    text-align: center;
+}
+
+.blueprint-import-review__created h2 {
+    margin: 0 0 16px;
+    font-size: 1.125rem;
+    font-weight: 650;
+}
+
+.blueprint-import-review__zero-panel {
+    padding: 24px;
+    background: #f6f5f2;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+    text-align: center;
+}
+
+.blueprint-import-review__zero-panel p {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+.blueprint-import-review__zero-panel p:first-child {
+    font-weight: 650;
+    color: var(--color-text);
+    margin-bottom: 4px;
+}
+
+.blueprint-import-review__conversion {
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 24px;
+    box-shadow: 0 8px 24px rgba(28, 36, 48, 0.06);
+}
+
+.blueprint-import-review__conversion-header {
+    margin-bottom: 20px;
+}
+
+.blueprint-import-review__conversion-header h2 {
+    margin: 0 0 8px;
+    font-size: 1.25rem;
+    font-weight: 650;
+}
+
+.blueprint-import-review__conversion-header p {
+    margin: 0;
+}
+
+.blueprint-import-review__conversion-global {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #f0ede6;
+}
+
+.blueprint-import-review__field {
+    min-width: 0;
+}
+
+.blueprint-import-review__page .ui-input {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 48px;
+    padding: 8px 14px;
+    background: #ffffff;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 12px;
+    color: var(--color-text);
+    font: inherit;
+    transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.blueprint-import-review__page .ui-input:hover {
+    border-color: #8d86d8;
+}
+
+.blueprint-import-review__page .ui-input:focus {
+    outline: none;
+    border-color: #5145dc;
+    box-shadow: 0 0 0 3px rgba(81, 69, 220, 0.25);
+}
+
+.blueprint-import-review__radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.blueprint-import-review__selection-summary {
+    margin-bottom: 16px;
+    font-weight: 650;
+    color: #5145dc;
+}
+
+.blueprint-import-review__row {
+    margin-bottom: 16px;
+    padding: 16px;
+    background: #f6f4ff;
+    border: 1px solid #e4dff6;
+    border-radius: 16px;
+    transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.blueprint-import-review__row:has(input[type="checkbox"]:not(:checked)) {
+    background: #f6f5f2;
+    border-color: #ebe6dc;
+    opacity: 0.6;
+}
+
+.blueprint-import-review__row-select {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    font-weight: 650;
+    font-size: 1.125rem;
+    cursor: pointer;
+}
+
+.blueprint-import-review__row-select input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    accent-color: #5145dc;
+    cursor: pointer;
+}
+
+.blueprint-import-review__row-context {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 12px;
+    font-size: 0.875rem;
+}
+
+.blueprint-import-review__row-context p {
+    margin: 0 0 8px;
+    color: var(--color-text-muted);
+}
+
+.blueprint-import-review__row-context ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.blueprint-import-review__row-fields {
+    display: grid;
+    gap: 12px;
+}
+
+.blueprint-import-review__submit {
+    width: 100%;
+    min-height: 52px !important;
+    margin-top: 24px;
+}
+
+@media (min-width: 48rem) {
+    .blueprint-import-review__stages {
+        grid-template-columns: repeat(3, 1fr);
+        align-items: start;
+    }
+
+    .blueprint-import-review__candidate-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .blueprint-import-review__candidate-fields > div.blueprint-import-review__candidate-long {
+        grid-column: 1 / -1;
+    }
+
+    .blueprint-import-review__row-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (min-width: 64rem) {
+    .blueprint-import-review__candidates-header {
+        grid-template-columns: 1fr auto;
+        align-items: start;
+    }
+
+    .blueprint-import-review__count {
+        justify-self: end;
+    }
+
+    .blueprint-import-review__main {
+        grid-template-columns: minmax(0, 2fr) minmax(20rem, 0.8fr);
+        column-gap: 32px;
+    }
+
+    .blueprint-import-review__panel {
+        position: sticky;
+        top: 24px;
+    }
+}
+
+@keyframes blueprint-import-review-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes blueprint-import-review-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .blueprint-import-review__page,
+    .blueprint-import-review__async-icon {
+        animation: none;
+    }
+
+    .blueprint-import-review__back a,
+    .blueprint-import-review__back a svg,
+    .blueprint-import-review__back a::after,
+    .blueprint-import-review__page .ui-button,
+    .blueprint-import-review__page .ui-input,
+    .blueprint-import-review__row {
+        transition: none;
+    }
+
+    .blueprint-import-review__back a:hover svg,
+    .blueprint-import-review__back a:focus-visible svg,
+    .blueprint-import-review__page .ui-button:not(.button-secondary):hover:not(:disabled),
+    .blueprint-import-review__page .ui-button:not(.button-secondary):active:not(:disabled) {
+        transform: none;
+    }
+}

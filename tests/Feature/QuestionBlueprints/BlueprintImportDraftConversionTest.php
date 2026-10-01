@@ -645,7 +645,7 @@ class BlueprintImportDraftConversionTest extends TestCase
         $html = $this->actingAs($owner)
             ->get(route('materials.blueprint-imports.show', [$material, $import]))
             ->assertOk()
-            ->assertSee('Buat draf kisi-kisi', false)
+            ->assertSee('Konfigurasi Draf Kisi-kisi', false)
             ->getContent();
 
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);

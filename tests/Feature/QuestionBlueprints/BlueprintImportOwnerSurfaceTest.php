@@ -605,7 +605,10 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertOk()
             ->assertSee('Cocokkan dengan materi')
             ->assertDontSee('Simpan sebagai draf')
-            ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $reviewReady]).'"', false);
+            ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $reviewReady]).'"', false)
+            ->assertDontSee('Simulasi Kondisi Sistem')
+            ->assertDontSee('Blueprint State Preview')
+            ->assertDontSee('VIS-06 Prototype Controller');
 
         $empty = $this->makeImport([
             'grounding_status' => BlueprintImportGroundingStatus::READY,
@@ -615,7 +618,8 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
         $this->actingAs($this->owner)
             ->get(route('materials.blueprint-imports.show', [$this->material, $empty]))
             ->assertOk()
-            ->assertSee('Pencocokan selesai. Tidak ada kandidat yang dapat dipakai.')
+            ->assertSee('Pencocokan selesai.')
+            ->assertSee('Tidak ada kandidat yang dapat dipakai.')
             ->assertDontSee('Simpan sebagai draf')
             ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $empty]).'"', false);
 
@@ -642,8 +646,16 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertDontSee('Tipe soal')
             ->assertSee('for="import-row-0-requested_count"', false)
             ->assertSee('id="import-row-0-requested_count"', false)
+            ->assertSee('data-import-selection', false)
+            ->assertSee('id="import-selection-count"', false)
+            ->assertSee('id="import-submit-btn"', false)
+            ->assertSee("querySelectorAll('[data-import-selection]')", false)
             ->getContent();
         $this->assertStringContainsString('ui-badge-success', $eligibleHtml);
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*id="import-submit-btn"[^>]*disabled|<button[^>]*disabled[^>]*id="import-submit-btn"/',
+            $eligibleHtml,
+        );
 
         $series = \App\Models\QuestionBlueprintSeries::factory()->create([
             'user_id' => $this->owner->id,
@@ -685,6 +697,28 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertOk()
             ->assertSee('ui-badge-processing', false)
             ->assertDontSee('Simpan sebagai draf');
+    }
+
+    public function test_created_blueprint_hides_conversion_when_candidates_remain_eligible(): void
+    {
+        $eligible = $this->eligibleGroundedImport();
+        $series = \App\Models\QuestionBlueprintSeries::factory()->create([
+            'user_id' => $this->owner->id,
+            'material_id' => $this->material->material_id,
+        ]);
+        $blueprint = QuestionBlueprint::factory()->create([
+            'blueprint_series_id' => $series->getKey(),
+        ]);
+        $eligible->update(['created_blueprint_id' => $blueprint->getKey()]);
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.show', [$this->material, $eligible->fresh()]))
+            ->assertOk()
+            ->assertSee('Draf kisi-kisi sudah dibuat.')
+            ->assertSee('Buka draf')
+            ->assertDontSee('Simpan sebagai draf')
+            ->assertDontSee('Tidak ada kandidat yang dapat dipakai.')
+            ->assertDontSee('action="'.route('materials.blueprint-imports.convert', [$this->material, $eligible]).'"', false);
     }
 
     private function eligibleGroundedImport(): QuestionBlueprintImport
