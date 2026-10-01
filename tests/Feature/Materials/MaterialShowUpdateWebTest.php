@@ -54,12 +54,18 @@ class MaterialShowUpdateWebTest extends TestCase
             ->assertOk()
             ->assertSee('Selesai')
             ->assertSee('Hello extracted')
+            ->assertSee('id="material-content-text"', false)
+            ->assertSee('aria-controls="material-content-text"', false)
+            ->assertSee('aria-expanded="false"', false)
+            ->assertSee('Lihat selengkapnya')
             ->assertDontSee('UnrecoverableMaterialExtractionException');
 
         $this->actingAs($owner)
             ->get(route('materials.show', $failed))
             ->assertOk()
             ->assertSee('Ekstraksi gagal')
+            ->assertSee('Belum ada teks yang diekstraksi.')
+            ->assertDontSee('material-content-toggle', false)
             ->assertDontSee('UnrecoverableMaterialExtractionException');
     }
 

@@ -150,7 +150,7 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertOk()
             ->assertSee('latest-import.docx')
             ->assertSee('Lihat Riwayat Impor')
-            ->assertSee('Impor Kisi-kisi')
+            ->assertSee('Kisi-kisi terbaru')
             ->assertSee('Buka Halaman Kisi-kisi')
             ->assertDontSee('name="file"', false)
             ->assertDontSee('Unggah Kisi-kisi')

@@ -89,12 +89,27 @@ class GenerationCreateStoreTest extends TestCase
             ->assertDontSee('Import ke Question Bank');
     }
 
-    public function test_material_show_renders_generation_language_labels(): void
+    public function test_material_show_renders_generation_language_labels_and_status_variants(): void
     {
         $owner = $this->createCompleteUser();
+        // Give owner unlimited pro plan
+        $proPlan = $this->proPlan();
+        $owner->subscriptions()->create([
+            'plan_id' => $proPlan->plan_id,
+            'status' => \App\Enums\SubscriptionStatus::ACTIVE,
+            'starts_at' => now()->subDay(),
+            'ends_at' => now()->addYear(),
+        ]);
+
         $material = Material::factory()->text()->for($owner)->create();
         $this->startGeneration($owner, $material, outputLanguage: OutputLanguage::ID);
         $this->startGeneration($owner, $material, outputLanguage: OutputLanguage::EN);
+
+        $completed = $this->startGeneration($owner, $material);
+        $completed->update(['generation_status' => \App\Enums\GenerationStatus::COMPLETED]);
+
+        $failed = $this->startGeneration($owner, $material);
+        $failed->update(['generation_status' => \App\Enums\GenerationStatus::FAILED]);
 
         $html = $this->actingAs($owner)
             ->get(route('materials.show', $material))
@@ -102,6 +117,8 @@ class GenerationCreateStoreTest extends TestCase
             ->assertSee('Bahasa Indonesia')
             ->assertSee('English')
             ->assertSee('Menunggu diproses')
+            ->assertSee('ui-badge-success', false)
+            ->assertSee('ui-badge-danger', false)
             ->assertDontSee('Menunggu antrian')
             ->getContent();
 
