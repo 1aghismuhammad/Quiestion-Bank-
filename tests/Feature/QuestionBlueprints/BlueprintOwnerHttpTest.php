@@ -369,6 +369,57 @@ class BlueprintOwnerHttpTest extends TestCase
             ->assertDontSee('Coba isi AI lagi');
     }
 
+    public function test_detail_page_presentation_uses_single_primary_action_and_no_stitch_placeholders(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create([
+            'content' => 'Materi fotosintesis untuk presentasi kisi-kisi.',
+        ]);
+        $this->readyProfile($owner, $material);
+        $draft = $this->createDraft($owner, $material);
+
+        $response = $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $draft]))
+            ->assertOk()
+            ->assertSee('Kembali ke kisi-kisi')
+            ->assertSee('Ringkasan kisi-kisi')
+            ->assertSee('Baris kisi-kisi')
+            ->assertSee('Total soal')
+            ->assertSee('Perkiraan kredit')
+            ->assertSee('id="blueprint-draft-form"', false)
+            ->assertSee('form="blueprint-draft-form"', false)
+            ->assertDontSee('Tersimpan otomatis')
+            ->assertDontSee('Kurikulum Merdeka')
+            ->assertDontSee('Perkaya AI')
+            ->assertDontSee('Komposisi Kesulitan')
+            ->assertDontSee('Saldo kredit')
+            ->assertDontSee('Panduan Kurasi Matriks');
+
+        $this->assertSame(1, substr_count($response->getContent(), 'Konfirmasi kisi-kisi</button>'));
+        $this->assertSame(1, substr_count($response->getContent(), 'Simpan draf</button>'));
+        $this->assertSame(1, substr_count($response->getContent(), '<h1>'));
+
+        $draft->update(['ai_fill_status' => BlueprintAiFillStatus::Queued]);
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $draft->fresh()]))
+            ->assertOk()
+            ->assertSee('Menunggu diproses')
+            ->assertDontSee('Konfirmasi kisi-kisi')
+            ->assertDontSee('id="blueprint-draft-form"', false);
+
+        $draft->update(['ai_fill_status' => BlueprintAiFillStatus::Succeeded]);
+        $confirmed = $this->confirmDraft($owner, $draft->fresh());
+
+        $this->actingAs($owner)
+            ->get(route('materials.blueprints.show', [$material, $confirmed]))
+            ->assertOk()
+            ->assertSee('Ringkasan kisi-kisi')
+            ->assertSee('Baris kisi-kisi')
+            ->assertSee('blueprint-detail-mobile-row', false)
+            ->assertDontSee('id="blueprint-draft-form"', false);
+    }
+
     public function test_two_old_rows_render_visible_delete_controls(): void
     {
         $owner = $this->createCompleteUser();

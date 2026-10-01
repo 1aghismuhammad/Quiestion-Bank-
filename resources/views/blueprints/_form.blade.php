@@ -37,6 +37,7 @@
     ]]);
 @endphp
 
+<div class="blueprint-form-settings">
 <div>
     <p class="label">Mode kisi-kisi</p>
     <label style="display: block; margin-top: 8px;">
@@ -76,7 +77,19 @@
 
 <p class="muted" id="blueprint-simple-help" style="margin-top: 16px;">Mode sederhana: semua baris memakai satu tipe soal (pilihan ganda, benar/salah, atau esai) dan satu tingkat kesulitan. Total soal 1–10. Maksimal 5 baris, 1–10 soal per baris.</p>
 <p class="muted" id="blueprint-advanced-help" style="margin-top: 16px;">Mode lanjutan: tipe soal dan tingkat kesulitan boleh berbeda antar baris. Total soal 1–30. Maksimal 5 baris, 1–10 soal per baris. Pengacakan opsi hanya untuk baris pilihan ganda.</p>
-<p id="blueprint-live-summary" style="margin-top: 8px;"><strong>Total soal:</strong> <span data-live-total>0</span> · <strong>Perkiraan kredit:</strong> <span data-live-credits>0</span></p>
+</div>
+@if ($detailLayout ?? false)
+    <section class="blueprint-live-summary" id="blueprint-live-summary" aria-labelledby="blueprint-summary-title">
+        <h2 id="blueprint-summary-title">Ringkasan kisi-kisi</h2>
+        <dl class="blueprint-summary-list">
+            <div><dt>Total soal</dt><dd data-live-total>0</dd></div>
+            <div><dt>Perkiraan kredit</dt><dd data-live-credits>0</dd></div>
+        </dl>
+    </section>
+    <h2 class="blueprint-form-rows-title">Baris kisi-kisi</h2>
+@else
+    <p id="blueprint-live-summary" style="margin-top: 8px;"><strong>Total soal:</strong> <span data-live-total>0</span> · <strong>Perkiraan kredit:</strong> <span data-live-credits>0</span></p>
+@endif
 
 <div id="blueprint-rows">
     @foreach ($rows as $index => $row)
