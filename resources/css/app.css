@@ -3657,3 +3657,214 @@ p {
         padding: 16px;
     }
 }
+
+/* VIS-09 Legacy Generation Flow */
+.legacy-generation-history-page,
+.legacy-generation-show-page {
+    display: grid;
+    gap: 16px;
+}
+
+.legacy-generation-create-page {
+    width: min(44rem, 100%);
+    margin-inline: auto;
+    display: grid;
+    gap: 16px;
+}
+
+.legacy-generation-history-page .ui-page-header h1,
+.legacy-generation-create-page .ui-page-header h1,
+.legacy-generation-show-page .ui-page-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+}
+
+.legacy-generation-history-surface,
+.legacy-generation-history-page .ui-panel,
+.legacy-generation-show-page .ui-panel,
+.legacy-generation-create-form,
+.legacy-generation-show-question,
+.legacy-generation-create-page .card,
+.legacy-generation-show-page .card {
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+    box-shadow: none;
+}
+
+.legacy-generation-history-surface {
+    padding: 8px 8px 0;
+    overflow-x: auto;
+}
+
+.legacy-generation-history-page .table th {
+    background: #f6f4ff;
+}
+
+.legacy-generation-history-page .table th,
+.legacy-generation-history-page .table td {
+    padding: 14px 12px;
+    overflow-wrap: anywhere;
+}
+
+.legacy-generation-history-material {
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
+.legacy-generation-history-open {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 12px;
+    color: #5145dc;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.legacy-generation-history-open:hover {
+    background: #f6f4ff;
+}
+
+.legacy-generation-history-open:focus-visible {
+    outline: 2px solid #5145dc;
+    outline-offset: 2px;
+}
+
+.legacy-generation-history-card {
+    gap: 8px;
+}
+
+.legacy-generation-history-card p {
+    margin: 0;
+}
+
+.legacy-generation-history-pages {
+    margin-top: 4px;
+}
+
+.legacy-generation-history-pages .ui-button {
+    min-height: 44px;
+}
+
+.legacy-generation-create-page .card,
+.legacy-generation-show-page .card {
+    margin: 0 !important;
+    padding: 20px;
+    background: #f6f4ff;
+    border-color: #e4dff6;
+}
+
+.legacy-generation-create-page .card h2,
+.legacy-generation-show-page .card h2 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+.legacy-generation-create-page .card p,
+.legacy-generation-show-page .card p {
+    margin: 4px 0;
+}
+
+.legacy-generation-create-form {
+    padding: 20px;
+}
+
+.legacy-generation-create-form .field-grid {
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 16px;
+}
+
+.legacy-generation-create-actions .ui-button {
+    width: 100%;
+    min-height: 48px;
+}
+
+.legacy-generation-show-state,
+.legacy-generation-show-details {
+    display: grid;
+    gap: 12px;
+}
+
+.legacy-generation-show-state p,
+.legacy-generation-show-details h2,
+.legacy-generation-show-details p {
+    margin: 0;
+}
+
+.legacy-generation-show-details h2,
+.legacy-generation-show-questions h2 {
+    font-size: 1.125rem;
+}
+
+.legacy-generation-show-live {
+    font-weight: 650;
+}
+
+.legacy-generation-show-error {
+    padding: 12px 14px;
+    border: 1px solid #f0c9c4;
+    border-radius: 12px;
+    background: #fdf3f1;
+    overflow-wrap: anywhere;
+}
+
+.legacy-generation-show-detail-list {
+    display: grid;
+    gap: 8px;
+}
+
+.legacy-generation-show-detail-list p {
+    overflow-wrap: anywhere;
+}
+
+.legacy-generation-show-questions {
+    display: grid;
+    gap: 12px;
+}
+
+.legacy-generation-show-questions h2 {
+    margin: 4px 0 0;
+}
+
+.legacy-generation-show-question {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+}
+
+.legacy-generation-show-question p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.legacy-generation-show-stem {
+    font-weight: 600;
+}
+
+.legacy-generation-show-options {
+    display: grid;
+    gap: 8px;
+}
+
+.legacy-generation-show-options p {
+    padding: 10px 12px;
+    border: 1px solid #ebe6dc;
+    border-radius: 12px;
+    background: #fbfaf7;
+}
+
+.legacy-generation-show-answer,
+.legacy-generation-show-explanation {
+    color: var(--color-text);
+}
+
+@media (max-width: 47.99rem) {
+    .legacy-generation-create-form,
+    .legacy-generation-show-question,
+    .legacy-generation-show-page .ui-panel {
+        padding: 16px;
+    }
+}

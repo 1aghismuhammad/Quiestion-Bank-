@@ -103,4 +103,26 @@ class GenerationHistoryTest extends TestCase
             ->assertDontSee('Material Management')
             ->assertDontSee('Segera hadir pada phase berikutnya.');
     }
+
+    public function test_history_presents_supporting_copy_columns_and_open_links(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create(['title' => 'Presented history material']);
+        $generation = $this->startGeneration($owner, $material, questionCount: 4);
+
+        $html = $this->actingAs($owner)
+            ->get(route('generations.index'))
+            ->assertOk()
+            ->assertSee('Riwayat pembuatan soal langsung dari materi.')
+            ->assertSee('legacy-generation-history-page', false)
+            ->assertSee('<th>Jumlah soal</th>', false)
+            ->assertSee('<th>Bahasa</th>', false)
+            ->assertSee('<th>Antrian</th>', false)
+            ->assertSee('<th>Buka</th>', false)
+            ->assertSee(route('generations.show', $generation), false)
+            ->assertDontSee('Menampilkan')
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, '<h1'));
+    }
 }

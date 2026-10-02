@@ -298,4 +298,29 @@ class GenerationCreateStoreTest extends TestCase
             'output_language' => 'id',
         ], $overrides);
     }
+
+    public function test_create_form_keeps_contract_fields_and_single_primary_action(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create(['title' => 'Contract lesson']);
+
+        $html = $this->actingAs($owner)
+            ->get(route('generations.create', $material))
+            ->assertOk()
+            ->assertSee('legacy-generation-create-page', false)
+            ->assertSee('action="'.route('generations.store', $material).'"', false)
+            ->assertSee('name="_token"', false)
+            ->assertSee('name="assessment_type"', false)
+            ->assertSee('name="difficulty_level"', false)
+            ->assertSee('name="question_type" value="multiple_choice"', false)
+            ->assertSee('name="question_count"', false)
+            ->assertSee('name="output_language"', false)
+            ->assertSee('Kembali ke materi')
+            ->assertDontSee('Simpan konfigurasi')
+            ->assertDontSee('Upgrade')
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, '<h1'));
+        $this->assertSame(1, substr_count($html, 'Buat soal</button>'));
+    }
 }

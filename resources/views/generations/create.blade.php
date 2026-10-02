@@ -17,7 +17,7 @@
 @section('title', 'Buat soal dari materi')
 
 @section('content')
-    <div class="page-form">
+    <div class="page-form legacy-generation-create-page">
         <x-ui.page-header>
             Buat soal dari materi
             <x-slot:back>
@@ -28,7 +28,7 @@
 
         @include('generations._quota', ['usage' => $usage])
 
-        <form method="POST" action="{{ route('generations.store', $material) }}">
+        <form class="legacy-generation-create-form" method="POST" action="{{ route('generations.store', $material) }}">
             @csrf
 
             <div class="field-grid">
@@ -97,7 +97,9 @@
                 <div class="error-text">{{ $message }}</div>
             @enderror
 
-            <x-ui.button type="submit">Buat soal</x-ui.button>
+            <div class="legacy-generation-create-actions">
+                <x-ui.button type="submit">Buat soal</x-ui.button>
+            </div>
         </form>
     </div>
 @endsection

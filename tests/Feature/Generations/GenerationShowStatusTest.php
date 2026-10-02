@@ -267,4 +267,27 @@ class GenerationShowStatusTest extends TestCase
 
         return AiGeneration::factory()->create($attributes);
     }
+
+    public function test_show_presents_single_heading_details_and_stays_free_of_invented_progress(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create(['title' => 'Presented material']);
+        $queued = $this->generation($owner, $material, GenerationStatus::QUEUED);
+
+        $html = $this->actingAs($owner)
+            ->get(route('generations.show', $queued))
+            ->assertOk()
+            ->assertSee('legacy-generation-show-page', false)
+            ->assertSee('id="generation-status-label"', false)
+            ->assertSee('id="generation-status-live"', false)
+            ->assertSee('Bahasa keluaran:')
+            ->assertSee('Antrian')
+            ->assertDontSee('Percobaan')
+            ->assertDontSee('Parsing Materi')
+            ->assertDontSee('Simpan ke bank soal')
+            ->assertDontSee('Coba lagi')
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, '<h1'));
+    }
 }
