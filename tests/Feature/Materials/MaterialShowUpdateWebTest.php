@@ -90,6 +90,42 @@ class MaterialShowUpdateWebTest extends TestCase
         $this->assertSame('New content', $material->content);
     }
 
+    public function test_edit_page_shows_content_only_for_text_materials(): void
+    {
+        $owner = $this->createCompleteUser();
+        $text = Material::factory()->text()->for($owner)->create([
+            'title' => 'Teks lama',
+            'content' => 'Isi lama',
+        ]);
+        $upload = Material::factory()->upload()->for($owner)->create([
+            'title' => 'Berkas lama',
+        ]);
+
+        $textHtml = $this->actingAs($owner)
+            ->get(route('materials.edit', $text))
+            ->assertOk()
+            ->assertSee('Edit materi')
+            ->assertSee('Judul')
+            ->assertSee('Konten')
+            ->assertSee('Simpan perubahan')
+            ->assertSee('Kembali ke detail')
+            ->assertSee('name="title"', false)
+            ->assertSee('name="content"', false)
+            ->assertSee('method="POST"', false)
+            ->assertSee('name="_method" value="PATCH"', false)
+            ->getContent();
+        $this->assertSame(1, substr_count($textHtml, '<h1'));
+
+        $this->actingAs($owner)
+            ->get(route('materials.edit', $upload))
+            ->assertOk()
+            ->assertSee('Edit materi')
+            ->assertSee('Judul')
+            ->assertSee('Simpan perubahan')
+            ->assertSee('Hanya judul yang dapat diperbarui.')
+            ->assertDontSee('name="content"', false);
+    }
+
     public function test_upload_update_cannot_replace_content_or_protected_fields(): void
     {
         $owner = $this->createCompleteUser();

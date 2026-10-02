@@ -3479,3 +3479,181 @@ p {
         transform: none;
     }
 }
+
+/* VIS-08 MAT-05 and IMP-01 */
+.material-edit-page {
+    width: min(44rem, 100%);
+    margin-inline: auto;
+}
+
+.material-edit-back,
+.blueprint-import-history-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    margin-bottom: 12px;
+    color: var(--color-text-muted);
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.material-edit-back:hover,
+.material-edit-back:focus-visible,
+.blueprint-import-history-back:hover,
+.blueprint-import-history-back:focus-visible {
+    color: #5145dc;
+}
+
+.material-edit-back:focus-visible,
+.blueprint-import-history-back:focus-visible,
+.blueprint-import-history-review:focus-visible {
+    outline: 2px solid #5145dc;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.material-edit-page .ui-page-header h1,
+.blueprint-import-history-page .ui-page-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+}
+
+.material-edit-panel,
+.blueprint-import-history-surface,
+.blueprint-import-history-empty {
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+}
+
+.material-edit-panel {
+    display: grid;
+    gap: 16px;
+}
+
+.material-edit-panel h2 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.material-edit-page textarea.ui-input {
+    min-height: 16rem;
+}
+
+.material-edit-note {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+.material-edit-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 12px;
+    background: #5145dc;
+    color: #ffffff;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.material-edit-save:hover {
+    background: #4233cd;
+}
+
+.material-edit-save:focus-visible {
+    outline: 2px solid #5145dc;
+    outline-offset: 3px;
+}
+
+.blueprint-import-history-empty p {
+    margin: 12px 0 0;
+}
+
+.blueprint-import-history-surface {
+    padding: 8px 8px 0;
+    overflow-x: auto;
+}
+
+.blueprint-import-history-page .table th {
+    background: #f6f4ff;
+}
+
+.blueprint-import-history-page .table th,
+.blueprint-import-history-page .table td {
+    padding: 14px 12px;
+    overflow-wrap: anywhere;
+}
+
+.blueprint-import-history-name {
+    font-weight: 650;
+    overflow-wrap: anywhere;
+}
+
+.blueprint-import-history-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #f6f5f2;
+    color: var(--color-text);
+    line-height: 1.3;
+}
+
+.blueprint-import-history-review {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 12px;
+    color: #5145dc;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.blueprint-import-history-review:hover {
+    background: #f6f4ff;
+}
+
+.blueprint-import-history-card {
+    gap: 8px;
+}
+
+.blueprint-import-history-card p {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0;
+}
+
+.blueprint-import-history-card p span {
+    color: var(--color-text-muted);
+}
+
+.blueprint-import-history-pages {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 16px;
+}
+
+.blueprint-import-history-pages .ui-button {
+    min-height: 44px;
+}
+
+@media (max-width: 47.99rem) {
+    .material-edit-panel,
+    .blueprint-import-history-empty {
+        padding: 16px;
+    }
+}

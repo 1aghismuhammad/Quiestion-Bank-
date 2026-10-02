@@ -114,12 +114,31 @@ class BlueprintImportOwnerSurfaceTest extends TestCase
             ->assertSee('newer.docx')
             ->assertSee('older.docx')
             ->assertSee('<th>Berkas</th>', false)
+            ->assertSee('Riwayat impor')
+            ->assertSee('Ekstraksi')
+            ->assertSee('Interpretasi')
+            ->assertSee('Pencocokan')
+            ->assertSee('Dibuat')
+            ->assertSee('Tinjau')
             ->assertDontSee('<th>File</th>', false)
             ->assertDontSee('foreign.docx')
             ->getContent();
 
         $this->assertTrue(strpos($html, 'newer.docx') < strpos($html, 'older.docx'));
         $this->assertTrue($newer->import_id > $older->import_id);
+    }
+
+    public function test_history_empty_state_has_no_import_action(): void
+    {
+        $material = Material::factory()->text()->for($this->owner)->create();
+
+        $this->actingAs($this->owner)
+            ->get(route('materials.blueprint-imports.index', $material))
+            ->assertOk()
+            ->assertSee('Belum ada impor.')
+            ->assertSee('Kembali ke kisi-kisi')
+            ->assertDontSee('Unggah DOCX')
+            ->assertDontSee('Tinjau');
     }
 
     public function test_history_paginates_fifteen_per_page(): void

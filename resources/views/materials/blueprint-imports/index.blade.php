@@ -3,21 +3,26 @@
 @section('title', 'Riwayat impor')
 
 @section('content')
-    <x-ui.page-header>
-        Riwayat impor
-        <x-slot:supporting>
-            Kisi-kisi DOCX yang pernah diunggah untuk materi ini.
-        </x-slot:supporting>
-    </x-ui.page-header>
+    <div class="blueprint-import-history-page">
+        <a class="blueprint-import-history-back" href="{{ route('materials.blueprints.index', $material) }}">
+            <svg aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            <span>Kembali ke kisi-kisi</span>
+        </a>
 
-    <div class="action-stack" style="margin-bottom: 24px;">
-        <x-ui.button variant="tertiary" href="{{ route('materials.blueprints.index', $material) }}">Kembali ke kisi-kisi</x-ui.button>
-    </div>
+        <x-ui.page-header>
+            Riwayat impor
+            <x-slot:supporting>
+                Kisi-kisi DOCX yang pernah diunggah untuk materi ini.
+            </x-slot:supporting>
+        </x-ui.page-header>
 
     @if ($imports->isEmpty())
-        <x-ui.empty-state>Belum ada impor.</x-ui.empty-state>
+        <div class="blueprint-import-history-empty">
+            <x-ui.empty-state>Belum ada impor.</x-ui.empty-state>
+            <p class="muted">Kisi-kisi DOCX yang diunggah untuk materi ini akan muncul di sini.</p>
+        </div>
     @else
-        <div class="responsive-table table-wrap">
+        <div class="blueprint-import-history-surface responsive-table table-wrap">
             <table class="table">
                 <thead>
                     <tr>
@@ -49,12 +54,12 @@
                             };
                         @endphp
                         <tr>
-                            <td>{{ $import->original_file_name }}</td>
-                            <td>{{ $extractionLabel }}</td>
-                            <td>{{ $interpretationLabel }}</td>
-                            <td>@include('materials.blueprint-imports._grounding-label', ['status' => $import->grounding_status?->value])</td>
+                            <td><span class="blueprint-import-history-name">{{ $import->original_file_name }}</span></td>
+                            <td><span class="blueprint-import-history-status">{{ $extractionLabel }}</span></td>
+                            <td><span class="blueprint-import-history-status">{{ $interpretationLabel }}</span></td>
+                            <td><span class="blueprint-import-history-status">@include('materials.blueprint-imports._grounding-label', ['status' => $import->grounding_status?->value])</span></td>
                             <td class="muted">{{ $import->created_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</td>
-                            <td><a href="{{ route('materials.blueprint-imports.show', [$material, $import]) }}">Tinjau</a></td>
+                            <td><a class="blueprint-import-history-review" href="{{ route('materials.blueprint-imports.show', [$material, $import]) }}">Tinjau</a></td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -80,18 +85,19 @@
                         default => 'Status tidak dikenali',
                     };
                 @endphp
-                <article class="summary-row">
-                    <strong>{{ $import->original_file_name }}</strong>
-                    <p>Ekstraksi: {{ $extractionLabel }}</p>
-                    <p>Interpretasi: {{ $interpretationLabel }}</p>
-                    <p>Pencocokan: @include('materials.blueprint-imports._grounding-label', ['status' => $import->grounding_status?->value])</p>
-                    <a href="{{ route('materials.blueprint-imports.show', [$material, $import]) }}">Tinjau</a>
+                <article class="summary-row blueprint-import-history-card">
+                    <strong class="blueprint-import-history-name">{{ $import->original_file_name }}</strong>
+                    <p><span>Ekstraksi</span> {{ $extractionLabel }}</p>
+                    <p><span>Interpretasi</span> {{ $interpretationLabel }}</p>
+                    <p><span>Pencocokan</span> @include('materials.blueprint-imports._grounding-label', ['status' => $import->grounding_status?->value])</p>
+                    <p class="muted">Dibuat {{ $import->created_at?->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
+                    <a class="blueprint-import-history-review" href="{{ route('materials.blueprint-imports.show', [$material, $import]) }}">Tinjau</a>
                 </article>
             @endforeach
         </div>
 
         @if ($imports->hasPages())
-            <div class="action-stack" style="margin-top: 16px;">
+            <nav class="blueprint-import-history-pages" aria-label="Halaman riwayat impor">
                 @if ($imports->onFirstPage())
                     <span class="muted">Sebelumnya</span>
                 @else
@@ -102,7 +108,8 @@
                 @else
                     <span class="muted">Berikutnya</span>
                 @endif
-            </div>
+            </nav>
         @endif
     @endif
+    </div>
 @endsection
