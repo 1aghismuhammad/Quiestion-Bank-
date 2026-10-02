@@ -316,4 +316,64 @@ class GenerationRunOwnerHttpTest extends TestCase
             ->assertDontSee('Simpan ke Question Bank')
             ->assertDontSee('Dibatalkan');
     }
+
+    public function test_simple_create_page_presents_contract_without_shuffle_controls(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create([
+            'content' => str_repeat('Kalimat materi untuk generasi soal. ', 30),
+        ]);
+        $this->readyProfile($owner, $material);
+        $blueprint = $this->confirmDraft($owner, $this->createDraft($owner, $material, [$this->sampleRow(1)]));
+
+        $html = $this->actingAs($owner)
+            ->get(route('generation-runs.create', [$material, $blueprint]))
+            ->assertOk()
+            ->assertSee('generation-run-create-page', false)
+            ->assertSee('Kembali ke kisi-kisi')
+            ->assertSee('Mode sederhana')
+            ->assertSee('name="output_language"', false)
+            ->assertSee('type="hidden" name="idempotency_key"', false)
+            ->assertSee('Kredit yang diperlukan:')
+            ->assertDontSee('shuffle_questions', false)
+            ->assertDontSee('shuffle_options', false)
+            ->assertDontSee('Upgrade')
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, '<h1'));
+        $this->assertSame(1, substr_count($html, 'Buat soal</button>'));
+    }
+
+    public function test_run_show_presents_single_heading_steps_and_no_invented_progress(): void
+    {
+        $owner = $this->createCompleteUser();
+        $material = Material::factory()->text()->for($owner)->create([
+            'content' => str_repeat('Kalimat materi untuk generasi soal. ', 30),
+        ]);
+        $this->readyProfile($owner, $material);
+        $blueprint = $this->confirmDraft($owner, $this->createDraft($owner, $material, [$this->sampleRow(1)]));
+        $run = $this->app->make(StartGenerationRun::class)->handle(
+            $owner,
+            $blueprint,
+            OutputLanguage::ID,
+            (string) Str::uuid(),
+        );
+
+        $html = $this->actingAs($owner)
+            ->get(route('generation-runs.show', $run))
+            ->assertOk()
+            ->assertSee('generation-run-show-page', false)
+            ->assertSee('Langkah 1')
+            ->assertSee('Proses generasi sedang berjalan.')
+            ->assertSee('Total soal')
+            ->assertSee('Kredit')
+            ->assertSee('const interval', false)
+            ->assertDontSee('Sinkronisasi')
+            ->assertDontSee('Protokol Pemrosesan')
+            ->assertDontSee('role="progressbar"', false)
+            ->assertDontSee('Simpan ke bank soal')
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, '<h1'));
+    }
 }

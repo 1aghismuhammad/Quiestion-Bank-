@@ -3868,3 +3868,214 @@ p {
         padding: 16px;
     }
 }
+
+/* VIS-10 Blueprint Generation Flow */
+.generation-run-create-page,
+.generation-run-show-page {
+    display: grid;
+    gap: 16px;
+}
+
+.generation-run-create-page {
+    width: min(44rem, 100%);
+    margin-inline: auto;
+}
+
+.generation-run-create-page .ui-page-header h1,
+.generation-run-show-page .ui-page-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    overflow-wrap: anywhere;
+}
+
+.generation-run-create-page .ui-page-header .muted {
+    overflow-wrap: anywhere;
+}
+
+.generation-run-create-summary,
+.generation-run-show-summary {
+    padding: 16px 20px;
+    background: #f6f4ff;
+    border: 1px solid #e4dff6;
+    border-radius: 16px;
+}
+
+.generation-run-create-summary p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.generation-run-create-page .card {
+    margin: 0 !important;
+    padding: 20px;
+    background: #f6f4ff;
+    border: 1px solid #e4dff6;
+    border-radius: 20px;
+    box-shadow: none;
+}
+
+.generation-run-create-page .card h2 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+.generation-run-create-page .card p {
+    margin: 4px 0;
+}
+
+.generation-run-create-form,
+.generation-run-show-page .ui-panel,
+.generation-run-show-question {
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+    box-shadow: none;
+}
+
+.generation-run-create-form {
+    display: grid;
+    gap: 16px;
+    padding: 20px;
+}
+
+.generation-run-create-field,
+.generation-run-create-options {
+    display: grid;
+    gap: 8px;
+}
+
+.generation-run-create-options p,
+.generation-run-create-credit {
+    margin: 0;
+}
+
+.generation-run-create-check {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    cursor: pointer;
+}
+
+.generation-run-create-check input {
+    width: 20px;
+    height: 20px;
+    accent-color: #5145dc;
+}
+
+.generation-run-create-actions .ui-button,
+.generation-run-show-action .ui-button {
+    min-height: 48px;
+}
+
+.generation-run-create-actions .ui-button {
+    width: 100%;
+}
+
+.generation-run-show-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 12px;
+}
+
+.generation-run-show-summary p {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.generation-run-show-page .ui-panel {
+    display: grid;
+    gap: 12px;
+}
+
+.generation-run-show-page .ui-panel h2,
+.generation-run-show-results h2 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.generation-run-show-page .ui-panel p {
+    margin: 0;
+}
+
+.generation-run-show-step-list {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.generation-run-show-step {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    padding: 12px 14px;
+    border: 1px solid #ebe6dc;
+    border-radius: 14px;
+    background: #fbfaf7;
+}
+
+.generation-run-show-step .muted {
+    margin-left: auto;
+}
+
+.generation-run-show-action {
+    margin: 0;
+}
+
+.generation-run-show-results {
+    display: grid;
+    gap: 12px;
+}
+
+.generation-run-show-question {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+}
+
+.generation-run-show-question p {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.generation-run-show-block {
+    display: grid;
+    gap: 4px;
+}
+
+.generation-run-show-options {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.generation-run-show-options li {
+    padding: 10px 12px;
+    border: 1px solid #ebe6dc;
+    border-radius: 12px;
+    background: #fbfaf7;
+    overflow-wrap: anywhere;
+}
+
+.generation-run-show-key {
+    font-weight: 650;
+}
+
+@media (max-width: 47.99rem) {
+    .generation-run-create-form,
+    .generation-run-show-question,
+    .generation-run-show-page .ui-panel {
+        padding: 16px;
+    }
+
+    .generation-run-show-step .muted {
+        margin-left: 0;
+    }
+}
