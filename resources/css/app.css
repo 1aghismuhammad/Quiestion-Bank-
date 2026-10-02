@@ -3005,3 +3005,477 @@ p {
         transform: none;
     }
 }
+
+/* VIS-07 PROF-01, BP-01, BP-02 */
+.material-profile-page {
+    width: min(60rem, 100%);
+    margin-inline: auto;
+    animation: vis07-enter 200ms ease-out backwards;
+}
+
+.material-profile-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.material-profile-back,
+.blueprint-hub-back,
+.blueprint-create-back {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    color: var(--color-text-muted);
+    font-weight: 650;
+    text-decoration: none;
+    transition: color 160ms ease-out;
+}
+
+.material-profile-back svg,
+.blueprint-hub-back svg,
+.blueprint-create-back svg {
+    transition: transform 160ms ease-out;
+}
+
+.material-profile-back::after,
+.blueprint-hub-back::after,
+.blueprint-create-back::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 160ms ease-out;
+}
+
+.material-profile-back:hover,
+.material-profile-back:focus-visible,
+.blueprint-hub-back:hover,
+.blueprint-hub-back:focus-visible,
+.blueprint-create-back:hover,
+.blueprint-create-back:focus-visible {
+    color: #5145dc;
+}
+
+.material-profile-back:hover svg,
+.material-profile-back:focus-visible svg,
+.blueprint-hub-back:hover svg,
+.blueprint-hub-back:focus-visible svg,
+.blueprint-create-back:hover svg,
+.blueprint-create-back:focus-visible svg {
+    transform: translateX(-3px);
+}
+
+.material-profile-back:hover::after,
+.material-profile-back:focus-visible::after,
+.blueprint-hub-back:hover::after,
+.blueprint-hub-back:focus-visible::after,
+.blueprint-create-back:hover::after,
+.blueprint-create-back:focus-visible::after {
+    transform: scaleX(1);
+}
+
+.material-profile-back:focus-visible,
+.blueprint-hub-back:focus-visible,
+.blueprint-create-back:focus-visible {
+    outline: 2px solid #5145dc;
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.material-profile-index {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    text-decoration: none;
+}
+
+.material-profile-hero h1,
+.blueprint-hub-page .ui-page-header h1,
+.blueprint-create-page .ui-page-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+    line-height: 1.25;
+}
+
+.material-profile-hero p,
+.blueprint-hub-lead {
+    margin: 8px 0 0;
+    color: var(--color-text-muted);
+}
+
+.material-profile-status,
+.material-profile-panel {
+    margin-top: 16px;
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+}
+
+.material-profile-status {
+    background: #f6f4ff;
+    border-color: #e4dff6;
+}
+
+.material-profile-status h2,
+.material-profile-panel h2,
+.material-profile-panel h3 {
+    margin: 0 0 12px;
+}
+
+.material-profile-progress {
+    display: grid;
+    gap: 8px;
+}
+
+.material-profile-page .profile-progress {
+    width: 100%;
+    height: 10px;
+    accent-color: #5145dc;
+}
+
+.material-profile-primary,
+.material-profile-secondary,
+.blueprint-create-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 12px;
+    font: inherit;
+    font-weight: 650;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.material-profile-primary,
+.blueprint-create-save {
+    width: 100%;
+    border: none;
+    background: #5145dc;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(81, 69, 220, 0.18);
+    transition: background-color 160ms ease-out, transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.material-profile-primary:hover,
+.blueprint-create-save:hover {
+    background: #4233cd;
+    box-shadow: 0 8px 18px rgba(81, 69, 220, 0.24);
+    transform: translateY(-1px);
+}
+
+.material-profile-primary:active,
+.blueprint-create-save:active {
+    transform: translateY(0) scale(0.99);
+}
+
+.material-profile-secondary {
+    border: 1px solid #e4e0d8;
+    background: #ffffff;
+    color: var(--color-text);
+}
+
+.material-profile-origin {
+    margin: 16px 0 8px;
+}
+
+.material-profile-items {
+    display: grid;
+    gap: 12px;
+}
+
+.material-profile-item {
+    padding: 16px;
+    background: #f6f5f2;
+    border-radius: 16px;
+}
+
+.material-profile-item p {
+    margin: 8px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.material-profile-evidence {
+    margin: 12px 0 0;
+    padding: 12px;
+    background: #ffffff;
+    border-left: 3px solid #5145dc;
+    border-radius: 0 12px 12px 0;
+}
+
+.material-profile-evidence p {
+    margin: 0;
+}
+
+.blueprint-hub-page {
+    animation: vis07-enter 200ms ease-out backwards;
+}
+
+.blueprint-hub-methods {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.blueprint-hub-page .creation-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+    box-shadow: 0 4px 12px rgba(28, 36, 48, 0.04);
+}
+
+.blueprint-hub-page .creation-card h2 {
+    margin: 0;
+}
+
+.blueprint-hub-page .creation-copy {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+.blueprint-hub-page .creation-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+
+.blueprint-hub-page .creation-card-actions {
+    margin-top: auto;
+}
+
+.blueprint-hub-page .creation-card-actions > .ui-button,
+.blueprint-hub-page .creation-card-actions > button.ui-button {
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 44px;
+}
+
+.blueprint-hub-page .file-picker {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    max-width: 100%;
+    padding: 16px;
+    background: #f6f4ff;
+    border: 1px solid #e4dff6;
+    border-radius: 16px;
+}
+
+.blueprint-hub-page .file-picker-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.blueprint-hub-page .file-picker-input:focus + .ui-button,
+.blueprint-hub-page .file-picker-input:focus + span {
+    outline: 2px solid #5145dc;
+    outline-offset: 2px;
+}
+
+.blueprint-hub-page .file-picker-name {
+    margin: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.blueprint-hub-page .ui-button,
+.blueprint-hub-page button.ui-button {
+    min-height: 44px;
+}
+
+.blueprint-hub-list {
+    margin-top: 24px;
+    border: 1px solid #ebe6dc !important;
+    border-radius: 20px !important;
+}
+
+.blueprint-hub-page .table th,
+.blueprint-hub-page .table td {
+    overflow-wrap: anywhere;
+}
+
+.blueprint-create-page {
+    animation: vis07-enter 200ms ease-out backwards;
+}
+
+.blueprint-create-page form {
+    display: grid;
+    gap: 16px;
+}
+
+.blueprint-create-page form > template,
+.blueprint-create-page form > script {
+    display: none;
+}
+
+.blueprint-create-page .blueprint-form-settings,
+.blueprint-create-page [data-blueprint-row] {
+    padding: 20px;
+    background: #ffffff;
+    border: 1px solid #ebe6dc;
+    border-radius: 20px;
+}
+
+.blueprint-create-page .blueprint-live-summary {
+    order: -1;
+    padding: 20px;
+    background: #f6f4ff;
+    border: 1px solid #e4dff6;
+    border-radius: 20px;
+}
+
+.blueprint-create-page .blueprint-live-summary h2,
+.blueprint-create-settings-title,
+.blueprint-create-page .blueprint-form-rows-title {
+    margin: 0 0 12px;
+    font-size: 1.125rem;
+}
+
+.blueprint-create-page .blueprint-summary-list {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+}
+
+.blueprint-create-page .blueprint-summary-list div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.blueprint-create-page .blueprint-summary-list dt {
+    color: var(--color-text-muted);
+}
+
+.blueprint-create-page .blueprint-summary-list dd {
+    margin: 0;
+    font-weight: 650;
+}
+
+.blueprint-create-page [data-blueprint-row] .field-grid {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.blueprint-create-page #blueprint-add-row,
+.blueprint-create-page [data-remove-row] {
+    min-height: 44px;
+}
+
+.blueprint-create-page #blueprint-add-row {
+    width: 100%;
+    background: #f6f4ff;
+    border-color: #e4dff6;
+    color: #5145dc;
+}
+
+.blueprint-create-page .ui-input {
+    border-radius: 12px;
+    transition: border-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.blueprint-create-page .ui-input:focus {
+    outline: none;
+    border-color: #5145dc;
+    box-shadow: 0 0 0 3px rgba(81, 69, 220, 0.25);
+}
+
+@media (min-width: 64rem) {
+    .blueprint-hub-methods {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: stretch;
+    }
+
+    .blueprint-create-page form {
+        grid-template-columns: minmax(0, 2fr) minmax(16rem, 0.75fr);
+        column-gap: 24px;
+    }
+
+    .blueprint-create-page form > * {
+        grid-column: 1;
+    }
+
+    .blueprint-create-page form > .blueprint-live-summary {
+        grid-column: 2;
+        grid-row: 1 / span 8;
+        order: 0;
+        align-self: start;
+        position: sticky;
+        top: 16px;
+    }
+
+    .blueprint-create-page #blueprint-add-row {
+        width: auto;
+    }
+}
+
+@keyframes vis07-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .material-profile-page,
+    .blueprint-hub-page,
+    .blueprint-create-page {
+        animation: none;
+    }
+
+    .material-profile-back,
+    .material-profile-back svg,
+    .material-profile-back::after,
+    .blueprint-hub-back,
+    .blueprint-hub-back svg,
+    .blueprint-hub-back::after,
+    .blueprint-create-back,
+    .blueprint-create-back svg,
+    .blueprint-create-back::after,
+    .material-profile-primary,
+    .blueprint-create-save,
+    .blueprint-create-page .ui-input {
+        transition: none;
+    }
+
+    .material-profile-back:hover svg,
+    .material-profile-back:focus-visible svg,
+    .blueprint-hub-back:hover svg,
+    .blueprint-hub-back:focus-visible svg,
+    .blueprint-create-back:hover svg,
+    .blueprint-create-back:focus-visible svg,
+    .material-profile-primary:hover,
+    .material-profile-primary:active,
+    .blueprint-create-save:hover,
+    .blueprint-create-save:active {
+        transform: none;
+    }
+}

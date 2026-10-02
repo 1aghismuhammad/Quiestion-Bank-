@@ -78,7 +78,7 @@
 <p class="muted" id="blueprint-simple-help" style="margin-top: 16px;">Mode sederhana: semua baris memakai satu tipe soal (pilihan ganda, benar/salah, atau esai) dan satu tingkat kesulitan. Total soal 1–10. Maksimal 5 baris, 1–10 soal per baris.</p>
 <p class="muted" id="blueprint-advanced-help" style="margin-top: 16px;">Mode lanjutan: tipe soal dan tingkat kesulitan boleh berbeda antar baris. Total soal 1–30. Maksimal 5 baris, 1–10 soal per baris. Pengacakan opsi hanya untuk baris pilihan ganda.</p>
 </div>
-@if ($detailLayout ?? false)
+@if (($detailLayout ?? false) || ($createLayout ?? false))
     <section class="blueprint-live-summary" id="blueprint-live-summary" aria-labelledby="blueprint-summary-title">
         <h2 id="blueprint-summary-title">Ringkasan kisi-kisi</h2>
         <dl class="blueprint-summary-list">

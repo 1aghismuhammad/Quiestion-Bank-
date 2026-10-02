@@ -50,196 +50,203 @@
         }
     </style>
 
-    <div class="actions" style="margin-bottom: 16px;">
-        <a href="{{ route('materials.show', $material) }}">Kembali ke materi</a>
-        <a href="{{ route('materials.index') }}">Daftar materi</a>
-    </div>
-
-    <p class="muted">PROFIL MATERI</p>
-    <h1>{{ $material->title }}</h1>
-
-    <div class="card" style="margin-bottom: 20px;">
-        <h2>Status analisis</h2>
-        <p>
-            <strong>Status:</strong>
-            <span class="{{ $stateClasses[$state->value] }}" id="profile-state-label">
-                {{ $stateLabels[$state->value] }}
-            </span>
-        </p>
-
-        <p aria-live="polite" id="profile-state-live" role="status">
-            @if ($profile->isInFlight())
-                Analisis berjalan. Langkah selesai: {{ $profile->completedSteps }} dari {{ $profile->totalSteps }}.
-            @else
-                Status saat ini: {{ $stateLabels[$state->value] }}.
-            @endif
-        </p>
-
-        @if ($profile->totalSteps > 0)
-            <p>
-                <label class="label" for="profile-progress">Langkah selesai</label>
-                <progress
-                    class="profile-progress"
-                    id="profile-progress"
-                    max="{{ $profile->totalSteps }}"
-                    value="{{ $profile->completedSteps }}"
-                ></progress>
-                <span id="profile-progress-text">{{ $profile->completedSteps }} dari {{ $profile->totalSteps }} langkah</span>
-            </p>
-        @endif
-
-        @if ($profile->isInFlight() && $profile->activePurpose !== null)
-            <p class="muted">Tahap saat ini: {{ $purposeLabels[$profile->activePurpose->value] ?? $profile->activePurpose->value }}.</p>
-        @endif
-
-        @if ($profile->version?->queued_at)
-            <p class="muted">Antrian {{ $profile->version->queued_at->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
-        @endif
-        @if ($profile->version?->completed_at)
-            <p class="muted">Selesai {{ $profile->version->completed_at->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
-        @endif
-
-        @if ($profile->isInFlight())
-            <p class="muted">Halaman akan diperbarui otomatis. Jika JavaScript dimatikan, muat ulang halaman secara manual.</p>
-            <noscript>
-                <p>Muat ulang halaman untuk melihat status analisis terbaru.</p>
-            </noscript>
-            <p>
-                <a class="button button-secondary" href="{{ route('materials.profile.show', $material) }}">Muat ulang status</a>
-            </p>
-        @endif
-    </div>
-
-    @if ($state === MaterialProfileOwnerState::None)
-        <div class="card" style="margin-bottom: 20px;">
-            <h2>Apa itu analisis profil materi?</h2>
-            <p>
-                Analisis profil membaca materi Anda bagian demi bagian, lalu menyusun ringkasan pedagogis
-                berupa topik dan cakupan materi, tujuan pembelajaran, serta indikator terukur.
-            </p>
-            <p>
-                Setiap temuan yang diambil langsung dari materi disertai kutipan sumbernya, sehingga Anda dapat
-                memeriksa dasar setiap butir. Analisis ini tidak memotong kuota generasi soal.
-            </p>
-
-            @if ($profile->canStart)
-                <form method="POST" action="{{ route('materials.profile.store', $material) }}">
-                    @csrf
-                    <button class="button" type="submit">Mulai analisis</button>
-                </form>
-            @else
-                <p class="status status-warn">Materi belum bisa dianalisis</p>
-                <p class="muted">{{ $profile->eligibilityMessage }}</p>
-            @endif
+    <div class="material-profile-page">
+        <div class="material-profile-nav">
+            <a class="material-profile-back" href="{{ route('materials.show', $material) }}">
+                <svg aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <span>Kembali ke materi</span>
+            </a>
+            <a class="material-profile-index" href="{{ route('materials.index') }}">Daftar materi</a>
         </div>
-    @endif
 
-    @if ($state === MaterialProfileOwnerState::Queued || $state === MaterialProfileOwnerState::Processing)
-        <div class="card" style="margin-bottom: 20px;">
-            <h2>{{ $state === MaterialProfileOwnerState::Queued ? 'Analisis diterima' : 'Analisis sedang berjalan' }}</h2>
+        <header class="material-profile-hero">
+            <h1>Profil Materi</h1>
+            <p>{{ $material->title }}</p>
+        </header>
+
+        <section class="material-profile-status" aria-labelledby="profile-status-heading">
+            <h2 id="profile-status-heading">Status analisis</h2>
             <p>
-                @if ($state === MaterialProfileOwnerState::Queued)
-                    Permintaan analisis sudah diterima dan menunggu diproses.
+                <strong>Status:</strong>
+                <span class="{{ $stateClasses[$state->value] }}" id="profile-state-label">
+                    {{ $stateLabels[$state->value] }}
+                </span>
+            </p>
+
+            <p aria-live="polite" id="profile-state-live" role="status">
+                @if ($profile->isInFlight())
+                    Analisis berjalan. Langkah selesai: {{ $profile->completedSteps }} dari {{ $profile->totalSteps }}.
                 @else
-                    Materi sedang dianalisis. Proses ini berjalan di latar belakang.
+                    Status saat ini: {{ $stateLabels[$state->value] }}.
                 @endif
             </p>
-            <p class="muted">Anda dapat menutup halaman ini dan kembali nanti.</p>
 
-            @if ($profile->previousReady !== null)
-                <h3>Profil sebelumnya</h3>
-                <p class="status status-muted">Profil lama, bukan hasil analisis yang sedang berjalan</p>
-                <p class="muted">
-                    Versi {{ $profile->previousReady->version }} masih tersedia dan cocok dengan konten materi saat ini.
-                    Hasil analisis baru akan menggantikan tampilan ini setelah selesai.
+            @if ($profile->totalSteps > 0)
+                <p class="material-profile-progress">
+                    <label class="label" for="profile-progress">Langkah selesai</label>
+                    <progress
+                        class="profile-progress"
+                        id="profile-progress"
+                        max="{{ $profile->totalSteps }}"
+                        value="{{ $profile->completedSteps }}"
+                    ></progress>
+                    <span id="profile-progress-text">{{ $profile->completedSteps }} dari {{ $profile->totalSteps }} langkah</span>
                 </p>
             @endif
-        </div>
-    @endif
 
-    @if ($state === MaterialProfileOwnerState::Ready)
-        <div class="card" style="margin-bottom: 20px;">
-            <h2>Hasil profil materi</h2>
-            <p class="status">Profil terkini untuk konten materi saat ini</p>
-            <p class="muted">
-                Versi profil {{ $profile->version?->version }}. Butir bertanda &ldquo;Dari materi&rdquo; memiliki
-                kutipan sumber. Butir bertanda &ldquo;Saran&rdquo; adalah rangkuman yang disusun dari butir-butir tersebut
-                dan tidak memiliki kutipan langsung.
-            </p>
-
-            @if (! $profile->hasAnyElements())
-                <p class="muted">Tidak ada butir profil yang ditemukan.</p>
+            @if ($profile->isInFlight() && $profile->activePurpose !== null)
+                <p class="muted">Tahap saat ini: {{ $purposeLabels[$profile->activePurpose->value] ?? $profile->activePurpose->value }}.</p>
             @endif
-        </div>
 
-        @foreach (MaterialProfileElementKind::cases() as $kind)
-            @if ($profile->hasElementsOfKind($kind))
-                <div class="card" style="margin-bottom: 20px;">
-                    <h3>{{ $kindLabels[$kind->value] ?? $kind->value }}</h3>
-
-                    @include('materials.profile._element-list', [
-                        'items' => $profile->extracted($kind),
-                        'originLabel' => 'Dari materi',
-                        'originClass' => 'status',
-                        'withEvidence' => true,
-                    ])
-
-                    @include('materials.profile._element-list', [
-                        'items' => $profile->suggested($kind),
-                        'originLabel' => 'Saran',
-                        'originClass' => 'status status-muted',
-                        'withEvidence' => false,
-                    ])
-                </div>
+            @if ($profile->version?->queued_at)
+                <p class="muted">Antrian {{ $profile->version->queued_at->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
             @endif
-        @endforeach
-    @endif
+            @if ($profile->version?->completed_at)
+                <p class="muted">Selesai {{ $profile->version->completed_at->timezone(config('app.timezone'))->format('d M Y H:i') }}</p>
+            @endif
 
-    @if ($state === MaterialProfileOwnerState::Failed)
-        <div class="card" style="margin-bottom: 20px;">
-            <h2>Analisis tidak selesai</h2>
-            <p>{{ $profile->errorMessage ?? \App\Support\MaterialProfiles\MaterialProfileOwnerMessages::GENERIC }}</p>
-            <p class="muted">
-                Riwayat analisis sebelumnya tetap tersimpan. Menjalankan analisis baru akan membuat versi profil baru
-                tanpa mengubah versi lama.
-            </p>
-
-            @if ($profile->previousReady !== null)
-                <h3>Profil sebelumnya</h3>
-                <p class="status status-muted">Profil lama yang masih dapat dipakai, bukan hasil analisis yang gagal</p>
-                <p class="muted">
-                    Versi {{ $profile->previousReady->version }} masih tersedia dan cocok dengan konten materi saat ini.
-                    Analisis yang gagal tidak menggantikan profil ini.
+            @if ($profile->isInFlight())
+                <p class="muted">Halaman akan diperbarui otomatis. Jika JavaScript dimatikan, muat ulang halaman secara manual.</p>
+                <noscript>
+                    <p>Muat ulang halaman untuk melihat status analisis terbaru.</p>
+                </noscript>
+                <p>
+                    <a class="material-profile-secondary" href="{{ route('materials.profile.show', $material) }}">Muat ulang status</a>
                 </p>
             @endif
-        </div>
-    @endif
+        </section>
 
-    @if ($state === MaterialProfileOwnerState::Stale)
-        <div class="card" style="margin-bottom: 20px;">
-            <h2>Profil tidak sesuai konten terbaru</h2>
-            <p class="status status-warn">Bukan profil terkini</p>
-            <p>
-                Konten materi berubah setelah profil versi {{ $profile->version?->version }} dibuat, sehingga hasil lama
-                tidak lagi mewakili materi ini. Karena itu hasilnya tidak ditampilkan sebagai profil terkini.
-            </p>
-            <p class="muted">Profil versi lama tetap tersimpan apa adanya dan tidak diubah.</p>
-        </div>
-    @endif
+        @if ($state === MaterialProfileOwnerState::None)
+            <section class="material-profile-panel">
+                <h2>Apa itu analisis profil materi?</h2>
+                <p>
+                    Analisis profil membaca materi Anda bagian demi bagian, lalu menyusun ringkasan pedagogis
+                    berupa topik dan cakupan materi, tujuan pembelajaran, serta indikator terukur.
+                </p>
+                <p>
+                    Setiap temuan yang diambil langsung dari materi disertai kutipan sumbernya, sehingga Anda dapat
+                    memeriksa dasar setiap butir. Analisis ini tidak memotong kuota generasi soal.
+                </p>
 
-    @if ($profile->canRegenerate)
-        <div class="card">
-            <h2>Analisis ulang</h2>
-            <p class="muted">
-                Maksimal tiga analisis profil baru per jam. Analisis profil tidak memotong kuota generasi soal.
-            </p>
+                @if ($profile->canStart)
+                    <form method="POST" action="{{ route('materials.profile.store', $material) }}">
+                        @csrf
+                        <button class="material-profile-primary" type="submit">Mulai analisis</button>
+                    </form>
+                @else
+                    <p class="status status-warn">Materi belum bisa dianalisis</p>
+                    <p class="muted">{{ $profile->eligibilityMessage }}</p>
+                @endif
+            </section>
+        @endif
 
-            <form method="POST" action="{{ route('materials.profile.regenerate', $material) }}">
-                @csrf
-                <button class="button" type="submit">{{ $state === \App\Enums\MaterialProfileOwnerState::Failed ? 'Coba lagi' : 'Jalankan analisis baru' }}</button>
-            </form>
-        </div>
-    @endif
+        @if ($state === MaterialProfileOwnerState::Queued || $state === MaterialProfileOwnerState::Processing)
+            <section class="material-profile-panel">
+                <h2>{{ $state === MaterialProfileOwnerState::Queued ? 'Analisis diterima' : 'Analisis sedang berjalan' }}</h2>
+                <p>
+                    @if ($state === MaterialProfileOwnerState::Queued)
+                        Permintaan analisis sudah diterima dan menunggu diproses.
+                    @else
+                        Materi sedang dianalisis. Proses ini berjalan di latar belakang.
+                    @endif
+                </p>
+                <p class="muted">Anda dapat menutup halaman ini dan kembali nanti.</p>
+
+                @if ($profile->previousReady !== null)
+                    <h3>Profil sebelumnya</h3>
+                    <p class="status status-muted">Profil lama, bukan hasil analisis yang sedang berjalan</p>
+                    <p class="muted">
+                        Versi {{ $profile->previousReady->version }} masih tersedia dan cocok dengan konten materi saat ini.
+                        Hasil analisis baru akan menggantikan tampilan ini setelah selesai.
+                    </p>
+                @endif
+            </section>
+        @endif
+
+        @if ($state === MaterialProfileOwnerState::Ready)
+            <section class="material-profile-panel">
+                <h2>Hasil profil materi</h2>
+                <p class="status">Profil terkini untuk konten materi saat ini</p>
+                <p class="muted">
+                    Versi profil {{ $profile->version?->version }}. Butir bertanda &ldquo;Dari materi&rdquo; memiliki
+                    kutipan sumber. Butir bertanda &ldquo;Saran&rdquo; adalah rangkuman yang disusun dari butir-butir tersebut
+                    dan tidak memiliki kutipan langsung.
+                </p>
+
+                @if (! $profile->hasAnyElements())
+                    <p class="muted">Tidak ada butir profil yang ditemukan.</p>
+                @endif
+            </section>
+
+            @foreach (MaterialProfileElementKind::cases() as $kind)
+                @if ($profile->hasElementsOfKind($kind))
+                    <section class="material-profile-panel">
+                        <h3>{{ $kindLabels[$kind->value] ?? $kind->value }}</h3>
+
+                        @include('materials.profile._element-list', [
+                            'items' => $profile->extracted($kind),
+                            'originLabel' => 'Dari materi',
+                            'originClass' => 'status',
+                            'withEvidence' => true,
+                        ])
+
+                        @include('materials.profile._element-list', [
+                            'items' => $profile->suggested($kind),
+                            'originLabel' => 'Saran',
+                            'originClass' => 'status status-muted',
+                            'withEvidence' => false,
+                        ])
+                    </section>
+                @endif
+            @endforeach
+        @endif
+
+        @if ($state === MaterialProfileOwnerState::Failed)
+            <section class="material-profile-panel">
+                <h2>Analisis tidak selesai</h2>
+                <p>{{ $profile->errorMessage ?? \App\Support\MaterialProfiles\MaterialProfileOwnerMessages::GENERIC }}</p>
+                <p class="muted">
+                    Riwayat analisis sebelumnya tetap tersimpan. Menjalankan analisis baru akan membuat versi profil baru
+                    tanpa mengubah versi lama.
+                </p>
+
+                @if ($profile->previousReady !== null)
+                    <h3>Profil sebelumnya</h3>
+                    <p class="status status-muted">Profil lama yang masih dapat dipakai, bukan hasil analisis yang gagal</p>
+                    <p class="muted">
+                        Versi {{ $profile->previousReady->version }} masih tersedia dan cocok dengan konten materi saat ini.
+                        Analisis yang gagal tidak menggantikan profil ini.
+                    </p>
+                @endif
+            </section>
+        @endif
+
+        @if ($state === MaterialProfileOwnerState::Stale)
+            <section class="material-profile-panel">
+                <h2>Profil tidak sesuai konten terbaru</h2>
+                <p class="status status-warn">Bukan profil terkini</p>
+                <p>
+                    Konten materi berubah setelah profil versi {{ $profile->version?->version }} dibuat, sehingga hasil lama
+                    tidak lagi mewakili materi ini. Karena itu hasilnya tidak ditampilkan sebagai profil terkini.
+                </p>
+                <p class="muted">Profil versi lama tetap tersimpan apa adanya dan tidak diubah.</p>
+            </section>
+        @endif
+
+        @if ($profile->canRegenerate)
+            <section class="material-profile-panel">
+                <h2>Analisis ulang</h2>
+                <p class="muted">
+                    Maksimal tiga analisis profil baru per jam. Analisis profil tidak memotong kuota generasi soal.
+                </p>
+
+                <form method="POST" action="{{ route('materials.profile.regenerate', $material) }}">
+                    @csrf
+                    <button class="material-profile-primary" type="submit">{{ $state === \App\Enums\MaterialProfileOwnerState::Failed ? 'Coba lagi' : 'Jalankan analisis baru' }}</button>
+                </form>
+            </section>
+        @endif
+    </div>
 @endsection
 
 @if ($profile->isInFlight())

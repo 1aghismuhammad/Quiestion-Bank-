@@ -3,33 +3,18 @@
 @section('title', 'Kisi-kisi')
 
 @section('content')
-    <style>
-        .creation-card { margin-bottom: 16px; }
-        .creation-card h2 { margin-bottom: 8px; }
-        .creation-card .creation-copy { margin-bottom: 16px; }
-        .file-picker { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; max-width: 100%; }
-        .file-picker-input {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-        .file-picker-input:focus + .ui-button { outline: 2px solid #2356d8; outline-offset: 2px; }
-        .file-picker-name { margin: 0; max-width: 100%; overflow-wrap: anywhere; }
-    </style>
-
+    <div class="blueprint-hub-page">
     <x-ui.page-header>
         Kisi-kisi
         <x-slot:back>
-            <x-ui.button variant="tertiary" href="{{ route('materials.show', $material) }}">Kembali ke materi</x-ui.button>
+            <a class="blueprint-hub-back" href="{{ route('materials.show', $material) }}">
+                <svg aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                <span>Kembali ke materi</span>
+            </a>
         </x-slot:back>
         <x-slot:supporting>{{ $material->title }}</x-slot:supporting>
     </x-ui.page-header>
+    <p class="blueprint-hub-lead">Pilih cara membuat kisi-kisi sesuai kebutuhan Anda.</p>
 
     @if ($readyProfile === null)
         <x-ui.alert variant="danger">
@@ -38,14 +23,17 @@
         </x-ui.alert>
     @endif
 
+    <div class="blueprint-hub-methods">
     <x-ui.panel class="creation-card">
         <h2>Buat manual</h2>
         <p class="creation-copy">Susun kisi-kisi sendiri dari awal sesuai kebutuhan Anda.</p>
-        @if ($readyProfile === null)
-            <button class="ui-button ui-button-secondary" type="button" disabled>Buat manual</button>
-        @else
-            <x-ui.button variant="secondary" href="{{ route('materials.blueprints.create', $material) }}">Buat manual</x-ui.button>
-        @endif
+        <div class="creation-card-actions">
+            @if ($readyProfile === null)
+                <button class="ui-button ui-button-secondary" type="button" disabled>Buat manual</button>
+            @else
+                <x-ui.button variant="secondary" href="{{ route('materials.blueprints.create', $material) }}">Buat manual</x-ui.button>
+            @endif
+        </div>
     </x-ui.panel>
 
     <x-ui.panel class="creation-card">
@@ -86,7 +74,7 @@
                 <p style="margin-top: 8px;"><strong>Total:</strong> <span data-ai-live-total>0</span></p>
                 <input type="hidden" id="advanced_target_total" name="target_total" value="0" disabled>
             </div>
-            <div style="margin-top: 16px;">
+            <div class="creation-card-actions">
                 <x-ui.button variant="secondary" type="submit" :disabled="$readyProfile === null">Buat dengan AI</x-ui.button>
             </div>
         </form>
@@ -112,13 +100,14 @@
             @error('material')
                 <div class="error-text">{{ $message }}</div>
             @enderror
-            <div style="margin-top: 12px;">
+            <div class="creation-card-actions">
                 <x-ui.button variant="secondary" type="submit" :disabled="$readyProfile === null">Unggah DOCX</x-ui.button>
             </div>
         </form>
     </x-ui.panel>
+    </div>
 
-    <x-ui.panel>
+    <x-ui.panel class="blueprint-hub-list">
         <h2>Kisi-kisi materi ini</h2>
         @if ($blueprints->isEmpty())
             <p>Belum ada kisi-kisi.</p>
@@ -168,7 +157,11 @@
                 @foreach ($blueprints as $blueprint)
                     <article class="summary-row">
                         <strong><a href="{{ route('materials.blueprints.show', [$material, $blueprint]) }}">{{ $blueprint->title }}</a></strong>
-                        <p class="muted">{{ $blueprint->mode->label() }} · {{ $blueprint->rows->count() }} baris</p>
+                        <p class="muted">{{ $blueprint->mode->label() }} · {{ match ($blueprint->source->value) {
+                            'manual' => 'Manual',
+                            'ai' => 'AI',
+                            default => 'Sumber tidak dikenali',
+                        } }} · {{ $blueprint->rows->count() }} baris</p>
                         @if ($blueprint->lifecycle_status->value === 'confirmed')
                             <x-ui.status-badge variant="success">Dikonfirmasi</x-ui.status-badge>
                         @elseif ($blueprint->lifecycle_status->value === 'draft')
@@ -244,4 +237,5 @@
             }
         })();
     </script>
+    </div>
 @endsection

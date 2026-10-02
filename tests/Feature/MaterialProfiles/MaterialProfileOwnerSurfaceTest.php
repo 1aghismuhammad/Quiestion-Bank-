@@ -134,6 +134,13 @@ class MaterialProfileOwnerSurfaceTest extends TestCase
             ->assertSee('Mulai analisis');
 
         $html = (string) $response->getContent();
+        $this->assertSame(1, substr_count($html, '<h1'));
+        $this->assertStringContainsString('Profil Materi', $html);
+        $this->assertStringNotContainsString('Unduh Ringkasan', $html);
+        $this->assertStringNotContainsString('Edit Profil Manual', $html);
+        $this->assertStringNotContainsString('Lanjut Buat Soal', $html);
+        $this->assertStringNotContainsString('Kurikulum Merdeka 2024', $html);
+        $this->assertStringNotContainsString('Katalog Resmi', $html);
         $this->assertSame(1, substr_count($html, 'Mulai analisis'));
         $this->assertSame(1, substr_count($html, 'action="'.route('materials.profile.store', $this->material).'"'));
         $this->assertSame(0, substr_count($html, 'Jalankan analisis baru'));

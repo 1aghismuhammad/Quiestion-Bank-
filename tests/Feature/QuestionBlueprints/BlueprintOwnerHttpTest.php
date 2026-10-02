@@ -46,6 +46,9 @@ class BlueprintOwnerHttpTest extends TestCase
             ->assertSee('Pilih file DOCX')
             ->assertSee('Belum ada file dipilih')
             ->assertSee('Belum ada kisi-kisi.')
+            ->assertSee('Pilih cara membuat kisi-kisi sesuai kebutuhan Anda.')
+            ->assertDontSee('Metode A')
+            ->assertDontSee('Kendali Penuh Penulis')
             ->assertDontSee('Choose File')
             ->assertDontSee('No file chosen')
             ->assertDontSee('Upload kisi-kisi')
@@ -58,6 +61,7 @@ class BlueprintOwnerHttpTest extends TestCase
         $this->assertStringContainsString(route('materials.blueprint-imports.store', $material, false), $html);
         $this->assertStringContainsString(route('materials.blueprints.ai', $material, false), $html);
         $this->assertStringContainsString(route('materials.blueprints.create', $material, false), $html);
+        $this->assertSame(1, substr_count($html, '<h1'));
         $this->assertMatchesRegularExpression('/id="ai-mode-advanced"[^>]*disabled/', $html);
         $this->assertDoesNotMatchRegularExpression('/id="blueprint-import-file"[^>]*disabled/', $html);
         $this->assertMatchesRegularExpression('/<label[^>]*for="blueprint-import-file"[^>]*>\s*Pilih file DOCX\s*<\/label>/', $html);
@@ -134,7 +138,17 @@ class BlueprintOwnerHttpTest extends TestCase
             ->assertSee('Tambah baris')
             ->assertSee('Hapus baris')
             ->assertSee('Sumber konteks')
+            ->assertSee('Buat kisi-kisi manual')
+            ->assertSee('Ringkasan kisi-kisi')
+            ->assertSee('Total soal')
+            ->assertSee('Perkiraan kredit')
+            ->assertSee('Simpan draf')
+            ->assertSee('data-live-total', false)
+            ->assertSee('data-live-credits', false)
+            ->assertSee('Pengaturan kisi-kisi')
             ->getContent();
+
+        $this->assertSame(1, substr_count($html, '<h1'));
 
         foreach (['objective', 'topic', 'indicator', 'cognitive_level', 'difficulty', 'question_type', 'requested_count', 'sources'] as $field) {
             $this->assertMatchesRegularExpression(
