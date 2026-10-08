@@ -1,5 +1,8 @@
 @php
+    use App\Enums\PlanCode;
+    use App\Enums\SubscriptionStatus;
     use App\Enums\UserStatus;
+    use Illuminate\Support\Str;
 
     $statusLabels = [
         'active' => 'Aktif',
@@ -104,6 +107,38 @@
         @endif
     </x-ui.panel>
 
+    @can('manageSubscription', $account)
+        <x-ui.panel>
+            <h2>Kelola Langganan</h2>
+            @if ($pendingUpgrade)
+                <p>Pengguna memiliki permintaan upgrade yang masih tertunda. Selesaikan permintaan tersebut sebelum mengelola langganan secara langsung.</p>
+                <p><a href="{{ route('admin.subscription-upgrades.show', $pendingUpgrade) }}">Lihat permintaan</a></p>
+            @elseif ($account->status === UserStatus::ACTIVE)
+                @if ($hasCurrentOrFuturePro)
+                    <p class="muted">Langganan baru akan dimulai setelah masa Pro terakhir berakhir.</p>
+                @endif
+                <form method="POST" action="{{ route('admin.users.subscriptions.store', $account) }}">
+                    @csrf
+                    <input type="hidden" name="idempotency_key" value="{{ (string) Str::uuid() }}">
+                    <label class="label" for="duration-months">Durasi</label>
+                    <select class="ui-input" id="duration-months" name="duration_months">
+                        <option value="1">1 bulan</option>
+                        <option value="3">3 bulan</option>
+                        <option value="6">6 bulan</option>
+                        <option value="12">12 bulan</option>
+                    </select>
+                    <label class="label" for="grant-reason">Alasan</label>
+                    <textarea class="ui-input" id="grant-reason" name="reason" required maxlength="1000"></textarea>
+                    <div class="action-stack" style="margin-top: 16px;">
+                        <x-ui.button type="submit">{{ $hasCurrentOrFuturePro ? 'Tambah masa langganan' : 'Berikan Pro' }}</x-ui.button>
+                    </div>
+                </form>
+            @else
+                <p class="muted">Pemberian langganan hanya tersedia untuk akun aktif.</p>
+            @endif
+        </x-ui.panel>
+    @endcan
+
     <x-ui.panel>
         <h2>Riwayat langganan</h2>
         @if ($subscriptions->isEmpty())
@@ -129,6 +164,29 @@
                                 <td>{{ $row->ends_at->timezone($timezone)->format($format) }}</td>
                                 <td>{{ $row->cancelled_at?->timezone($timezone)->format($format) ?: '—' }}</td>
                             </tr>
+                            @php
+                                $canCancelRow = $row->status === SubscriptionStatus::ACTIVE
+                                    && $row->plan?->code === PlanCode::PRO
+                                    && $row->ends_at->gt(now());
+                            @endphp
+                            @can('manageSubscription', $account)
+                                @if ($canCancelRow && ! $pendingUpgrade)
+                                    <tr>
+                                        <td colspan="5">
+                                            <form method="POST" action="{{ route('admin.users.subscriptions.destroy', [$account, $row]) }}" onsubmit="return confirm('Batalkan langganan ini?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <input type="hidden" name="idempotency_key" value="{{ (string) Str::uuid() }}">
+                                                <label class="label" for="cancel-reason-{{ $row->subscription_id }}">Alasan pembatalan</label>
+                                                <textarea class="ui-input" id="cancel-reason-{{ $row->subscription_id }}" name="reason" required maxlength="1000"></textarea>
+                                                <div class="action-stack" style="margin-top: 12px;">
+                                                    <x-ui.button variant="danger" type="submit">Batalkan langganan</x-ui.button>
+                                                </div>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                @endif
+                            @endcan
                         @endforeach
                     </tbody>
                 </table>

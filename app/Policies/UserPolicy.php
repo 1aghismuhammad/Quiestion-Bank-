@@ -27,4 +27,11 @@ class UserPolicy
             && ! $target->hasRole(RoleName::ADMIN)
             && $target->status !== UserStatus::SUSPENDED;
     }
+
+    public function manageSubscription(User $actor, User $target): bool
+    {
+        return $actor->hasRole(RoleName::ADMIN)
+            && $actor->isNot($target)
+            && ! $target->hasRole(RoleName::ADMIN);
+    }
 }

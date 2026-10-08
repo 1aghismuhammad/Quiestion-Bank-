@@ -142,6 +142,55 @@ try {
         exit(0);
     }
 
+    if ($action === 'admin-grant-subscription') {
+        $admin = User::findOrFail($payload['admin_id']);
+        $target = User::findOrFail($payload['target_user_id']);
+        $result = app(\App\Actions\Admin\AdminGrantSubscription::class)->handle(
+            $admin,
+            $target,
+            (int) $payload['duration_months'],
+            (string) $payload['reason'],
+            (string) $payload['idempotency_key'],
+        );
+        echo json_encode([
+            'success' => true,
+            'action' => $result->audit->action->value,
+            'subscription_id' => $result->subscription->subscription_id,
+        ]);
+        exit(0);
+    }
+
+    if ($action === 'admin-approve-upgrade') {
+        $admin = User::findOrFail($payload['admin_id']);
+        $request = \App\Models\SubscriptionUpgradeRequest::findOrFail($payload['upgrade_request_id']);
+        $subscription = app(\App\Actions\Subscriptions\ApproveSubscriptionUpgrade::class)->handle($admin, $request);
+        echo json_encode([
+            'success' => true,
+            'subscription_id' => $subscription->subscription_id,
+        ]);
+        exit(0);
+    }
+
+    if ($action === 'user-confirm-upgrade') {
+        config([
+            'subscriptions.whatsapp_number' => '6281111111111',
+            'subscriptions.qris_path' => 'payment/qris.png',
+        ]);
+        \Illuminate\Support\Facades\Storage::fake('public');
+        \Illuminate\Support\Facades\Storage::disk('public')->put('payment/qris.png', 'qris-fixture');
+        $user = User::findOrFail($payload['user_id']);
+        $upgrade = app(\App\Actions\Subscriptions\ConfirmSubscriptionUpgrade::class)->handle(
+            $user,
+            (int) $payload['offer_id'],
+        );
+        echo json_encode([
+            'success' => true,
+            'upgrade_request_id' => $upgrade->upgrade_request_id,
+            'status' => $upgrade->status->value,
+        ]);
+        exit(0);
+    }
+
 } catch (Throwable $e) {
     echo json_encode([
         'success' => false,

@@ -5,6 +5,7 @@ use App\Http\Controllers\Account\SubscriptionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\SubscriptionUpgradeController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\UserSubscriptionController as AdminUserSubscriptionController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GenerationController;
@@ -87,6 +88,13 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
             Route::patch('/admin/users/{user}', [AdminUserController::class, 'update'])
                 ->whereNumber('user')
                 ->name('admin.users.update');
+            Route::post('/admin/users/{user}/subscriptions', [AdminUserSubscriptionController::class, 'store'])
+                ->whereNumber('user')
+                ->name('admin.users.subscriptions.store');
+            Route::delete('/admin/users/{user}/subscriptions/{subscription}', [AdminUserSubscriptionController::class, 'destroy'])
+                ->whereNumber('user')
+                ->whereNumber('subscription')
+                ->name('admin.users.subscriptions.destroy');
         });
 
         Route::get('/materials', [MaterialController::class, 'index'])

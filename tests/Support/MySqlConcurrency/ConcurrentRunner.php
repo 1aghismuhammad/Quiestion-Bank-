@@ -58,4 +58,58 @@ class ConcurrentRunner
 
         return $outputs;
     }
+
+    /**
+     * @param  list<array{action: string, args: array<string, mixed>}>  $jobs
+     * @return list<array{exitCode: int|null, output: string, error: string}>
+     */
+    public static function runEach(array $jobs): array
+    {
+        $barrierDir = storage_path('framework/testing');
+        if (! File::exists($barrierDir)) {
+            File::makeDirectory($barrierDir, 0755, true);
+        }
+
+        $barrierFile = $barrierDir.'/h3_barrier';
+        file_put_contents($barrierFile, 'wait');
+
+        $env = [
+            'APP_ENV' => 'testing',
+            'DB_CONNECTION' => 'mysql',
+            'H3_DB_HOST' => env('H3_DB_HOST', '127.0.0.1'),
+            'H3_DB_PORT' => env('H3_DB_PORT', '3306'),
+            'H3_DB_DATABASE' => env('H3_DB_DATABASE', 'ai_question_bank_h3_test'),
+            'H3_DB_USERNAME' => env('H3_DB_USERNAME', 'root'),
+            'H3_DB_PASSWORD' => env('H3_DB_PASSWORD', ''),
+        ];
+
+        $processes = [];
+        foreach ($jobs as $job) {
+            $process = new Process([
+                PHP_BINARY,
+                base_path('tests/Support/MySqlConcurrency/execute_action.php'),
+                $job['action'],
+                json_encode($job['args']),
+            ], null, $env);
+            $process->start();
+            $processes[] = $process;
+        }
+
+        usleep(1500000);
+        if (file_exists($barrierFile)) {
+            unlink($barrierFile);
+        }
+
+        $outputs = [];
+        foreach ($processes as $process) {
+            $process->wait();
+            $outputs[] = [
+                'exitCode' => $process->getExitCode(),
+                'output' => $process->getOutput(),
+                'error' => $process->getErrorOutput(),
+            ];
+        }
+
+        return $outputs;
+    }
 }
