@@ -12,6 +12,7 @@
 
     <div class="action-stack">
         <x-ui.button href="{{ route('admin.subscription-upgrades.index', ['status' => 'pending']) }}">Verifikasi pembayaran</x-ui.button>
+        <x-ui.button variant="secondary" href="{{ route('admin.users.index') }}">Manajemen pengguna</x-ui.button>
         <x-ui.button variant="secondary" href="{{ route('dashboard') }}">Kembali ke dasbor</x-ui.button>
     </div>
 @endsection

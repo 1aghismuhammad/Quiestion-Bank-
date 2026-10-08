@@ -4,6 +4,7 @@ use App\Enums\RoleName;
 use App\Http\Controllers\Account\SubscriptionController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\SubscriptionUpgradeController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GenerationController;
@@ -77,6 +78,15 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
             Route::post('/admin/subscription-upgrades/{upgradeRequest}/cancel', [SubscriptionUpgradeController::class, 'cancel'])
                 ->whereNumber('upgradeRequest')
                 ->name('admin.subscription-upgrades.cancel');
+
+            Route::get('/admin/users', [AdminUserController::class, 'index'])
+                ->name('admin.users.index');
+            Route::get('/admin/users/{user}', [AdminUserController::class, 'show'])
+                ->whereNumber('user')
+                ->name('admin.users.show');
+            Route::patch('/admin/users/{user}', [AdminUserController::class, 'update'])
+                ->whereNumber('user')
+                ->name('admin.users.update');
         });
 
         Route::get('/materials', [MaterialController::class, 'index'])
