@@ -118,10 +118,31 @@ class AdminSubscriptionUpgradeTest extends TestCase
         $cancellable = $this->pending($this->createCompleteUser(), $offer);
 
         $this->actingAs($admin)
+            ->get(route('admin.subscription-upgrades.show', $rejectable))
+            ->assertOk()
+            ->assertSee('Tolak permintaan upgrade ini? Tindakan ini akan mengubah status permintaan menjadi Ditolak.')
+            ->assertSee('name="rejection_reason"', false)
+            ->assertSee('id="rejection_reason"', false);
+
+        $this->actingAs($admin)
             ->from(route('admin.subscription-upgrades.show', $rejectable))
+            ->followingRedirects()
             ->post(route('admin.subscription-upgrades.reject', $rejectable), [])
-            ->assertRedirect(route('admin.subscription-upgrades.show', $rejectable))
-            ->assertSessionHasErrors('rejection_reason');
+            ->assertOk()
+            ->assertSee('Alasan penolakan wajib diisi.')
+            ->assertSee('aria-invalid="true"', false);
+        $this->assertSame(UpgradeRequestStatus::PENDING, $rejectable->fresh()->status);
+
+        // Whitespace-only rejection reason test
+        $this->actingAs($admin)
+            ->from(route('admin.subscription-upgrades.show', $rejectable))
+            ->followingRedirects()
+            ->post(route('admin.subscription-upgrades.reject', $rejectable), [
+                'rejection_reason' => '   ',
+            ])
+            ->assertOk()
+            ->assertSee('Alasan penolakan wajib diisi.')
+            ->assertSee('aria-invalid="true"', false);
         $this->assertSame(UpgradeRequestStatus::PENDING, $rejectable->fresh()->status);
 
         $this->actingAs($admin)
@@ -130,6 +151,14 @@ class AdminSubscriptionUpgradeTest extends TestCase
             ])
             ->assertRedirect(route('admin.subscription-upgrades.show', $rejectable));
         $this->assertSame(UpgradeRequestStatus::REJECTED, $rejectable->fresh()->status);
+
+        // Completed request does not render action forms
+        $this->actingAs($admin)
+            ->get(route('admin.subscription-upgrades.show', $rejectable))
+            ->assertOk()
+            ->assertDontSee('Tolak permintaan upgrade ini?')
+            ->assertDontSee('Setujui permintaan ini')
+            ->assertDontSee('name="rejection_reason"', false);
 
         $this->actingAs($admin)
             ->post(route('admin.subscription-upgrades.cancel', $cancellable))

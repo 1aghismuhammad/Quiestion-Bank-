@@ -35,162 +35,244 @@
 @section('title', $account->name)
 
 @section('content')
-    <x-ui.page-header>
-        {{ $account->name }}
-        <x-slot:back>
-            <x-ui.button variant="tertiary" href="{{ route('admin.users.index') }}">Kembali ke daftar pengguna</x-ui.button>
-        </x-slot:back>
-        <x-slot:status>
-            <x-ui.status-badge :variant="$statusVariants[$accountStatus] ?? 'neutral'">
-                {{ $statusLabels[$accountStatus] ?? 'Status tidak dikenali' }}
-            </x-ui.status-badge>
-        </x-slot:status>
-    </x-ui.page-header>
+    <div class="container" style="max-width: 64rem; margin-inline: auto; margin-top: 20px;">
+        <x-ui.admin-nav />
 
-    <x-ui.panel>
-        <h2>Identitas</h2>
-        @if ($account->avatar_url)
-            <p><img src="{{ $account->avatar_url }}" alt="" width="64" height="64"></p>
-        @endif
-        <p><strong>Nama:</strong> {{ $account->name }}</p>
-        <p><strong>Email:</strong> {{ $account->email }}</p>
-        <p><strong>Google ID:</strong> {{ $account->google_id ?: '—' }}</p>
-        <p><strong>WhatsApp:</strong> {{ $account->phone_number ?: '—' }}</p>
-        <p><strong>Dibuat:</strong> {{ $account->created_at?->timezone($timezone)->format($format) }}</p>
-        <p><strong>Login terakhir:</strong> {{ $account->last_login_at?->timezone($timezone)->format($format) ?: '—' }}</p>
-    </x-ui.panel>
+        <div class="ui-page-header" style="margin-top: 24px;">
+            <div>
+                <h1 style="display: flex; align-items: center; gap: 12px; margin: 0;">
+                    {{ $account->name }}
+                    <x-ui.status-badge :variant="$statusVariants[$accountStatus] ?? 'neutral'">
+                        {{ $statusLabels[$accountStatus] ?? 'Status tidak dikenali' }}
+                    </x-ui.status-badge>
+                </h1>
+            </div>
+            <div class="ui-page-header-actions">
+                <x-ui.button variant="tertiary" href="{{ route('admin.users.index') }}">Kembali ke daftar pengguna</x-ui.button>
+            </div>
+        </div>
 
-    <x-ui.panel>
-        <h2>Akun</h2>
-        <p><strong>Status:</strong> {{ $statusLabels[$accountStatus] ?? 'Status tidak dikenali' }}</p>
-        <p><strong>Peran:</strong> {{ $roleNames->isEmpty() ? '—' : $roleNames->map(fn (string $role) => $roleLabels[$role] ?? $role)->implode(', ') }}</p>
-
-        @can('update', $account)
-            <form method="POST" action="{{ route('admin.users.update', $account) }}">
-                @csrf
-                @method('PATCH')
-                <label class="label" for="account-status">Status akun</label>
-                <select class="ui-input" id="account-status" name="status" @error('status') aria-invalid="true" aria-describedby="account-status-error" @enderror>
-                    <option value="{{ UserStatus::ACTIVE->value }}" @selected(old('status', $accountStatus) === UserStatus::ACTIVE->value)>Aktif</option>
-                    <option value="{{ UserStatus::INACTIVE->value }}" @selected(old('status', $accountStatus) === UserStatus::INACTIVE->value)>Nonaktif</option>
-                </select>
-                @error('status')
-                    <div class="error-text" id="account-status-error">{{ $message }}</div>
-                @enderror
-                <div class="action-stack" style="margin-top: 16px;">
-                    <x-ui.button type="submit">Simpan status</x-ui.button>
-                </div>
-            </form>
-        @elseif ($account->status === UserStatus::SUSPENDED)
-            <p class="muted">Status ditangguhkan hanya ditampilkan. Perubahan status tidak tersedia.</p>
-        @endif
-    </x-ui.panel>
-
-    <x-ui.panel>
-        <h2>Paket saat ini</h2>
-        <p><strong>{{ $entitlement->plan->name }}</strong></p>
-        @if ($entitlement->isPro() && $subscription)
-            <p>
-                <strong>Masa berlaku:</strong>
-                {{ $subscription->starts_at->timezone($timezone)->format($format) }}
-                –
-                {{ $subscription->ends_at->timezone($timezone)->format($format) }}
-            </p>
-        @endif
-        <p><strong>Penyimpanan:</strong> {{ $storageUsedLabel }} / {{ $storageLimitLabel }}</p>
-        <p><strong>Kuota pembuatan soal:</strong> {{ $quotaLabel }}</p>
-        <p><strong>Terpakai:</strong> {{ $usage->consumed }}</p>
-        <p><strong>Diproses:</strong> {{ $usage->reserved }}</p>
-        <p><strong>Tersedia:</strong> {{ $usage->displayedAvailable() }}</p>
-        @if ($windowLabel)
-            <p><strong>Jendela pembuatan soal saat ini:</strong> {{ $windowLabel }}</p>
-        @endif
-    </x-ui.panel>
-
-    @can('manageSubscription', $account)
-        <x-ui.panel>
-            <h2>Kelola Langganan</h2>
-            @if ($pendingUpgrade)
-                <p>Pengguna memiliki permintaan upgrade yang masih tertunda. Selesaikan permintaan tersebut sebelum mengelola langganan secara langsung.</p>
-                <p><a href="{{ route('admin.subscription-upgrades.show', $pendingUpgrade) }}">Lihat permintaan</a></p>
-            @elseif ($account->status === UserStatus::ACTIVE)
-                @if ($hasCurrentOrFuturePro)
-                    <p class="muted">Langganan baru akan dimulai setelah masa Pro terakhir berakhir.</p>
+        <div class="grid" style="margin-bottom: 24px; align-items: stretch;">
+            <div class="card" style="padding: 24px;">
+                <h2 style="font-size: 1.125rem; margin: 0 0 16px;">Identitas</h2>
+                @if ($account->avatar_url)
+                    <p style="margin: 0 0 16px;"><img src="{{ $account->avatar_url }}" alt="" width="64" height="64" style="border-radius: 999px;"></p>
                 @endif
-                <form method="POST" action="{{ route('admin.users.subscriptions.store', $account) }}">
-                    @csrf
-                    <input type="hidden" name="idempotency_key" value="{{ (string) Str::uuid() }}">
-                    <label class="label" for="duration-months">Durasi</label>
-                    <select class="ui-input" id="duration-months" name="duration_months">
-                        <option value="1">1 bulan</option>
-                        <option value="3">3 bulan</option>
-                        <option value="6">6 bulan</option>
-                        <option value="12">12 bulan</option>
-                    </select>
-                    <label class="label" for="grant-reason">Alasan</label>
-                    <textarea class="ui-input" id="grant-reason" name="reason" required maxlength="1000"></textarea>
-                    <div class="action-stack" style="margin-top: 16px;">
-                        <x-ui.button type="submit">{{ $hasCurrentOrFuturePro ? 'Tambah masa langganan' : 'Berikan Pro' }}</x-ui.button>
-                    </div>
-                </form>
-            @else
-                <p class="muted">Pemberian langganan hanya tersedia untuk akun aktif.</p>
-            @endif
-        </x-ui.panel>
-    @endcan
+                <div style="display: grid; gap: 8px;">
+                    <p style="margin:0; overflow-wrap: anywhere;"><strong class="muted">Nama:</strong><br>{{ $account->name }}</p>
+                    <p style="margin:0; overflow-wrap: anywhere;"><strong class="muted">Email:</strong><br>{{ $account->email }}</p>
+                    <p style="margin:0; overflow-wrap: anywhere;"><strong class="muted">Google ID:</strong><br>{{ $account->google_id ?: '—' }}</p>
+                    <p style="margin:0; overflow-wrap: anywhere;"><strong class="muted">WhatsApp:</strong><br>{{ $account->phone_number ?: '—' }}</p>
+                    <p style="margin:0;"><strong class="muted">Dibuat:</strong><br>{{ $account->created_at?->timezone($timezone)->format($format) }}</p>
+                    <p style="margin:0;"><strong class="muted">Login terakhir:</strong><br>{{ $account->last_login_at?->timezone($timezone)->format($format) ?: '—' }}</p>
+                </div>
+            </div>
 
-    <x-ui.panel>
-        <h2>Riwayat langganan</h2>
-        @if ($subscriptions->isEmpty())
-            <p class="muted">Belum ada langganan.</p>
-        @else
-            <div class="responsive-table table-wrap">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Paket</th>
-                            <th>Status</th>
-                            <th>Mulai</th>
-                            <th>Berakhir</th>
-                            <th>Dibatalkan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($subscriptions as $row)
+            <div class="card" style="padding: 24px;">
+                <h2 style="font-size: 1.125rem; margin: 0 0 16px;">Akun</h2>
+                <div style="display: grid; gap: 8px; margin-bottom: 20px;">
+                    <p style="margin:0;"><strong class="muted">Status:</strong><br>{{ $statusLabels[$accountStatus] ?? 'Status tidak dikenali' }}</p>
+                    <p style="margin:0;"><strong class="muted">Peran:</strong><br>{{ $roleNames->isEmpty() ? '—' : $roleNames->map(fn (string $role) => $roleLabels[$role] ?? $role)->implode(', ') }}</p>
+                </div>
+
+                @can('update', $account)
+                    <form method="POST" action="{{ route('admin.users.update', $account) }}" style="background: #fbfaf7; border: 1px solid #ebe6dc; border-radius: 12px; padding: 16px;">
+                        @csrf
+                        @method('PATCH')
+                        <label class="label" for="account-status">Status akun</label>
+                        <select class="ui-input" id="account-status" name="status" @error('status') aria-invalid="true" aria-describedby="account-status-error" @enderror style="width: 100%; margin-bottom: 12px;">
+                            <option value="{{ UserStatus::ACTIVE->value }}" @selected(old('status', $accountStatus) === UserStatus::ACTIVE->value)>Aktif</option>
+                            <option value="{{ UserStatus::INACTIVE->value }}" @selected(old('status', $accountStatus) === UserStatus::INACTIVE->value)>Nonaktif</option>
+                        </select>
+                        @error('status')
+                            <div class="error-text" id="account-status-error" style="margin-bottom: 12px;">{{ $message }}</div>
+                        @enderror
+                        <div class="action-stack">
+                            <x-ui.button type="submit" variant="secondary" style="width: 100%;">Simpan status</x-ui.button>
+                        </div>
+                    </form>
+                @elseif ($account->status === UserStatus::SUSPENDED)
+                    <div style="background: #fff4dc; border: 1px solid #ffe8b5; padding: 12px; border-radius: 8px;">
+                        <p class="muted" style="margin: 0; color: #7a5200;">Status ditangguhkan hanya ditampilkan. Perubahan status tidak tersedia.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <div class="grid" style="margin-bottom: 24px; align-items: stretch;">
+            <div class="card" style="padding: 24px;">
+                <h2 style="font-size: 1.125rem; margin: 0 0 16px;">Paket saat ini</h2>
+                <div style="display: grid; gap: 12px; margin-bottom: 20px;">
+                    <div>
+                        <strong class="muted" style="font-size: 0.875rem;">Paket</strong>
+                        <p style="margin: 2px 0 0; font-size: 1.125rem; font-weight: 650; color: #5145dc;">{{ $entitlement->plan->name }}</p>
+                    </div>
+                    @if ($entitlement->isPro() && $subscription)
+                        <div>
+                            <strong class="muted" style="font-size: 0.875rem;">Masa berlaku:</strong>
+                            <p style="margin: 2px 0 0; overflow-wrap: anywhere;">
+                                {{ $subscription->starts_at->timezone($timezone)->format($format) }}<br>
+                                – {{ $subscription->ends_at->timezone($timezone)->format($format) }}
+                            </p>
+                        </div>
+                    @endif
+                </div>
+
+                <div style="display: grid; gap: 8px; padding: 16px; background: #fbfaf7; border: 1px solid #ebe6dc; border-radius: 12px;">
+                    <p style="margin:0;"><strong class="muted">Penyimpanan:</strong><br>{{ $storageUsedLabel }} / {{ $storageLimitLabel }}</p>
+                    <p style="margin:0; margin-top: 8px;"><strong class="muted">Kuota pembuatan soal:</strong><br>{{ $quotaLabel }}</p>
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 4px;">
+                        <p style="margin:0;"><strong class="muted">Terpakai:</strong> {{ $usage->consumed }}</p>
+                        <p style="margin:0;"><strong class="muted">Diproses:</strong> {{ $usage->reserved }}</p>
+                        <p style="margin:0;"><strong class="muted">Tersedia:</strong> <span style="font-weight: 650;">{{ $usage->displayedAvailable() }}</span></p>
+                    </div>
+                    @if ($windowLabel)
+                        <p style="margin:0; margin-top: 8px;"><strong class="muted">Jendela pembuatan soal saat ini:</strong><br>{{ $windowLabel }}</p>
+                    @endif
+                </div>
+            </div>
+
+            @can('manageSubscription', $account)
+                <div class="card" style="padding: 24px; display: flex; flex-direction: column;">
+                    <h2 style="font-size: 1.125rem; margin: 0 0 16px;">Kelola Langganan</h2>
+                    @if ($pendingUpgrade)
+                        <div style="background: #fffaf0; border: 1px solid #efdcae; padding: 16px; border-radius: 12px; margin-bottom: 16px;">
+                            <p style="margin: 0 0 12px; font-size: 0.9375rem;">Pengguna memiliki permintaan upgrade yang masih tertunda. Selesaikan permintaan tersebut sebelum mengelola langganan secara langsung.</p>
+                            <x-ui.button variant="secondary" href="{{ route('admin.subscription-upgrades.show', $pendingUpgrade) }}" style="width: 100%;">Lihat permintaan</x-ui.button>
+                        </div>
+                    @elseif ($account->status === UserStatus::ACTIVE)
+                        @if ($hasCurrentOrFuturePro)
+                            <div style="background: #e8f0f7; border: 1px solid #cdddea; padding: 12px; border-radius: 12px; margin-bottom: 16px;">
+                                <p class="muted" style="margin: 0; color: #1e4a73; font-size: 0.875rem;">Langganan baru akan dimulai setelah masa Pro terakhir berakhir.</p>
+                            </div>
+                        @endif
+                        <form method="POST" action="{{ route('admin.users.subscriptions.store', $account) }}" style="display: flex; flex-direction: column; flex-grow: 1;">
+                            @csrf
+                            <input type="hidden" name="idempotency_key" value="{{ (string) Str::uuid() }}">
+
+                            <div style="margin-bottom: 12px;">
+                                <label class="label" for="duration-months">Durasi</label>
+                                <select class="ui-input" id="duration-months" name="duration_months" style="width: 100%;">
+                                    <option value="1">1 bulan</option>
+                                    <option value="3">3 bulan</option>
+                                    <option value="6">6 bulan</option>
+                                    <option value="12">12 bulan</option>
+                                </select>
+                            </div>
+
+                            <div style="margin-bottom: 16px;">
+                                <label class="label" for="grant-reason">Alasan</label>
+                                <textarea class="ui-input" id="grant-reason" name="reason" required maxlength="1000" style="width: 100%; min-height: 4rem;"></textarea>
+                            </div>
+
+                            <div class="action-stack" style="margin-top: auto;">
+                                <x-ui.button type="submit" style="width: 100%;">{{ $hasCurrentOrFuturePro ? 'Tambah masa langganan' : 'Berikan Pro' }}</x-ui.button>
+                            </div>
+                        </form>
+                    @else
+                        <div style="background: #f6f5f2; padding: 16px; border-radius: 12px; margin-top: auto;">
+                            <p class="muted" style="margin: 0;">Pemberian langganan hanya tersedia untuk akun aktif.</p>
+                        </div>
+                    @endif
+                </div>
+            @endcan
+        </div>
+
+        <div class="card" style="padding: 24px; margin-bottom: 40px;">
+            <h2 style="font-size: 1.125rem; margin: 0 0 16px;">Riwayat langganan</h2>
+            @if ($subscriptions->isEmpty())
+                <p class="muted" style="margin: 0;">Belum ada langganan.</p>
+            @else
+                <div class="responsive-table table-wrap">
+                    <table class="table">
+                        <thead>
                             <tr>
-                                <td>{{ $row->plan?->name ?? '—' }}</td>
-                                <td>{{ $subscriptionStatusLabels[$row->status->value] ?? 'Status tidak dikenali' }}</td>
-                                <td>{{ $row->starts_at->timezone($timezone)->format($format) }}</td>
-                                <td>{{ $row->ends_at->timezone($timezone)->format($format) }}</td>
-                                <td>{{ $row->cancelled_at?->timezone($timezone)->format($format) ?: '—' }}</td>
+                                <th>Paket</th>
+                                <th>Status</th>
+                                <th>Mulai</th>
+                                <th>Berakhir</th>
+                                <th>Dibatalkan</th>
+                                <th>Aksi</th>
                             </tr>
-                            @php
-                                $canCancelRow = $row->status === SubscriptionStatus::ACTIVE
-                                    && $row->plan?->code === PlanCode::PRO
-                                    && $row->ends_at->gt(now());
-                            @endphp
+                        </thead>
+                        <tbody>
+                            @foreach ($subscriptions as $row)
+                                <tr>
+                                    <td>{{ $row->plan?->name ?? '—' }}</td>
+                                    <td>
+                                        <x-ui.status-badge :variant="$row->status->value === 'active' ? 'success' : ($row->status->value === 'cancelled' ? 'danger' : 'neutral')">
+                                            {{ $subscriptionStatusLabels[$row->status->value] ?? 'Status tidak dikenali' }}
+                                        </x-ui.status-badge>
+                                    </td>
+                                    <td>{{ $row->starts_at->timezone($timezone)->format($format) }}</td>
+                                    <td>{{ $row->ends_at->timezone($timezone)->format($format) }}</td>
+                                    <td class="muted">{{ $row->cancelled_at?->timezone($timezone)->format($format) ?: '—' }}</td>
+                                    <td>
+                                        @php
+                                            $canCancelRow = $row->status === SubscriptionStatus::ACTIVE
+                                                && $row->plan?->code === PlanCode::PRO
+                                                && $row->ends_at->gt(now());
+                                        @endphp
+                                        @can('manageSubscription', $account)
+                                            @if ($canCancelRow && ! $pendingUpgrade)
+                                                <form method="POST" action="{{ route('admin.users.subscriptions.destroy', [$account, $row]) }}" onsubmit="return confirm('Batalkan langganan ini?')" style="display: grid; gap: 8px;">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <input type="hidden" name="idempotency_key" value="{{ (string) Str::uuid() }}">
+                                                    <label class="label" for="cancel-reason-{{ $row->subscription_id }}-desktop" style="font-size: 0.8125rem; margin-bottom: 0;">Alasan pembatalan</label>
+                                                    <input type="text" class="ui-input" id="cancel-reason-{{ $row->subscription_id }}-desktop" name="reason" placeholder="Alasan pembatalan..." required maxlength="1000" style="min-height: 44px; padding: 8px 12px;">
+                                                    <x-ui.button variant="danger" type="submit" style="min-height: 44px; width: 100%;">Batalkan</x-ui.button>
+                                                </form>
+                                            @else
+                                                <span class="muted">—</span>
+                                            @endif
+                                        @endcan
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="responsive-summary">
+                    @foreach ($subscriptions as $row)
+                        @php
+                            $canCancelRow = $row->status === SubscriptionStatus::ACTIVE
+                                && $row->plan?->code === PlanCode::PRO
+                                && $row->ends_at->gt(now());
+                        @endphp
+                        <article class="summary-row" style="padding: 16px; border-radius: 16px; border: 1px solid #ebe6dc; background: #ffffff;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                <strong style="font-size: 1rem;">{{ $row->plan?->name ?? '—' }}</strong>
+                                <x-ui.status-badge :variant="$row->status->value === 'active' ? 'success' : ($row->status->value === 'cancelled' ? 'danger' : 'neutral')">
+                                    {{ $subscriptionStatusLabels[$row->status->value] ?? 'Status tidak dikenali' }}
+                                </x-ui.status-badge>
+                            </div>
+                            <div style="display: grid; gap: 4px; margin-top: 8px;">
+                                <p class="muted" style="margin: 0;"><strong>Mulai:</strong> {{ $row->starts_at->timezone($timezone)->format($format) }}</p>
+                                <p class="muted" style="margin: 0;"><strong>Berakhir:</strong> {{ $row->ends_at->timezone($timezone)->format($format) }}</p>
+                                @if ($row->cancelled_at)
+                                    <p class="muted" style="margin: 0; color: #9f2424;"><strong>Dibatalkan:</strong> {{ $row->cancelled_at->timezone($timezone)->format($format) }}</p>
+                                @endif
+                            </div>
                             @can('manageSubscription', $account)
                                 @if ($canCancelRow && ! $pendingUpgrade)
-                                    <tr>
-                                        <td colspan="5">
-                                            <form method="POST" action="{{ route('admin.users.subscriptions.destroy', [$account, $row]) }}" onsubmit="return confirm('Batalkan langganan ini?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="idempotency_key" value="{{ (string) Str::uuid() }}">
-                                                <label class="label" for="cancel-reason-{{ $row->subscription_id }}">Alasan pembatalan</label>
-                                                <textarea class="ui-input" id="cancel-reason-{{ $row->subscription_id }}" name="reason" required maxlength="1000"></textarea>
-                                                <div class="action-stack" style="margin-top: 12px;">
-                                                    <x-ui.button variant="danger" type="submit">Batalkan langganan</x-ui.button>
-                                                </div>
-                                            </form>
-                                        </td>
-                                    </tr>
+                                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0ede6;">
+                                        <form method="POST" action="{{ route('admin.users.subscriptions.destroy', [$account, $row]) }}" onsubmit="return confirm('Batalkan langganan ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <input type="hidden" name="idempotency_key" value="{{ (string) Str::uuid() }}">
+                                            <label class="label" for="cancel-reason-{{ $row->subscription_id }}-mobile" style="font-size: 0.8125rem;">Alasan pembatalan</label>
+                                            <textarea class="ui-input" id="cancel-reason-{{ $row->subscription_id }}-mobile" name="reason" required maxlength="1000" style="width: 100%; min-height: 3rem; margin-bottom: 8px;"></textarea>
+                                            <x-ui.button variant="danger" type="submit" style="width: 100%;">Batalkan langganan</x-ui.button>
+                                        </form>
+                                    </div>
                                 @endif
                             @endcan
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
-    </x-ui.panel>
+                        </article>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    </div>
 @endsection

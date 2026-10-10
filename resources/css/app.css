@@ -5319,3 +5319,41 @@ body:has(.public-home-page) .shell-main > .ui-alert-danger {
         transition: none;
     }
 }
+
+/* VIS-13 Admin Operations UI */
+.admin-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: #f3f1fb;
+    border-radius: 999px;
+    margin-bottom: 8px;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.admin-nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    color: var(--color-text);
+    font-size: 0.875rem;
+    font-weight: 650;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+
+.admin-nav a:hover {
+    color: #5145dc;
+}
+
+.admin-nav a[aria-current="page"] {
+    background: #ffffff;
+    color: #5145dc;
+    box-shadow: 0 1px 3px rgba(28, 36, 48, 0.08);
+}

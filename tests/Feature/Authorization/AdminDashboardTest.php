@@ -54,6 +54,9 @@ class AdminDashboardTest extends TestCase
             ->assertSee(route('dashboard'), false)
             ->assertDontSee('Phase 1')
             ->assertDontSee('Materi saya')
+            ->assertSee('class="admin-nav"', false)
+            ->assertSee('aria-label="Admin"', false)
+            ->assertSee('aria-current="page"', false)
             ->assertViewHas('totalUsers', 2)
             ->assertViewHas('totalAdmins', 1);
     }

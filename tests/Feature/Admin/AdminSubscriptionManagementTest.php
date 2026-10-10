@@ -312,6 +312,15 @@ class AdminSubscriptionManagementTest extends TestCase
             'status' => SubscriptionStatus::ACTIVE,
         ]);
 
+        $show = $this->actingAs($admin)
+            ->get(route('admin.users.show', $user))
+            ->assertOk()
+            ->assertSee('for="cancel-reason-'.$future->subscription_id.'-desktop"', false)
+            ->assertSee('id="cancel-reason-'.$future->subscription_id.'-desktop"', false)
+            ->assertSee('for="cancel-reason-'.$future->subscription_id.'-mobile"', false)
+            ->assertSee('id="cancel-reason-'.$future->subscription_id.'-mobile"', false)
+            ->assertSee('Batalkan langganan ini?');
+
         $this->actingAs($admin)
             ->delete(route('admin.users.subscriptions.destroy', [$user, $future]), $this->cancelPayload('Batalkan antrean'))
             ->assertRedirect(route('admin.users.show', $user))
